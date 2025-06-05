@@ -10,6 +10,7 @@ import Animated, {
 import { ThemedView } from '@/components/ThemedView';
 import { useBottomTabOverflow } from '@/components/ui/TabBarBackground';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { useThemeContext } from '../context/ThemeContext'
 
 const HEADER_HEIGHT = 250;
 
@@ -23,10 +24,11 @@ export default function ParallaxScrollView({
   headerImage,
   headerBackgroundColor,
 }: Props) {
-  const colorScheme = useColorScheme() ?? 'light';
+  const colorScheme = useColorScheme() ?? 'dark';
   const scrollRef = useAnimatedRef<Animated.ScrollView>();
   const scrollOffset = useScrollViewOffset(scrollRef);
   const bottom = useBottomTabOverflow();
+
   const headerAnimatedStyle = useAnimatedStyle(() => {
     return {
       transform: [
@@ -44,22 +46,29 @@ export default function ParallaxScrollView({
     };
   });
 
+  const { theme } = useThemeContext();
+  const backgroundColor = theme.background;
+
   return (
-    <ThemedView style={styles.container}>
+    <ThemedView style={[styles.container, { backgroundColor }]}>
       <Animated.ScrollView
         ref={scrollRef}
         scrollEventThrottle={16}
         scrollIndicatorInsets={{ bottom }}
-        contentContainerStyle={{ paddingBottom: bottom }}>
+        contentContainerStyle={{ paddingBottom: bottom, backgroundColor }} // <-- Added backgroundColor here
+      >
         <Animated.View
           style={[
             styles.header,
             { backgroundColor: headerBackgroundColor[colorScheme] },
             headerAnimatedStyle,
-          ]}>
+          ]}
+        >
           {headerImage}
         </Animated.View>
-        <ThemedView style={styles.content}>{children}</ThemedView>
+        <ThemedView style={[styles.content, { backgroundColor }]}>
+          {children}
+        </ThemedView>
       </Animated.ScrollView>
     </ThemedView>
   );

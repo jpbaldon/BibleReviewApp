@@ -4,23 +4,25 @@ import { Platform } from 'react-native';
 
 import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import TabBarBackground from '@/components/ui/TabBarBackground';
+import { TabBarBackground } from '@/components/ui/TabBarBackground';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { useThemeContext } from '../../context/ThemeContext';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const theme = useThemeContext();
 
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
+        headerTitleAlign: 'center',
         tabBarButton: HapticTab,
-        tabBarBackground: TabBarBackground,
+        tabBarBackground: () => <TabBarBackground color="black" />,
         tabBarStyle: Platform.select({
           ios: {
-            // Use a transparent background on iOS to show the blur effect
             position: 'absolute',
           },
           default: {},
@@ -30,14 +32,60 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          tabBarIcon: ({ color }: { color: string }) => (
+            <IconSymbol size={28} name="house.fill" color={color} />
+          ),
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="verses"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Verses',
+          tabBarIcon: ({ color }: { color: string }) => (
+            <IconSymbol size={28} name="bookmark.fill" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="summaries"
+        options={{
+          title: 'Summaries',
+          tabBarIcon: ({ color }: { color: string }) => (
+            <IconSymbol size={28} name="explore.fill" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="about"
+        options={{
+          title: 'About',
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="account"
+        options={{
+          title: 'Account',
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="enabledBooks"
+        options={{
+          title: 'Enabled Books',
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="leaderboard"
+        options={{
+          title: 'Leader Board',
+          href: null,
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: '#1a1a1a', // Dark gray
+          },
+          headerTintColor: '#ffffff', // White text
         }}
       />
     </Tabs>

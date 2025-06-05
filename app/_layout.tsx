@@ -1,39 +1,63 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
+import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import 'react-native-reanimated';
+import { DarkTheme, DefaultTheme, ThemeProvider as NavThemeProvider } from '@react-navigation/native';
+import { AuthProvider } from '../context/AuthContext';
+import { ScoreProvider } from '../context/ScoreContext';
+import { BibleBooksProvider } from '../context/BibleBooksContext';
+import { ThemeProvider, useThemeContext } from '../context/ThemeContext';
 
-import { useColorScheme } from '@/hooks/useColorScheme';
-
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
-
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
+export default function Layout() {
+  const [fontsLoaded, fontError] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
+    useEffect(() => {
+      SplashScreen.preventAutoHideAsync();
+    }, []);
+
   useEffect(() => {
-    if (loaded) {
+    if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
     }
-  }, [loaded]);
+  }, [fontsLoaded, fontError]);
 
-  if (!loaded) {
-    return null;
-  }
+  if (!fontsLoaded && !fontError) return null;
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
+        <AuthProvider>
+          <BibleBooksProvider>
+            <ScoreProvider>
+              <ThemeProvider>
+                <LayoutContent/>
+              </ThemeProvider>
+            </ScoreProvider>
+          </BibleBooksProvider>
+        </AuthProvider>
+  );
+}
+
+function LayoutContent() {
+  const { colorScheme, theme } = useThemeContext();
+
+  return (
+    <NavThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: theme.background },
+          headerTintColor: theme.text,
+          contentStyle: { backgroundColor: theme.background },
+          headerTitleAlign: 'center'
+        }}
+      >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
+        <Stack.Screen name="signin" options={{ title: "Sign In" }} />
+        <Stack.Screen name="signup" options={{ title: "Sign Up" }} />
+        <Stack.Screen name="verifyemail" options={{ title: "Verify Email" }} />
       </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+    </NavThemeProvider>
   );
 }
