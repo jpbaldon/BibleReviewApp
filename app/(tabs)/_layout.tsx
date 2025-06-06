@@ -38,20 +38,20 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="verses"
-        options={{
-          title: 'Verses',
-          tabBarIcon: ({ color }: { color: string }) => (
-            <IconSymbol size={28} name="bookmark.fill" color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="summaries"
         options={{
           title: 'Summaries',
           tabBarIcon: ({ color }: { color: string }) => (
             <IconSymbol size={28} name="explore.fill" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="verses"
+        options={{
+          title: 'Verses',
+          tabBarIcon: ({ color }: { color: string }) => (
+            <IconSymbol size={28} name="bookmark.fill" color={color} />
           ),
         }}
       />
@@ -74,6 +74,11 @@ export default function TabLayout() {
         options={{
           title: 'Enabled Books',
           href: null,
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: '#1a1a1a', // Dark gray
+          },
+          headerTintColor: '#ffffff', // White text
         }}
       />
       <Tabs.Screen

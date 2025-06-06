@@ -1,13 +1,31 @@
 import React from 'react';
-import { View, Text } from 'react-native';
-import { ASV } from '@/data/asv';
+import { View, Text, ActivityIndicator } from 'react-native';
 import { ReviewScreenTemplate } from '../../components/ReviewScreenTemplate';
+import { useBibleBooks } from '../../context/BibleBooksContext';
 
-export default function TabTwoScreen() {
+export default function Verses() {
+    const { bibleBooks } = useBibleBooks();
+  
+    const enabledBooks = bibleBooks.filter(b => b.Enabled && b.Chapters && b.Chapters.length > 0);
+  
+    // If no enabled books with chapters, show loading or info
+    if (enabledBooks.length === 0) {
+      return (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#121212' }}>
+          <ActivityIndicator size="large" color="#00e676" />
+          <Text style={{ marginTop: 10, color: '#ccc' }}>Waiting for books to be enabled...</Text>
+        </View>
+      );
+    }
   const getRandomVerse = async () => {
-    const enabledBooks = ASV.Bible.filter((b) => b.Enabled);
     const randomBook = enabledBooks[Math.floor(Math.random() * enabledBooks.length)];
-    const chapter = randomBook.Chapters[Math.floor(Math.random() * randomBook.Chapters.length)];
+
+    const chapters = randomBook.Chapters;
+    if (!chapters || chapters.length === 0) {
+      throw new Error(`No chapters in selected book: ${randomBook.Book}`);
+    }
+
+    const chapter = chapters[Math.floor(Math.random() * chapters.length)];
     const verse = chapter.Verses[Math.floor(Math.random() * chapter.Verses.length)];
 
     return {

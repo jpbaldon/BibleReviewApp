@@ -20,7 +20,6 @@ export default function About() {
       <View>
         <Text style={styles.welcomeText}>Welcome!</Text>
         <Text style={styles.bodyText}>This app is designed to test your knowledge of each chapter of the Bible.
-            From the Home screen, navigate to either the Verses tab or the Summaries tab.
         </Text>
         <Text style={styles.bodyText}>The Verses tab will give you a verse from one of the Bible books you have enabled.
             Guessing the chapter where the verse is found correctly on your first attempt will earn you points!
