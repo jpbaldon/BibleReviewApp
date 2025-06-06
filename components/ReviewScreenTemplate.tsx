@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1000, // ensures it's on top
-    backgroundColor: 'rgba(0, 0, 0, 0.3)', // optional dim background
+    backgroundColor: 'rgba(0, 0, 0, 0.4)', // optional dim background
   },
 
   feedbackText: {
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     padding: 20,
-    backgroundColor: '#00000022',
+    //backgroundColor: '#00000022',
     borderRadius: 10,
     color: '#fff',
   },

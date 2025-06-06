@@ -110,7 +110,17 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
 
       // 4. Load books
       const loadedBooks = await loadBooksFromDB(dbInstance);
-      setBibleBooks(loadedBooks);
+
+      const enrichedBooks = loadedBooks.map(book => {
+        const asvBook = ASV.Bible.find(b => b.Book === book.Book);
+        return {
+          ...book,
+          Chapters: asvBook?.Chapters ?? []
+        };
+      });
+
+      setBibleBooks(enrichedBooks);
+
     } catch (err) {
       console.error('Database initialization failed:', err);
       setError('Database error. Using default books.');
@@ -193,10 +203,14 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
       );
 
       setBibleBooks(
-        updatedBooks.map(book => ({
-          Book: book.Book,
-          Enabled: book.Enabled === 1,
-        }))
+        updatedBooks.map(book => {
+          const fullBook = ASV.Bible.find(b => b.Book === book.Book);
+          return {
+            Book: book.Book,
+            Enabled: book.Enabled === 1,
+            Chapters: fullBook?.Chapters ?? []
+          };
+        })
       );
 
     } catch (err) {
