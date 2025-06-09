@@ -8,6 +8,7 @@ export default function SignInScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const [checkingSession, setCheckingSession] = useState(true);
 
   const handleSignIn = async () => {
     if (!email || !password) {
@@ -31,7 +32,16 @@ export default function SignInScreen() {
     }
   };
 
+  if (checkingSession) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#4CAF50" />
+      </View>
+    );
+  }
+
   return (
+
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <KeyboardAvoidingView 
       style={styles.container}
