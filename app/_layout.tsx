@@ -4,10 +4,11 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { DarkTheme, DefaultTheme, ThemeProvider as NavThemeProvider } from '@react-navigation/native';
-import { AuthProvider } from '../context/AuthContext';
+import { AuthProvider, useAuth } from '../context/AuthContext';
 import { ScoreProvider } from '../context/ScoreContext';
 import { BibleBooksProvider } from '../context/BibleBooksContext';
 import { ThemeProvider, useThemeContext } from '../context/ThemeContext';
+import { useSegments, useRouter } from 'expo-router';
 
 export default function Layout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -41,6 +42,25 @@ export default function Layout() {
 
 function LayoutContent() {
   const { colorScheme, theme } = useThemeContext();
+  const { loading, user } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+
+    if(loading) return;
+
+    const inAuthGroup = segments[0] === 'signin' || segments[0] === 'signup';
+
+    if(!user && !inAuthGroup) {
+      router.replace('/signin');
+    } else if (user && inAuthGroup) {
+      router.replace('/(tabs)');
+    }
+
+  }, [loading, user, segments]);
+
+  if(loading) return null;
 
   return (
     <NavThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
