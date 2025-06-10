@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { ReviewScreenTemplate } from '../../components/ReviewScreenTemplate';
-import { useBibleBooks } from '../../context/BibleBooksContext';
+import { useBibleBooks, Chapter } from '../../context/BibleBooksContext';
+import { getWeightedChapters, selectWeightedChapter } from '@/utils/randomChapter';
 
 export default function Verses() {
     const { bibleBooks } = useBibleBooks();
@@ -18,19 +19,16 @@ export default function Verses() {
       );
     }
   const getRandomVerse = async () => {
-    const randomBook = enabledBooks[Math.floor(Math.random() * enabledBooks.length)];
+    const weightedChapters = getWeightedChapters(enabledBooks);
 
-    const chapters = randomBook.Chapters;
-    if (!chapters || chapters.length === 0) {
-      throw new Error(`No chapters in selected book: ${randomBook.Book}`);
-    }
+    if(weightedChapters.length === 0) throw new Error('No eligible chapters.');
 
-    const chapter = chapters[Math.floor(Math.random() * chapters.length)];
+    const { book, chapter, chapterIndex } = selectWeightedChapter(weightedChapters);
     const verse = chapter.Verses[Math.floor(Math.random() * chapter.Verses.length)];
 
     return {
-      book: randomBook.Book,
-      chapter: chapter.Chapter,
+      book,
+      chapter: chapterIndex,
       verseNumber: verse.VerseNumber,
       text: verse.Text,
       context: chapter.Verses,
