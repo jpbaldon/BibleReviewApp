@@ -1,18 +1,26 @@
-import React, { useEffect } from 'react';
-import { FlatList, Text, View, StyleSheet, ActivityIndicator, Alert, Pressable } from 'react-native';
-import { useBibleBooks, BibleBook } from '../../context/BibleBooksContext';
-import { useThemeContext } from '../../context/ThemeContext';
+import React, { useEffect, useState } from 'react';
+import { FlatList, Text, View, StyleSheet, ActivityIndicator, Alert, Pressable, TouchableOpacity } from 'react-native';
+import { useBibleBooks, BibleBook, Chapter } from '../../context/BibleBooksContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+
+const rarities: ('common' | 'uncommon' | 'rare' | 'disabled')[] = [
+  'common',
+  'uncommon',
+  'rare',
+  'disabled',
+];
 
 export default function EnabledBooksScreen() {
   const {
     bibleBooks,
     toggleBookEnabled,
+    updateChapterRarity,
     isLoading,
     error,
     refreshBooks,
   } = useBibleBooks();
-  const { theme } = useThemeContext();
+  const [expandedBook, setExpandedBook] = useState<string | null>(null);
 
   useEffect(() => {
     if (error) {
@@ -36,24 +44,58 @@ export default function EnabledBooksScreen() {
     }
   };
 
-  const renderItem = ({ item }: { item: BibleBook }) => (
+  const handleRarityChange = async (
+    bookName: string,
+    chapterNum: number,
+    currentRarity: string
+  ) => {
+    const currentIndex = rarities.indexOf(currentRarity as any);
+    const nextRarity = rarities[(currentIndex + 1) % rarities.length];
+    await updateChapterRarity(bookName, chapterNum, nextRarity);
+  };
+
+  const renderChapter = (bookName: string, chapter: Chapter) => (
     <Pressable
-      onPress={() => handleToggle(item.Book)}
-      style={({ pressed }) => [
-        styles.bookItem,
-        item.Enabled ? styles.enabled : styles.disabled,
-        pressed && styles.pressed,
-      ]}
+      key={chapter.Chapter}
+      style={styles.chapterItem}
+      onPress={() => handleRarityChange(bookName, chapter.Chapter, chapter.rarity || 'common')}
     >
-      <Text style={styles.bookText}>{item.Book}</Text>
-      <View
-        style={[
-          styles.statusIndicator,
-          item.Enabled ? styles.enabledIndicator : styles.disabledIndicator,
-        ]}
-      />
+      <Text style={styles.chapterText}>Chapter {chapter.Chapter}</Text>
+      <View style={[styles.rarityBadge, styles[`rarity_${chapter.rarity ?? 'common'}`]]}>
+        <Text style={styles.rarityText}>{chapter.rarity ?? 'common'}</Text>
+      </View>
     </Pressable>
   );
+
+  const renderItem = ({ item }: { item: BibleBook }) => {
+    const isExpanded = expandedBook === item.Book;
+    return (
+      <View style={styles.bookContainer}>
+        <Pressable
+          onPress={() => setExpandedBook(isExpanded ? null : item.Book)}
+          onLongPress={() => handleToggle(item.Book)}
+          style={[
+            styles.bookItem,
+            item.Enabled ? styles.enabled : styles.disabled,
+          ]}
+        >
+          <Text style={styles.bookText}>{item.Book}</Text>
+          <View
+            style={[
+              styles.statusIndicator,
+              item.Enabled ? styles.enabledIndicator : styles.disabledIndicator,
+            ]}
+          />
+        </Pressable>
+
+        {isExpanded && item.Enabled && (
+          <View style={styles.chapterList}>
+            {item.Chapters?.map(ch => renderChapter(item.Book, ch))}
+          </View>
+        )}
+      </View>
+    );
+  };
 
   if (isLoading) {
     return (
@@ -76,7 +118,6 @@ export default function EnabledBooksScreen() {
         data={bibleBooks}
         renderItem={renderItem}
         keyExtractor={item => item.Book}
-        numColumns={2}
         contentContainerStyle={styles.listContent}
       />
     </View>
@@ -90,14 +131,8 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 16,
-    //backgroundColor: '#1c1c1c',
     borderBottomWidth: 1,
     borderBottomColor: '#333',
-  },
-  headerText: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#fff',
   },
   subHeaderText: {
     fontSize: 16,
@@ -108,12 +143,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   bookItem: {
-    flex: 1, // Allow items to take up equal space in the row
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 8,
-    margin: 5, // Reduce spacing for better column layout
+    padding: 12,
     borderRadius: 10,
     backgroundColor: '#2e2e2e',
     shadowColor: '#000',
@@ -122,6 +152,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
     borderLeftWidth: 5,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   enabled: {
     borderLeftColor: '#00e676',
@@ -152,5 +185,46 @@ const styles = StyleSheet.create({
     marginTop: 16,
     textAlign: 'center',
     color: '#ccc',
+  },
+  chapterList: {
+    marginTop: 6,
+    marginLeft: 12,
+    borderLeftWidth: 2,
+    borderLeftColor: '#444',
+    paddingLeft: 10,
+  },
+  chapterItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  chapterText: {
+    color: '#ccc',
+    fontSize: 14,
+  },
+  rarityBadge: {
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  rarityText: {
+    color: '#fff',
+    fontSize: 12,
+    textTransform: 'capitalize',
+  },
+  rarity_common: {
+    backgroundColor: '#4caf50',
+  },
+  rarity_uncommon: {
+    backgroundColor: '#2196f3',
+  },
+  rarity_rare: {
+    backgroundColor: '#9c27b0',
+  },
+  rarity_disabled: {
+    backgroundColor: '#9e9e9e',
+  },
+  bookContainer: {
+    marginBottom: 10,
   },
 });

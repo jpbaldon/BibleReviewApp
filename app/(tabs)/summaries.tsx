@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { ReviewScreenTemplate, ReviewItem } from '@/components/ReviewScreenTemplate';
 import { useBibleBooks } from '../../context/BibleBooksContext';
+import { getWeightedChapters, selectWeightedChapter } from '@/utils/randomChapter';
 
 export default function Summaries() {
   const { bibleBooks } = useBibleBooks();
@@ -19,18 +20,15 @@ export default function Summaries() {
   }
 
   const getRandomSummary = async () => {
-    const randomBook = enabledBooks[Math.floor(Math.random() * enabledBooks.length)];
-    const chapters = randomBook.Chapters;
+    const weightedChapters = getWeightedChapters(enabledBooks);
 
-    if (!chapters || chapters.length === 0) {
-      throw new Error(`No chapters in selected book: ${randomBook.Book}`);
-    }
+    if(weightedChapters.length === 0) throw new Error('No eligible chapters.');
 
-    const chapter = chapters[Math.floor(Math.random() * chapters.length)];
+    const { book, chapter, chapterIndex } = selectWeightedChapter(weightedChapters);
 
     return {
-      book: randomBook.Book,
-      chapter: chapter.Chapter,
+      book,
+      chapter: chapterIndex,
       text: chapter.Summary ?? "No summary available",
       context: chapter.Verses,
     };
