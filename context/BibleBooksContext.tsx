@@ -3,6 +3,8 @@ import * as SQLite from 'expo-sqlite';
 import * as FileSystem from 'expo-file-system';
 import { ASV } from '@/data/asv';
 
+type Rarity = 'common' | 'uncommon' | 'rare' | 'disabled';
+
 export interface Verse {
   VerseNumber: number;
   Text: string;
@@ -12,6 +14,7 @@ export interface Chapter {
   Chapter: number;
   Summary?: string;
   Verses: Verse[];
+  rarity?: Rarity;
 }
 
 export interface BibleBook {
@@ -23,6 +26,7 @@ export interface BibleBook {
 interface BibleBooksContextType {
   bibleBooks: BibleBook[];
   toggleBookEnabled: (bookName: string) => Promise<void>;
+  updateChapterRarity: (bookName: string, chapter: number, rarity: Rarity) => Promise<void>;
   isLoading: boolean;
   error: string | null;
   refreshBooks: () => Promise<void>;
@@ -31,6 +35,7 @@ interface BibleBooksContextType {
 const BibleBooksContext = createContext<BibleBooksContextType>({
   bibleBooks: [],
   toggleBookEnabled: async () => {},
+  updateChapterRarity: async () => {},
   isLoading: true,
   error: null,
   refreshBooks: async () => {},
@@ -85,6 +90,15 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
         );
       `);
 
+      await dbInstance.execAsync(`
+        CREATE TABLE IF NOT EXISTS ChapterRarities (
+        Book TEXT NOT NULL,
+        Chapter INTEGER NOT NULL,
+        Rarity TEXT NOT NULL DEFAULT 'common',
+        PRIMARY KEY (Book, Chapter)
+        );
+      `);
+
       // 2. Check if table is empty
       const countResult = await dbInstance.getFirstAsync<{ count: number }>(
         'SELECT COUNT(*) as count FROM BibleBooks;'
@@ -111,8 +125,19 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
       // 4. Load books
       const loadedBooks = await loadBooksFromDB(dbInstance);
 
+      const rarityResults = await dbInstance.getAllAsync<{Book: String, Chapter: Number, Rarity: Rarity}>(
+        'SELECT * FROM ChapterRarities'
+      );
+
       const enrichedBooks = loadedBooks.map(book => {
         const asvBook = ASV.Bible.find(b => b.Book === book.Book);
+        const chapterWithRarity = asvBook?.Chapters.map(ch => {
+          const match = rarityResults.find(r => r.Book === book.Book && r.Chapter === ch.Chapter);
+          return {
+            ...ch,
+            rarity: match?.Rarity ?? 'common',
+          };
+        }) ?? [];
         return {
           ...book,
           Chapters: asvBook?.Chapters ?? []
@@ -129,6 +154,8 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
       setIsLoading(false);
     }
   }, [loadBooksFromDB]);
+
+
 
   useEffect(() => {
     let mounted = true;
@@ -221,9 +248,35 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   }, [db]);
 
+  const updateChapterRarity = useCallback(async (bookName: string, chapterNum: number, rarity: Rarity) => {
+    if (!db) return;
+
+    try {
+      await db.runAsync(
+        'INSERT OR REPLACE INTO ChapterRarities (Book, Chapter, Rarity) VALUES (?, ?, ?);',
+        [bookName, chapterNum, rarity]
+      );
+
+      setBibleBooks(prevBooks => 
+        prevBooks.map(book => {
+          if (book.Book !== bookName) return book;
+          return {
+            ...book,
+            Chapters: book.Chapters?.map(ch => 
+              ch.Chapter === chapterNum ? { ...ch, rarity } : ch
+            ),
+          };
+        })
+      );
+    } catch (err) {
+      console.error('Failed to update rarity:', err);
+    }
+  }, [db]);
+
   const contextValue = {
     bibleBooks,
     toggleBookEnabled,
+    updateChapterRarity,
     isLoading,
     error,
     refreshBooks,
