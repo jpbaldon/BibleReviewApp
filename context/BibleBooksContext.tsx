@@ -3,7 +3,7 @@ import * as SQLite from 'expo-sqlite';
 import * as FileSystem from 'expo-file-system';
 import { ASV } from '@/data/asv';
 
-type Rarity = 'common' | 'uncommon' | 'rare' | 'disabled';
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'disabled';
 
 export interface Verse {
   VerseNumber: number;

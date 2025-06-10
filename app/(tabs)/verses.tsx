@@ -1,12 +1,20 @@
 import React from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { ReviewScreenTemplate } from '../../components/ReviewScreenTemplate';
-import { useBibleBooks } from '../../context/BibleBooksContext';
+import { useBibleBooks, Chapter } from '../../context/BibleBooksContext';
+import type { Rarity } from '../../context/BibleBooksContext';
 
 export default function Verses() {
     const { bibleBooks } = useBibleBooks();
   
     const enabledBooks = bibleBooks.filter(b => b.Enabled && b.Chapters && b.Chapters.length > 0);
+
+    const rarityWeightMap: Record<Rarity, number> = {
+      common: 1.0,
+      uncommon: 0.5,
+      rare: 0.2,
+      disabled: 0.0,
+    }
   
     // If no enabled books with chapters, show loading or info
     if (enabledBooks.length === 0) {
@@ -18,19 +26,55 @@ export default function Verses() {
       );
     }
   const getRandomVerse = async () => {
-    const randomBook = enabledBooks[Math.floor(Math.random() * enabledBooks.length)];
+    const weightedChapters: {
+      book: string;
+      chapterIndex: number;
+      chapter: Chapter;
+      weight: number;
+    }[] = [];
 
-    const chapters = randomBook.Chapters;
-    if (!chapters || chapters.length === 0) {
-      throw new Error(`No chapters in selected book: ${randomBook.Book}`);
+    for (const book of enabledBooks) {
+      if (!book.Chapters) continue;
+
+      for (const chapter of book.Chapters) {
+        const rarity = chapter.rarity ?? 'common';
+        const rarityWeight = rarityWeightMap[rarity];
+
+        if(rarityWeight > 0) {
+          weightedChapters.push({
+            book: book.Book,
+            chapterIndex: chapter.Chapter,
+            chapter,
+            weight: rarityWeight
+          });
+        }
+      }
     }
 
-    const chapter = chapters[Math.floor(Math.random() * chapters.length)];
+    if (weightedChapters.length === 0) {
+      throw new Error('No eligible chapters with non-zero weight.');
+    }
+
+    const totalWeight = weightedChapters.reduce((sum, ch) => sum + ch.weight, 0);
+    const rand = Math.random() * totalWeight;
+
+    let runningWeight = 0;
+    let selected = weightedChapters[0];
+
+    for (const entry of weightedChapters) {
+      runningWeight += entry.weight;
+      if (rand <= runningWeight) {
+        selected = entry;
+        break;
+      }
+    }
+
+    const { book, chapter, chapterIndex } = selected;
     const verse = chapter.Verses[Math.floor(Math.random() * chapter.Verses.length)];
 
     return {
-      book: randomBook.Book,
-      chapter: chapter.Chapter,
+      book,
+      chapter: chapterIndex,
       verseNumber: verse.VerseNumber,
       text: verse.Text,
       context: chapter.Verses,
