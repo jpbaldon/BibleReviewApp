@@ -50,6 +50,8 @@ Join our community of developers creating universal apps.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
 
 ## Bible App Recent Changes
+- Increased height on the content container in the second and third tabs (since feedback is now an overlay)
+- Context buttons that appear after correct answer is shown to allow user to navigate to next or previous chapter
 - Reworked Enabled Books screen so that users can disable chapters in addition to books (long press now toggles books, short press expands books)
 - All Bible chapters now have summaries!
 - Feedback is now an overlay
@@ -62,8 +64,6 @@ Join our community of developers creating universal apps.
 - On summaries tab, when correct answer is shown, the original prompt displays in yellow above the chapter text
 
 ## Bible App Upcoming Changes
-- Increased height on the content container in the second and third tabs (since feedack is now an overlay)
-- Context buttons that appear after correct answer is shown to allow user to navigate to next or previous chapter
 - Potential rework of correct answer feedback (perhaps use confetti more sparingly)
 - Refactor of Stylesheets to keep things more consistent across screens
 - Forgot password system?
