@@ -4,10 +4,11 @@ import { useBibleBooks, BibleBook, Chapter } from '../../context/BibleBooksConte
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 
-const rarities: ('common' | 'uncommon' | 'rare' | 'disabled')[] = [
+const rarities: ('common' | 'uncommon' | 'rare' | 'ultraRare' | 'disabled')[] = [
   'common',
   'uncommon',
   'rare',
+  'ultraRare',
   'disabled',
 ];
 
@@ -54,6 +55,8 @@ export default function EnabledBooksScreen() {
     await updateChapterRarity(bookName, chapterNum, nextRarity);
   };
 
+  // Automatically disables a book if no chapters in the book are enabled (prevents awkwardness on other tabs when the user is being)
+
   const renderChapter = (bookName: string, chapter: Chapter) => (
     <Pressable
       key={chapter.Chapter}
@@ -61,8 +64,8 @@ export default function EnabledBooksScreen() {
       onPress={() => handleRarityChange(bookName, chapter.Chapter, chapter.rarity || 'common')}
     >
       <Text style={styles.chapterText}>Chapter {chapter.Chapter}</Text>
-      <View style={[styles.rarityBadge, styles[`rarity_${chapter.rarity ?? 'common'}`]]}>
-        <Text style={styles.rarityText}>{chapter.rarity ?? 'common'}</Text>
+      <View style={[styles.rarityBadge, styles[`rarity_${chapter.rarity || 'common'}`]]}>
+        <Text style={styles.rarityText}>{chapter.rarity === 'ultraRare' ? 'ultra-rare' : (chapter.rarity || 'common')}</Text>
       </View>
     </Pressable>
   );
@@ -223,6 +226,9 @@ const styles = StyleSheet.create({
   },
   rarity_disabled: {
     backgroundColor: '#9e9e9e',
+  },
+  rarity_ultraRare: {
+    backgroundColor: '#ff9800',
   },
   bookContainer: {
     marginBottom: 10,

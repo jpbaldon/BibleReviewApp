@@ -3,7 +3,7 @@ import * as SQLite from 'expo-sqlite';
 import * as FileSystem from 'expo-file-system';
 import { ASV } from '@/data/asv';
 
-export type Rarity = 'common' | 'uncommon' | 'rare' | 'disabled';
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'ultraRare' | 'disabled';
 
 export interface Verse {
   VerseNumber: number;
@@ -248,6 +248,22 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   }, [db]);
 
+  // Automatically disables a book if no chapters in the book are enabled (prevents awkwardness on other tabs when the user is being)
+  const updateBookEnabledStatus = useCallback(async (bookName: string) => {
+    setBibleBooks(prevBooks => {
+      const book = prevBooks.find(b => b.Book === bookName);
+      if(!book) return prevBooks;
+
+      const allDisabled = book.Chapters?.every(chapter => chapter.rarity === 'disabled');
+
+      if(allDisabled) {
+        toggleBookEnabled(bookName);
+      }
+      return prevBooks;
+    });
+    
+  }, [toggleBookEnabled]);
+
   const updateChapterRarity = useCallback(async (bookName: string, chapterNum: number, rarity: Rarity) => {
     if (!db) return;
 
@@ -268,10 +284,13 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
           };
         })
       );
+
+      await updateBookEnabledStatus(bookName);
+
     } catch (err) {
       console.error('Failed to update rarity:', err);
     }
-  }, [db]);
+  }, [db, updateBookEnabledStatus]);
 
   const contextValue = {
     bibleBooks,

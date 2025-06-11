@@ -1,13 +1,14 @@
 import { Chapter, BibleBook } from '@/context/BibleBooksContext';
 
-export type Rarity = 'common' | 'uncommon' | 'rare' | 'disabled';
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'ultraRare' | 'disabled';
 
 export const rarityWeightMap: Record<Rarity, number> = {
     common: 1.0,
     uncommon: 0.5,
     rare: 0.2,
+    'ultraRare': 0.1,
     disabled: 0.0,
-};
+} as const;
 
 interface WeightedChapter {
     book: string;
