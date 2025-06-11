@@ -50,6 +50,8 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
 }) => {
   const { bibleBooks } = useBibleBooks();
   const [item, setItem] = useState<ReviewItem | null>(null);
+  const [currentChapter, setCurrentChapter] = useState<Chapter | null>(null);
+  const [currentBookName, setCurrentBookName] = useState<string | null>(null);
   const [attempts, setAttempts] = useState(0);
   const [selectedBook, setSelectedBook] = useState('');
   const [selectedChapter, setSelectedChapter] = useState('');
@@ -60,7 +62,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   const [showFeedback, setShowFeedback] = useState(false);
 
   const screenHeight = Dimensions.get('window').height;
-  const verseContainerHeight = screenHeight * 0.45;
+  const verseContainerHeight = screenHeight * 0.50;
   const contentContainerHeight = screenHeight * 0.84;
   const [isSheetVisible, setIsSheetVisible] = useState(false);
   const [showConfetti, setShowConfetti] = React.useState(false);
@@ -105,6 +107,10 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
     const newItem = await getRandomItem();
     if (newItem) {
       setItem(newItem);
+      const book = bibleBooks.find(b => b.Book === newItem.book);
+      const chapter = book?.Chapters?.find(c => c.Chapter === newItem.chapter);
+      setCurrentChapter(chapter ?? null);
+      setCurrentBookName(book?.Book ?? null);
       setAttempts(0);
       setShowAnswer(false);
       setShowSubmit(true);
@@ -112,6 +118,44 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
       setSelectedBook('');
       setSelectedChapter('');
     }
+  };
+
+  const loadChapter = (bookName: string, chapterNumber: number) => {
+    const book = bibleBooks.find(b => b.Book === bookName);
+    const chapter = book?.Chapters?.find(c => c.Chapter === chapterNumber);
+    if(!chapter) return;
+
+    setItem({
+      book: bookName,
+      chapter: chapter.Chapter,
+      text: chapter.Summary ?? '',
+      context: chapter.Verses,
+    });
+    setCurrentChapter(chapter);
+    setCurrentBookName(bookName);
+    setShowAnswer(true);
+    setShowSubmit(false);
+  };
+
+  const goToNextChapter = () => {
+    if(!currentBookName || !currentChapter) return;
+    loadChapter(currentBookName, currentChapter.Chapter + 1);
+  };
+
+  const isNextChapterDisabled = () => {
+    if(!currentBookName || !currentChapter) return true;
+
+    const book = bibleBooks.find(b => b.Book === currentBookName);
+
+    const nextChapterNumber = currentChapter.Chapter + 1;
+    const nextChapter = book?.Chapters?.find(c => c.Chapter === nextChapterNumber)
+
+    return !nextChapter;
+  };
+
+  const goToPreviousChapter = () => {
+    if (!currentBookName || !currentChapter) return;
+    loadChapter(currentBookName, currentChapter.Chapter - 1);
   };
 
   const checkGuess = async () => {
@@ -191,6 +235,36 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
         {item ? (
           <View style={[styles.verseContainer, { height: verseContainerHeight }]}>
             <ScrollView>{renderQuestion(item, showAnswer)}</ScrollView>
+            {showAnswer && currentBookName && currentChapter && (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10}}>
+                <TouchableOpacity
+                  onPress={currentChapter.Chapter === 1 ? () => {} : goToPreviousChapter} // Disable the onPress function when disabled
+                  disabled={currentChapter.Chapter === 1} // Disable the entire TouchableOpacity when the condition is true
+                >
+                  <Text
+                    style={[
+                      currentChapter.Chapter === 1 ? styles.disabledLinkText : styles.linkText,
+                      { marginRight: 5 }
+                    ]}
+                  >
+                    &lt;&lt; Prev
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={isNextChapterDisabled() ? () => {} : goToNextChapter} // Disable the onPress function when disabled
+                  disabled={isNextChapterDisabled()} // Disable the entire TouchableOpacity when the condition is true
+                >
+                  <Text
+                    style={[
+                      isNextChapterDisabled() ? styles.disabledLinkText : styles.linkText,
+                      { marginRight: 5 }
+                    ]}
+                  >
+                    Next &gt;&gt;
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         ) : (
           <Text style={styles.loadingText}>Loading...</Text>
@@ -349,5 +423,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 10,
     gap: 10,
+  },
+  linkText: {
+    fontSize: 18,
+    color: '#FFFFFF', 
+    textDecorationLine: 'underline',
+    cursor: 'pointer',
+  },
+    disabledLinkText: {
+    fontSize: 18,
+    color: '#888888',
+    cursor: 'pointer',
   },
 });
