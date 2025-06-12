@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import * as SQLite from 'expo-sqlite';
 import * as FileSystem from 'expo-file-system';
 import { ASV } from '@/data/asv';
@@ -202,7 +202,6 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     if (!db) return;
 
     try {
-      setIsLoading(true);
       setError(null);
 
       // Get the most up-to-date enabled value from the DB
@@ -224,27 +223,24 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
         [newEnabled ? 1 : 0, bookName]
       );
 
-      // Re-fetch the updated full list to ensure 100% sync
-      const updatedBooks = await db.getAllAsync<{ Book: string; Enabled: number }>(
-        'SELECT * FROM BibleBooks;'
-      );
+      setBibleBooks(prevBooks => {
+          const bookIndex = prevBooks.findIndex(b => b.Book === bookName);
+          if (bookIndex === -1) return prevBooks;
 
-      setBibleBooks(
-        updatedBooks.map(book => {
-          const fullBook = ASV.Bible.find(b => b.Book === book.Book);
-          return {
-            Book: book.Book,
-            Enabled: book.Enabled === 1,
-            Chapters: fullBook?.Chapters ?? []
+          const newBooks = [...prevBooks];
+          newBooks[bookIndex] = {
+            ...newBooks[bookIndex],
+            Enabled: newEnabled
           };
-        })
+          return newBooks;
+        }
       );
 
     } catch (err) {
       console.error('Toggle failed:', err);
       setError(`Toggle failed: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
-      setIsLoading(false);
+
     }
   }, [db]);
 
@@ -292,14 +288,14 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   }, [db, updateBookEnabledStatus]);
 
-  const contextValue = {
+  const contextValue = useMemo(() => ({
     bibleBooks,
     toggleBookEnabled,
     updateChapterRarity,
     isLoading,
     error,
     refreshBooks,
-  };
+  }), [bibleBooks, error]);
 
   return (
     <BibleBooksContext.Provider value={contextValue}>
