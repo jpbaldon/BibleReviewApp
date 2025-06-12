@@ -3,6 +3,7 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import { DarkTheme, DefaultTheme, ThemeProvider as NavThemeProvider } from '@react-navigation/native';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { ScoreProvider } from '../context/ScoreContext';
@@ -47,20 +48,25 @@ function LayoutContent() {
   const router = useRouter();
 
   useEffect(() => {
-
-    if(loading) return;
-
+    if (loading) return;
+  
     const inAuthGroup = segments[0] === 'signin' || segments[0] === 'signup';
 
-    if(!user && !inAuthGroup) {
+    if (!user && !inAuthGroup) {
       router.replace('/signin');
     } else if (user && inAuthGroup) {
       router.replace('/(tabs)');
     }
-
   }, [loading, user, segments]);
 
-  if(loading) return null;
+  // Show a loading spinner until the loading is complete
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
 
   return (
     <NavThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
@@ -81,3 +87,12 @@ function LayoutContent() {
     </NavThemeProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+});
