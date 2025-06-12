@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { FlatList, Text, View, StyleSheet, ActivityIndicator, Alert, Pressable, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { FlatList, Text, View, StyleSheet, ActivityIndicator, Alert, Pressable } from 'react-native';
 import { useBibleBooks, BibleBook, Chapter } from '../../context/BibleBooksContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -31,7 +31,7 @@ export default function EnabledBooksScreen() {
     }
   }, [error, refreshBooks]);
 
-  const handleToggle = async (bookName: string) => {
+  const handleToggle = useCallback(async (bookName: string) => {
     if (!bookName) {
       console.warn('Book name is invalid.');
       return;
@@ -43,7 +43,7 @@ export default function EnabledBooksScreen() {
       console.error('Toggle failed:', err);
       Alert.alert('Error', 'Failed to update book status.');
     }
-  };
+  }, [toggleBookEnabled]);
 
   const handleRarityChange = async (
     bookName: string,
@@ -105,7 +105,7 @@ export default function EnabledBooksScreen() {
     );
   });
 
-  const renderItem = ({ item }: { item: BibleBook }) => (
+  const renderItem = useCallback(({ item }: { item: BibleBook }) => (
     <BookItem
       item={item}
       expandedBook={expandedBook}
@@ -113,7 +113,7 @@ export default function EnabledBooksScreen() {
       handleToggle={handleToggle}
       renderChapter={renderChapter}
     />
-  );
+  ), [expandedBook, handleToggle]);
 
   if (isLoading) {
     return (
@@ -137,7 +137,7 @@ export default function EnabledBooksScreen() {
         renderItem={renderItem}
         keyExtractor={item => item.Book}
         contentContainerStyle={styles.listContent}
-        extraData={expandedBook}
+        extraData={[expandedBook, bibleBooks]}
       />
     </View>
   );
