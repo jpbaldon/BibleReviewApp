@@ -80,8 +80,8 @@ export default function EnabledBooksScreen() {
     return (
       <View style={styles.bookContainer}>
         <Pressable
-          onPress={() => setExpandedBook(isExpanded ? null : item.Book)}
-          onLongPress={() => handleToggle(item.Book)}
+          onPress={() => handleToggle(item.Book)}
+          onLongPress={() => setExpandedBook(isExpanded ? null : item.Book)}
           style={[
             styles.bookItem,
             item.Enabled ? styles.enabled : styles.disabled,
