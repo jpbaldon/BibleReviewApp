@@ -55,8 +55,6 @@ export default function EnabledBooksScreen() {
     await updateChapterRarity(bookName, chapterNum, nextRarity);
   };
 
-  // Automatically disables a book if no chapters in the book are enabled (prevents awkwardness on other tabs when the user is being)
-
   const renderChapter = (bookName: string, chapter: Chapter) => (
     <Pressable
       key={chapter.Chapter}
@@ -70,8 +68,15 @@ export default function EnabledBooksScreen() {
     </Pressable>
   );
 
-  const renderItem = ({ item }: { item: BibleBook }) => {
+  const BookItem = React.memo(({ item, expandedBook, setExpandedBook, handleToggle, renderChapter }: {
+    item: BibleBook;
+    expandedBook: string | null;
+    setExpandedBook: (book: string | null) => void;
+    handleToggle: (bookName: string) => void;
+    renderChapter: (bookName: string, chapter: Chapter) => JSX.Element;
+  }) => {
     const isExpanded = expandedBook === item.Book;
+
     return (
       <View style={styles.bookContainer}>
         <Pressable
@@ -98,7 +103,17 @@ export default function EnabledBooksScreen() {
         )}
       </View>
     );
-  };
+  });
+
+  const renderItem = ({ item }: { item: BibleBook }) => (
+    <BookItem
+      item={item}
+      expandedBook={expandedBook}
+      setExpandedBook={setExpandedBook}
+      handleToggle={handleToggle}
+      renderChapter={renderChapter}
+    />
+  );
 
   if (isLoading) {
     return (
@@ -122,6 +137,7 @@ export default function EnabledBooksScreen() {
         renderItem={renderItem}
         keyExtractor={item => item.Book}
         contentContainerStyle={styles.listContent}
+        extraData={expandedBook}
       />
     </View>
   );

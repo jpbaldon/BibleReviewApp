@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import supabase from '../../supabaseClient'; // Your Supabase client
@@ -18,45 +19,50 @@ export default function LeaderboardScreen() {
   const [scores, setScores] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    const fetchLeaderboard = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const { data, error: supabaseError } = await supabase
-          .from('profiles')
-          .select('id, username, overall_score')
-          .order('overall_score', { ascending: false })
-          .limit(50);
+  const fetchLeaderboard = async () => {
+    try {
+      setRefreshing(true);
+      setError(null);
+      
+      const { data, error: supabaseError } = await supabase
+        .from('profiles')
+        .select('id, username, overall_score')
+        .order('overall_score', { ascending: false })
+        .limit(50);
 
-        if (supabaseError) {
-          throw new Error(supabaseError.message);
-        }
-
-        const typedData = data as Omit<LeaderboardEntry, 'rank'>[];
-
-        const rankedData = typedData.map((item, index) => ({
-          ...item,
-          rank: index + 1,
-        }));
-
-        setScores(rankedData);
-      } catch (err) {
-        // Proper type checking for errors
-        if (err instanceof Error) {
-          setError(err.message);
-        } else {
-          setError('An unknown error occurred');
-        }
-      } finally {
-        setLoading(false);
+      if (supabaseError) {
+        throw new Error(supabaseError.message);
       }
-    };
 
-    fetchLeaderboard();
-  }, []);
+      const typedData = data as Omit<LeaderboardEntry, 'rank'>[];
+
+      const rankedData = typedData.map((item, index) => ({
+        ...item,
+        rank: index + 1,
+      }));
+
+      setScores(rankedData);
+    } catch (err) {
+      // Proper type checking for errors
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unknown error occurred');
+      }
+    } finally {
+      setRefreshing(false);
+      setLoading(false);
+    }
+  };
+
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchLeaderboard();
+    }, [])
+  );
 
   // ... rest of your component remains the same ...
   const renderItem = ({ item }: { item: LeaderboardEntry }) => (
@@ -115,6 +121,8 @@ export default function LeaderboardScreen() {
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
+          onRefresh={fetchLeaderboard}
+          refreshing={refreshing}
         />
     </View>
   );
