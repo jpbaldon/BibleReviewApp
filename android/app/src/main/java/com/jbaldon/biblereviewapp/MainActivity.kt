@@ -1,4 +1,4 @@
-package dev.jbaldon.BibleReview
+package com.jbaldon.biblereviewapp
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

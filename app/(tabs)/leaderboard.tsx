@@ -2,16 +2,10 @@ import { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
-import supabase from '../../supabaseClient'; // Your Supabase client
+import { useScore } from '../../context/ScoreContext';
 import { useThemeContext } from '@/context/ThemeContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-interface LeaderboardEntry {
-  id: string;
-  username: string;
-  overall_score: number;
-  rank?: number;
-}
+import { LeaderboardEntry } from '../../types'
 
 export default function LeaderboardScreen() {
   const { user } = useAuth();
@@ -20,25 +14,16 @@ export default function LeaderboardScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const server = useScore();
 
   const fetchLeaderboard = async () => {
     try {
       setRefreshing(true);
       setError(null);
       
-      const { data, error: supabaseError } = await supabase
-        .from('profiles')
-        .select('id, username, overall_score')
-        .order('overall_score', { ascending: false })
-        .limit(50);
+      const data = await server.fetchLeaderboardFromServer();
 
-      if (supabaseError) {
-        throw new Error(supabaseError.message);
-      }
-
-      const typedData = data as Omit<LeaderboardEntry, 'rank'>[];
-
-      const rankedData = typedData.map((item, index) => ({
+      const rankedData = data.map((item, index) => ({
         ...item,
         rank: index + 1,
       }));

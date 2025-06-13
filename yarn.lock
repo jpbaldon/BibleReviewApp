@@ -3647,6 +3647,11 @@ dotenv@^16.4.5, dotenv@~16.4.5:
   resolved "https://registry.npmjs.org/dotenv/-/dotenv-16.4.7.tgz"
   integrity sha512-47qPchRCykZC03FhkYAhrvwU4xDBFIj1QPqaarj6mdM/hgUzfPHcpkHJOn3mJAufFeeAxAzeGsr5X0M4k6fLZQ==
 
+dotenv@^16.5.0:
+  version "16.5.0"
+  resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-16.5.0.tgz#092b49f25f808f020050051d1ff258e404c78692"
+  integrity sha512-m/C+AwOAr9/W1UOIZUo232ejMNnJAJtYQjUbHoNTBNTJSvqzzDh7vnrei3o3r3m9blf6ZoDkvcw0VmozNRFJxg==
+
 dunder-proto@^1.0.0, dunder-proto@^1.0.1:
   version "1.0.1"
   resolved "https://registry.npmjs.org/dunder-proto/-/dunder-proto-1.0.1.tgz"
@@ -4178,10 +4183,10 @@ expo-audio@~0.4.6:
   resolved "https://registry.yarnpkg.com/expo-audio/-/expo-audio-0.4.6.tgz#39def71b91f2cb5c4d21a51aef6ffabcc4421ad4"
   integrity sha512-/pgz0AnQHnyJWkPfTp/3gBDib6FZYnscpktFZgmPeTeCK8KkPV4+eV2oEDDbSe2ngUrqDA0WVO4MX2Mfeec9ZA==
 
-expo-av@~15.1.5:
-  version "15.1.5"
-  resolved "https://registry.yarnpkg.com/expo-av/-/expo-av-15.1.5.tgz#9102cca08a1997816d79e0e43fc397a9f40a6f6e"
-  integrity sha512-nd1B97Ix0u8IGL45jTtI66RNiRyiY9bYrS3nliugqjDF011RS03V7XpIeJdQnIh9/+P1/ei1b3vbpyifYVjmSw==
+expo-av@~15.1.6:
+  version "15.1.6"
+  resolved "https://registry.yarnpkg.com/expo-av/-/expo-av-15.1.6.tgz#f1c4a404672500feb0274144a64bb3a956e85bdd"
+  integrity sha512-5ZbeXdCmdckZHwtEV+8tRZqLlUWR96gkkUIxpyZAEvK0L+aI/BnyhDCpjnSKWwZo4ZA6lx8/su9kyFNV/mQ/sQ==
 
 expo-blur@~14.1.5:
   version "14.1.5"
@@ -4213,10 +4218,10 @@ expo-haptics@14.1.4:
   resolved "https://registry.npmjs.org/expo-haptics/-/expo-haptics-14.1.4.tgz"
   integrity sha512-QZdE3NMX74rTuIl82I+n12XGwpDWKb8zfs5EpwsnGi/D/n7O2Jd4tO5ivH+muEG/OCJOMq5aeaVDqqaQOhTkcA==
 
-expo-image@~2.2.0:
-  version "2.2.0"
-  resolved "https://registry.yarnpkg.com/expo-image/-/expo-image-2.2.0.tgz#2cd62029ad3d6f0807a9048282cdec3d70ec0cf6"
-  integrity sha512-ushj+R0s07hBZeuYziW3ejj/vlgzNtI/uEaYS5zIQdGz6bXQHLp7l7H6NTx7dKBeHE8ESc8mE5yTgf0YZEHITw==
+expo-image@~2.3.0:
+  version "2.3.0"
+  resolved "https://registry.yarnpkg.com/expo-image/-/expo-image-2.3.0.tgz#8533273acdae43d730b28cb78b6d3564d334c291"
+  integrity sha512-muL8OSbgCskQJsyqenKPNULWXwRm5BY2ruS6WMo/EzFyI3iXI/0mXgb2J/NXUa8xCEYxSyoGkGZFyCBvGY1ofA==
 
 expo-keep-awake@~14.1.4:
   version "14.1.4"
@@ -4251,10 +4256,10 @@ expo-modules-core@2.4.0:
   dependencies:
     invariant "^2.2.4"
 
-expo-router@~5.0.7:
-  version "5.0.7"
-  resolved "https://registry.npmjs.org/expo-router/-/expo-router-5.0.7.tgz"
-  integrity sha512-NlEgRXCKtseDuIHBp87UfkvqsuVrc0MYG+zg33dopaN6wik4RkrWWxUYdNPHub0s/7qMye6zZBY4ZCrXwd/xpA==
+expo-router@~5.1.0:
+  version "5.1.0"
+  resolved "https://registry.yarnpkg.com/expo-router/-/expo-router-5.1.0.tgz#e62899d4907d7b4c71259db2e0e1ef18170d6931"
+  integrity sha512-mnKpw35W6kKPpZm+ZxQei6HGUx2JO3znzqJZInzqrTZMgfAcHGgvP9AQFjg/Qi/Qy1CxunB9aQnqE9JPbSwbpw==
   dependencies:
     "@expo/metro-runtime" "5.0.4"
     "@expo/server" "^0.6.2"
