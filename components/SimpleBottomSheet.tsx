@@ -92,6 +92,7 @@ export const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({
 
   useEffect(() => {
     if (visible) {
+      setExpandedBook(selectedBook);
       Animated.timing(translateY, {
         toValue: 0,
         duration: 250,
@@ -185,7 +186,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#333',
   },
   selectedBookItem: {
-    backgroundColor: '#4CAF50',
+    //backgroundColor: '#4CAF50',
   },
   bookText: {
     fontSize: 16,
