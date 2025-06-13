@@ -1,4 +1,4 @@
-package dev.jbaldon.BibleReview
+package com.jbaldon.biblereviewapp
 
 import android.app.Application
 import android.content.res.Configuration

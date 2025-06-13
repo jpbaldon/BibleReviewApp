@@ -1,27 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import supabase from '../supabaseClient';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useAuth } from '../context/AuthContext';
 
 export default function SignInScreen() {
+  const { user, isLoading, signIn, error } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
-  const [checkingSession, setCheckingSession] = useState(true);
 
   useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        // If user is already logged in, redirect to home page
-        router.replace('/(tabs)');
-      }
-      setCheckingSession(false); // Set checking session state to false once session is fetched
-    };
+    if (!isLoading && user) {
+      // If user is already logged in, redirect to home page
+      router.replace('/(tabs)');
+    } 
 
-    checkSession();
-  }, []);
+  }, [user, isLoading]);
 
   const handleSignIn = async () => {
     if (!email || !password) {
@@ -29,23 +24,18 @@ export default function SignInScreen() {
       return;
     }
 
-    setLoading(true);
+    setSubmitting(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-      if (error) {
-        Alert.alert('Error', error.message);
-      } else {
-        router.replace('/(tabs)');
-      }
+      await signIn(email, password);
+      router.replace('/(tabs)');
     } catch (error) {
       Alert.alert('Error', 'Failed to sign in. Please try again.');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
-  if (checkingSession) {
+  if (isLoading || user) {
     return (
       <View style={styles.container}>
         <ActivityIndicator size="large" color="#4CAF50" />
@@ -79,7 +69,7 @@ export default function SignInScreen() {
             secureTextEntry
             autoCapitalize="none"
           />
-          {loading ? (
+          {submitting ? (
             <ActivityIndicator size="large" color="#4CAF50" style={styles.loader} />
           ) : (
             <View>

@@ -2,21 +2,18 @@ import { Image, StyleSheet } from 'react-native';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { TouchableOpacity, Text, Alert, View } from 'react-native';
+import { TouchableOpacity, Text } from 'react-native';
 import { useRouter } from 'expo-router';
-import supabase from '../../supabaseClient';
-
-const handleSwitchAccount = async (router: any) => {
-  const { error } = await supabase.auth.signOut();
-  if (error) {
-    Alert.alert('Error', error.message);
-  } else {
-    router.replace('/signin'); // adjust path if needed
-  }
-};
+import { useAuth } from '../../context/AuthContext';
 
 export default function Settings() {
   const router = useRouter();
+  const { signOut } = useAuth();
+
+  const handleSwitchAccount = async (router: any) => {
+    await signOut();
+    router.replace('/signin'); // adjust path if needed
+  };
 
   return (
     <ParallaxScrollView

@@ -1,59 +1,37 @@
 import React, { useState } from 'react';
-import supabase from '../supabaseClient';
+import supabase from '../database/supabase';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useAuth } from '../context/AuthContext';
 
 export default function SignUpScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
-  const [loading, setLoading] = useState(false);
   const [usernameError, setUsernameError] = useState('');
   const [checkingUsername, setCheckingUsername] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
   const router = useRouter();
-
-  const checkUsernameAvailability = async (username: string) => {
-    if (username.length < 3) return false;
-
-    setCheckingUsername(true);
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('username', username.trim())
-        .maybeSingle();
-
-      if (error) throw error;
-      return !data;
-    } catch (error) {
-      console.error('Error checking username:', error);
-      return false;
-    } finally {
-      setCheckingUsername(false);
-    }
-  };
+  const { signUp, checkUsernameAvailability } = useAuth();
 
   const validateUsername = (text: string) => {
-    if (text.length > 0 && text.length < 3) {
-      return 'Username must be at least 3 characters';
-    }
-    if (/\s/.test(text)) {
-      return 'Username cannot contain spaces';
-    }
-    if (!/^[a-zA-Z0-9_]+$/.test(text)) {
-      return 'Only letters, numbers and underscores allowed';
-    }
+    if (text.length > 0 && text.length < 3) return 'Username must be at least 3 characters';
+    if (/\s/.test(text)) return 'Username cannot contain spaces';
+    if (!/^[a-zA-Z0-9_]+$/.test(text)) return 'Only letters, numbers and underscores allowed';
     return '';
   };
 
   const handleUsernameChange = async (text: string) => {
     setUsername(text);
-    const validationError = validateUsername(text);
-    setUsernameError(validationError);
+    const error = validateUsername(text);
+    setUsernameError(error);
 
-    if (!validationError && text.length >= 3) {
+    if (!error && text.length >= 3) {
+      setCheckingUsername(true);
       const available = await checkUsernameAvailability(text);
       setUsernameError(available ? '' : 'Username is taken');
+      setCheckingUsername(false);
     }
   };
 
@@ -73,7 +51,7 @@ export default function SignUpScreen() {
       return;
     }
 
-    setLoading(true);
+    setSubmitting(true);
     try {
       // Final username availability check
       const available = await checkUsernameAvailability(username);
@@ -82,46 +60,7 @@ export default function SignUpScreen() {
         return;
       }
 
-      // Create auth user with username in metadata
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            username: username.trim()
-          }
-        }
-      });
-
-      if (error) throw error;
-      if (!data.user) throw new Error('User creation failed');
-
-      // Verify profile was created by trigger
-      let profileExists = false;
-      let attempts = 0;
-      while (attempts < 3 && !profileExists) {
-        attempts++;
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('id', data.user.id)
-          .maybeSingle();
-        profileExists = !!profileData;
-        if (!profileExists) await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-
-      // Create profile manually if trigger failed
-      if (!profileExists) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .upsert({
-            id: data.user.id,
-            username: username.trim(),
-            overall_score: 0
-          });
-
-        if (profileError) throw profileError;
-      }
+      await signUp(email, password, username.trim());
 
       Alert.alert('Success', 'Account created successfully!');
       router.replace({
@@ -131,7 +70,7 @@ export default function SignUpScreen() {
       const errorMessage = error instanceof Error ? error.message : 'Signup failed';
       Alert.alert('Error', errorMessage);
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -184,12 +123,12 @@ export default function SignUpScreen() {
           <TouchableOpacity 
             style={[
               styles.button, 
-              (!!usernameError || !username || loading) ? styles.buttonDisabled : null
+              (!!usernameError || !username || submitting) ? styles.buttonDisabled : null
             ]} 
             onPress={handleSignUp}
-            disabled={!!usernameError || !username || loading}
+            disabled={!!usernameError || !username || submitting}
           >
-            {loading ? (
+            {submitting ? (
               <ActivityIndicator color="white" />
             ) : (
               <Text style={styles.buttonText}>Create Account</Text>

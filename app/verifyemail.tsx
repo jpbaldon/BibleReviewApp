@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import supabase from '../supabaseClient';
+import { useAuth } from '../context/AuthContext';
 
 export default function VerifyEmailScreen() {
 
@@ -12,21 +12,18 @@ export default function VerifyEmailScreen() {
   const [loading, setLoading] = useState(false);
   const [cooldown, setCoolDown] = useState(0);
 
+  const { resendVerificationEmail } = useAuth();
+
   const handleResendEmail = async () => {
     if(cooldown > 0) return;
 
     setLoading(true);
     try {
-        const { error } = await supabase.auth.resend({
-            type: 'signup',
-            email: email,
-        });
-
-        if (error) throw error;
+        await resendVerificationEmail(email);
 
         Alert.alert('Success', 'Verification email resent successfully!');
-
         setCoolDown(60);
+
         const interval = setInterval(() => {
             setCoolDown(prev => {
                 if(prev <= 1) clearInterval(interval);

@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import supabase from '../supabaseClient';
-import { useAuth } from '../context/AuthContext'
+import { useAuth } from './AuthContext'
+import { useServices } from '../context/ServicesContext';
+import { LeaderboardEntry } from '../types/index';
 
 interface ScoreContextType {
     overallScore: number;
@@ -10,6 +11,7 @@ interface ScoreContextType {
     incrementSessionScore: (points: number) => void;
     resetSessionScore: () => void;
     syncScores: () => Promise<void>;
+    fetchLeaderboardFromServer: (limit?: number) => Promise<LeaderboardEntry[]>;
 }
 
 const ScoreContext = createContext<ScoreContextType | undefined>(undefined)
@@ -30,6 +32,7 @@ export const ScoreProvider: React.FC<ScoreProviderProps> = ({ children }) => {
     const [overallScore, setOverallScore] = useState<number>(0);
     const [sessionScore, setSessionScore] = useState<number>(0);
     const { user } = useAuth();
+    const onlinedb = useServices();
 
     const getKey = React.useCallback((baseKey: string) => `${user?.id}_${baseKey}`, [user]);
 
@@ -71,15 +74,7 @@ export const ScoreProvider: React.FC<ScoreProviderProps> = ({ children }) => {
         if (!user) return;
 
         try {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('overall_score')
-                .eq('id', user.id)
-                .single();
-
-            if (error) throw error;
-
-            const serverScore = data?.overall_score || 0;
+            const { overallScore: serverScore } = await onlinedb.score.getOverallScoreFromServer();
             const newScore = Math.max(overallScore, serverScore);
 
             if(newScore !== overallScore) {
@@ -88,10 +83,7 @@ export const ScoreProvider: React.FC<ScoreProviderProps> = ({ children }) => {
             }
 
             if(overallScore > serverScore) {
-                await supabase
-                    .from('profiles')
-                    .update({ overall_score: overallScore})
-                    .eq('id', user.id);
+                await onlinedb.score.updateOverallScoreOnServer(overallScore);
             }
         } catch (error) {
             console.error('Error syncing scores:', error);
@@ -104,12 +96,10 @@ export const ScoreProvider: React.FC<ScoreProviderProps> = ({ children }) => {
         try {
             await AsyncStorage.setItem(getKey('overallScore'), newOverallScore.toString());
 
-            if(user) {
-                await supabase.rpc('increment_user_score', {
-                    user_id: user.id,
-                    points: points
-                });
+            if (user) {
+                onlinedb.score.incrementUserScoreRpc(points);
             }
+
         } catch(error) {
             console.error('Error saving overall score:', error)
         }
@@ -134,6 +124,10 @@ export const ScoreProvider: React.FC<ScoreProviderProps> = ({ children }) => {
         await syncWithServer();
     };
 
+    const fetchLeaderboardFromServer = async (limit?: number) => {
+        return await onlinedb.score.fetchTopScores(limit);
+    }
+
     return (
         <ScoreContext.Provider 
             value={{
@@ -142,7 +136,8 @@ export const ScoreProvider: React.FC<ScoreProviderProps> = ({ children }) => {
                 incrementOverallScore,
                 incrementSessionScore,
                 resetSessionScore,
-                syncScores
+                syncScores,
+                fetchLeaderboardFromServer
             }}
         >
             {children}

@@ -10,15 +10,17 @@ import { ScoreProvider } from '../context/ScoreContext';
 import { BibleBooksProvider } from '../context/BibleBooksContext';
 import { ThemeProvider, useThemeContext } from '../context/ThemeContext';
 import { useSegments, useRouter } from 'expo-router';
+import { ServicesProvider } from '../context/ServicesContext';
+import { BackendProvider } from '../context/BackendContext';
 
 export default function Layout() {
   const [fontsLoaded, fontError] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
-    useEffect(() => {
-      SplashScreen.preventAutoHideAsync();
-    }, []);
+  useEffect(() => {
+    SplashScreen.preventAutoHideAsync();
+  }, []);
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
@@ -29,26 +31,48 @@ export default function Layout() {
   if (!fontsLoaded && !fontError) return null;
 
   return (
-        <AuthProvider>
-          <BibleBooksProvider>
-            <ScoreProvider>
-              <ThemeProvider>
-                <LayoutContent/>
-              </ThemeProvider>
-            </ScoreProvider>
-          </BibleBooksProvider>
-        </AuthProvider>
+    <BackendProvider>
+      <AuthProvider>
+        <InnerApp />
+      </AuthProvider>
+    </BackendProvider>
+  );
+}
+
+function InnerApp() {
+  const { isLoading, user } = useAuth();
+
+  if (isLoading) return null; // or spinner
+
+  if (!user) {
+    return (
+      <ThemeProvider>
+        <LayoutContent />
+      </ThemeProvider>
+    );
+  }
+
+  return (
+    <ServicesProvider>
+      <BibleBooksProvider>
+        <ScoreProvider>
+          <ThemeProvider>
+            <LayoutContent />
+          </ThemeProvider>
+        </ScoreProvider>
+      </BibleBooksProvider>
+    </ServicesProvider>
   );
 }
 
 function LayoutContent() {
   const { colorScheme, theme } = useThemeContext();
-  const { loading, user } = useAuth();
+  const { isLoading, user } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
-    if (loading) return;
+    if (isLoading) return;
   
     const inAuthGroup = segments[0] === 'signin' || segments[0] === 'signup';
 
@@ -57,10 +81,10 @@ function LayoutContent() {
     } else if (user && inAuthGroup) {
       router.replace('/(tabs)');
     }
-  }, [loading, user, segments]);
+  }, [isLoading, user, segments]);
 
   // Show a loading spinner until the loading is complete
-  if (loading) {
+  if (isLoading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#0000ff" />
