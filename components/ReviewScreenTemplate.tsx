@@ -271,7 +271,18 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
         )}
 
         <View style={styles.inputContainer}>
-            <TouchableOpacity style={styles.dropdown} onPress={() => setIsSheetVisible(true)}>
+            <TouchableOpacity 
+              style={styles.dropdown} 
+              onPress={() => {
+                if(enabledBooks.length === 1) {
+                  const singleBook = enabledBooks[0];
+                  setSelectedBook(singleBook.Book);
+                  setIsSheetVisible(true);
+                } else {
+                  setIsSheetVisible(true);
+                }
+              }}
+            >
                 <Text style={styles.selectedTextStyle}>
                     {selectedBook && selectedChapter ? `${selectedBook} - Chapter ${selectedChapter}` : 'Select Book & Chapter'}
                 </Text>
@@ -293,7 +304,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
 
         {!showAnswer && showSubmit && (
           <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.submitButton} onPress={checkGuess}>
+            <TouchableOpacity style={[styles.submitButton, !selectedChapter && styles.submitButtonDisabled]} onPress={checkGuess} disabled={!selectedChapter}>
               <Text style={styles.submitButtonText}>Submit Guess</Text>
             </TouchableOpacity>
 
@@ -434,5 +445,8 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#888888',
     cursor: 'pointer',
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#A0A0A0', // or use `opacity: 0.5` for a faded look
   },
 });
