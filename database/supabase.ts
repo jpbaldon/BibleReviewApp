@@ -59,7 +59,11 @@ export const SupabaseService = {
         password,
       });
 
-      if (authError) throw new Error(authError.message);
+      console.log("Signup data:", authData);
+
+      if (authError) {
+        console.log(authError.message);
+        throw new Error(authError.message);}
       if (!authData.user) throw new Error('Signup failed');
 
       const { error: profileError } = await supabase
@@ -70,7 +74,7 @@ export const SupabaseService = {
         });
       
       if (profileError) {
-        await supabase.auth.admin.deleteUser(authData.user.id);
+        console.log(profileError)
         throw new Error(profileError.message);
       }
 

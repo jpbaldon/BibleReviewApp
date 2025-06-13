@@ -74,7 +74,7 @@ function LayoutContent() {
   useEffect(() => {
     if (isLoading) return;
   
-    const inAuthGroup = segments[0] === 'signin' || segments[0] === 'signup';
+    const inAuthGroup = ['signin', 'signup', 'verifyemail'].includes(segments[0]);
 
     if (!user && !inAuthGroup) {
       router.replace('/signin');

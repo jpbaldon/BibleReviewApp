@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 import { useBackend } from '../context/BackendContext';
 import { AppUser, AppSession } from '../types/index';
+import { useRouter } from 'expo-router';
 
 type AuthContextType = {
   user: AppUser | null;
@@ -39,6 +40,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<{ username: string } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const init = async () => {
@@ -78,11 +80,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     setError(null);
     try {
-      await backend.auth.signUp(email, password, username);
+      const { user, session } = await backend.auth.signUp(email, password, username);
+
+      console.log('Made it');
+      if(!session) {
+        router.replace({
+        pathname: '/verifyemail',
+        params: { email }
+      });
+      } else {
+        setUser(user);
+        setSession(session);
+      }
     } catch (err: any) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setIsLoading(false);
+      //setIsLoading(false);
     }
   };
 

@@ -22,10 +22,6 @@ export default function HomeScreen() {
 
   const navigation = useNavigation();
 
-  if(!user) {
-    return <Redirect href="/signin"/>
-  }
-
   const links: LinkItem[] = [
     { id: '1', title: 'About', route: 'about' },
     { id: '2', title: 'Account', route: 'account' },

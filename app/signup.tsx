@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import supabase from '../database/supabase';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
@@ -63,6 +62,7 @@ export default function SignUpScreen() {
       await signUp(email, password, username.trim());
 
       Alert.alert('Success', 'Account created successfully!');
+    
       router.replace({
         pathname: '/verifyemail',
         params: { email: email }});
