@@ -1,4 +1,4 @@
-import { Chapter, BibleBook } from '@/context/BibleBooksContext';
+import { BibleBook, Chapter } from '../types'
 
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'ultraRare' | 'disabled';
 
@@ -21,16 +21,16 @@ export function getWeightedChapters(enabledBooks: BibleBook[]): WeightedChapter[
     const weightedChapters: WeightedChapter[] = [];
 
     for (const book of enabledBooks) {
-        if(!book.Chapters) continue;
+        if(!book.chapters) continue;
 
-        for (const chapter of book.Chapters) {
+        for (const chapter of book.chapters) {
             const rarity = chapter.rarity ?? 'common';
             const weight = rarityWeightMap[rarity];
 
             if(weight > 0) {
                 weightedChapters.push({
-                    book: book.Book,
-                    chapterIndex: chapter.Chapter,
+                    book: book.bookName,
+                    chapterIndex: chapter.chapter,
                     chapter,
                     weight,
                 });

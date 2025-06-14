@@ -1,13 +1,14 @@
 import React from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { ReviewScreenTemplate } from '../../components/ReviewScreenTemplate';
-import { useBibleBooks, Chapter } from '../../context/BibleBooksContext';
+import { useBibleBooks } from '../../context/BibleBooksContext';
 import { getWeightedChapters, selectWeightedChapter } from '@/utils/randomChapter';
+import { Chapter } from '../../types';
 
 export default function Verses() {
     const { bibleBooks } = useBibleBooks();
   
-    const enabledBooks = bibleBooks.filter(b => b.Enabled && b.Chapters && b.Chapters.length > 0);
+    const enabledBooks = bibleBooks.filter(b => b.enabled && b.chapters && b.chapters.length > 0);
   
     // If no enabled books with chapters, show loading or info
     if (enabledBooks.length === 0) {
@@ -24,14 +25,14 @@ export default function Verses() {
     if(weightedChapters.length === 0) throw new Error('No eligible chapters.');
 
     const { book, chapter, chapterIndex } = selectWeightedChapter(weightedChapters);
-    const verse = chapter.Verses[Math.floor(Math.random() * chapter.Verses.length)];
+    const verse = chapter.verses[Math.floor(Math.random() * chapter.verses.length)];
 
     return {
       book,
       chapter: chapterIndex,
-      verseNumber: verse.VerseNumber,
-      text: verse.Text,
-      context: chapter.Verses,
+      verseNumber: verse.verseNumber,
+      text: verse.text,
+      context: chapter.verses,
     };
   };
 

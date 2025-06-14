@@ -7,7 +7,7 @@ import { getWeightedChapters, selectWeightedChapter } from '@/utils/randomChapte
 export default function Summaries() {
   const { bibleBooks } = useBibleBooks();
 
-  const enabledBooks = bibleBooks.filter(b => b.Enabled && b.Chapters && b.Chapters.length > 0);
+  const enabledBooks = bibleBooks.filter(b => b.enabled && b.chapters && b.chapters.length > 0);
 
   const [originalBook, setOriginalBook] = useState<string | null>(null);
   const [originalChapter, setOriginalChapter] = useState<number | null>(null);
@@ -32,8 +32,8 @@ export default function Summaries() {
     return {
       book,
       chapter: chapterIndex,
-      text: chapter.Summary ?? "No summary available",
-      context: chapter.Verses,
+      text: chapter.summary ?? "No summary available",
+      context: chapter.verses,
     };
   };
 
@@ -70,9 +70,9 @@ export default function Summaries() {
               {item.book} {item.chapter}
             </Text>
             {item.context.map((v) => (
-              <Text key={v.VerseNumber} style={{ color: 'white' }}>
-                <Text style={{ fontWeight: 'bold' }}>{v.VerseNumber} </Text>
-                {v.Text}
+              <Text key={v.verseNumber} style={{ color: 'white' }}>
+                <Text style={{ fontWeight: 'bold' }}>{v.verseNumber} </Text>
+                {v.text}
               </Text>
             ))}
           </>

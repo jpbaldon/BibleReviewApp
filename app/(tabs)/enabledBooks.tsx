@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { FlatList, Text, View, StyleSheet, ActivityIndicator, Alert, Pressable } from 'react-native';
-import { useBibleBooks, BibleBook, Chapter } from '../../context/BibleBooksContext';
+import { useBibleBooks } from '../../context/BibleBooksContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { BibleBook, Chapter } from '../../types';
 
 
 const rarities: ('common' | 'uncommon' | 'rare' | 'ultraRare' | 'disabled')[] = [
@@ -57,11 +58,11 @@ export default function EnabledBooksScreen() {
 
   const renderChapter = (bookName: string, chapter: Chapter) => (
     <Pressable
-      key={chapter.Chapter}
+      key={chapter.chapter}
       style={styles.chapterItem}
-      onPress={() => handleRarityChange(bookName, chapter.Chapter, chapter.rarity || 'common')}
+      onPress={() => handleRarityChange(bookName, chapter.chapter, chapter.rarity || 'common')}
     >
-      <Text style={styles.chapterText}>Chapter {chapter.Chapter}</Text>
+      <Text style={styles.chapterText}>Chapter {chapter.chapter}</Text>
       <View style={[styles.rarityBadge, styles[`rarity_${chapter.rarity || 'common'}`]]}>
         <Text style={styles.rarityText}>{chapter.rarity === 'ultraRare' ? 'ultra-rare' : (chapter.rarity || 'common')}</Text>
       </View>
@@ -75,30 +76,30 @@ export default function EnabledBooksScreen() {
     handleToggle: (bookName: string) => void;
     renderChapter: (bookName: string, chapter: Chapter) => JSX.Element;
   }) => {
-    const isExpanded = expandedBook === item.Book;
+    const isExpanded = expandedBook === item.bookName;
 
     return (
       <View style={styles.bookContainer}>
         <Pressable
-          onPress={() => handleToggle(item.Book)}
-          onLongPress={() => setExpandedBook(isExpanded ? null : item.Book)}
+          onPress={() => handleToggle(item.bookName)}
+          onLongPress={() => setExpandedBook(isExpanded ? null : item.bookName)}
           style={[
             styles.bookItem,
-            item.Enabled ? styles.enabled : styles.disabled,
+            item.enabled ? styles.enabled : styles.disabled,
           ]}
         >
-          <Text style={styles.bookText}>{item.Book}</Text>
+          <Text style={styles.bookText}>{item.bookName}</Text>
           <View
             style={[
               styles.statusIndicator,
-              item.Enabled ? styles.enabledIndicator : styles.disabledIndicator,
+              item.enabled ? styles.enabledIndicator : styles.disabledIndicator,
             ]}
           />
         </Pressable>
 
-        {isExpanded && item.Enabled && (
+        {isExpanded && item.enabled && (
           <View style={styles.chapterList}>
-            {item.Chapters?.map(ch => renderChapter(item.Book, ch))}
+            {item.chapters?.map(ch => renderChapter(item.bookName, ch))}
           </View>
         )}
       </View>
@@ -128,14 +129,14 @@ export default function EnabledBooksScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.subHeaderText}>
-          {bibleBooks.filter(b => b.Enabled).length} books enabled
+          {bibleBooks.filter(b => b.enabled).length} books enabled
         </Text>
       </View>
 
       <FlatList
         data={bibleBooks}
         renderItem={renderItem}
-        keyExtractor={item => item.Book}
+        keyExtractor={item => item.bookName}
         contentContainerStyle={styles.listContent}
         extraData={[expandedBook, bibleBooks]}
       />

@@ -101,7 +101,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
-    setIsLoading(true);
+    //setIsLoading(true);
     setError(null);
     try {
       await backend.auth.signOut();

@@ -9,17 +9,18 @@ import {
   Animated
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Chapter, useBibleBooks } from '../context/BibleBooksContext';
+import { useBibleBooks } from '../context/BibleBooksContext';
 import { useScore } from '../context/ScoreContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
 import { ASV } from '@/data/asv';
 import { SimpleBottomSheet } from './SimpleBottomSheet'; // Adjust path if needed
 import ConfettiCannon from 'react-native-confetti-cannon'
+import { Chapter } from '../types';
 
 interface ContextVerse {
-  VerseNumber: number;
-  Text: string;
+  verseNumber: number;
+  text: string;
 }
 
 export interface ReviewItem {
@@ -77,13 +78,13 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   } = useScore();
 
   const [enabledBooksCount, setEnabledBooksCount] = useState(
-    bibleBooks.filter(book => book.Enabled).length
+    bibleBooks.filter(book => book.enabled).length
   );
 
-  const enabledBooks = bibleBooks.filter((book) => book.Enabled);
+  const enabledBooks = bibleBooks.filter((book) => book.enabled);
 
   useEffect(() => {
-    const currentEnabledCount = bibleBooks.filter(book => book.Enabled).length;
+    const currentEnabledCount = bibleBooks.filter(book => book.enabled).length;
     if(currentEnabledCount !== enabledBooksCount) {
         setEnabledBooksCount(currentEnabledCount);
         loadNewItem();
@@ -107,10 +108,10 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
     const newItem = await getRandomItem();
     if (newItem) {
       setItem(newItem);
-      const book = bibleBooks.find(b => b.Book === newItem.book);
-      const chapter = book?.Chapters?.find(c => c.Chapter === newItem.chapter);
+      const book = bibleBooks.find(b => b.bookName === newItem.book);
+      const chapter = book?.chapters?.find(c => c.chapter === newItem.chapter);
       setCurrentChapter(chapter ?? null);
-      setCurrentBookName(book?.Book ?? null);
+      setCurrentBookName(book?.bookName ?? null);
       setAttempts(0);
       setShowAnswer(false);
       setShowSubmit(true);
@@ -121,15 +122,15 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   };
 
   const loadChapter = (bookName: string, chapterNumber: number) => {
-    const book = bibleBooks.find(b => b.Book === bookName);
-    const chapter = book?.Chapters?.find(c => c.Chapter === chapterNumber);
+    const book = bibleBooks.find(b => b.bookName === bookName);
+    const chapter = book?.chapters?.find(c => c.chapter === chapterNumber);
     if(!chapter) return;
 
     setItem({
       book: bookName,
-      chapter: chapter.Chapter,
-      text: chapter.Summary ?? '',
-      context: chapter.Verses,
+      chapter: chapter.chapter,
+      text: chapter.summary ?? '',
+      context: chapter.verses,
     });
     setCurrentChapter(chapter);
     setCurrentBookName(bookName);
@@ -139,23 +140,23 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
 
   const goToNextChapter = () => {
     if(!currentBookName || !currentChapter) return;
-    loadChapter(currentBookName, currentChapter.Chapter + 1);
+    loadChapter(currentBookName, currentChapter.chapter + 1);
   };
 
   const isNextChapterDisabled = () => {
     if(!currentBookName || !currentChapter) return true;
 
-    const book = bibleBooks.find(b => b.Book === currentBookName);
+    const book = bibleBooks.find(b => b.bookName === currentBookName);
 
-    const nextChapterNumber = currentChapter.Chapter + 1;
-    const nextChapter = book?.Chapters?.find(c => c.Chapter === nextChapterNumber)
+    const nextChapterNumber = currentChapter.chapter + 1;
+    const nextChapter = book?.chapters?.find(c => c.chapter === nextChapterNumber)
 
     return !nextChapter;
   };
 
   const goToPreviousChapter = () => {
     if (!currentBookName || !currentChapter) return;
-    loadChapter(currentBookName, currentChapter.Chapter - 1);
+    loadChapter(currentBookName, currentChapter.chapter - 1);
   };
 
   const checkGuess = async () => {
@@ -210,10 +211,10 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   }, []);
 
   const booksWithChapters = enabledBooks.map((book) => ({
-    label: book.Book,
-    value: book.Book,
+    label: book.bookName,
+    value: book.bookName,
     chapters:
-        ASV.Bible.find((b) => b.Book === book.Book)?.Chapters.map((chapter: Chapter) => ({
+        ASV.Bible.find((b) => b.Book === book.bookName)?.Chapters.map((chapter) => ({
         label: `Chapter ${chapter.Chapter}`,
         value: chapter.Chapter.toString(),
         })) || [],
@@ -238,12 +239,12 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
             {showAnswer && currentBookName && currentChapter && (
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10}}>
                 <TouchableOpacity
-                  onPress={currentChapter.Chapter === 1 ? () => {} : goToPreviousChapter} // Disable the onPress function when disabled
-                  disabled={currentChapter.Chapter === 1} // Disable the entire TouchableOpacity when the condition is true
+                  onPress={currentChapter.chapter === 1 ? () => {} : goToPreviousChapter} // Disable the onPress function when disabled
+                  disabled={currentChapter.chapter === 1} // Disable the entire TouchableOpacity when the condition is true
                 >
                   <Text
                     style={[
-                      currentChapter.Chapter === 1 ? styles.disabledLinkText : styles.linkText,
+                      currentChapter.chapter === 1 ? styles.disabledLinkText : styles.linkText,
                       { marginRight: 5 }
                     ]}
                   >
@@ -251,7 +252,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={isNextChapterDisabled() ? () => {} : goToNextChapter} // Disable the onPress function when disabled
+                  onPress={goToNextChapter} // Disable the onPress function when disabled
                   disabled={isNextChapterDisabled()} // Disable the entire TouchableOpacity when the condition is true
                 >
                   <Text
@@ -276,7 +277,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
               onPress={() => {
                 if(enabledBooks.length === 1) {
                   const singleBook = enabledBooks[0];
-                  setSelectedBook(singleBook.Book);
+                  setSelectedBook(singleBook.bookName);
                   setIsSheetVisible(true);
                 } else {
                   setIsSheetVisible(true);

@@ -12,7 +12,8 @@ export default function Settings() {
 
   const handleSwitchAccount = async (router: any) => {
     await signOut();
-    router.replace('/signin'); // adjust path if needed
+    
+    //router.replace('/signin');
   };
 
   return (
