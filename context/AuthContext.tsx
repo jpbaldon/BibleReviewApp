@@ -83,14 +83,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { user, session } = await backend.auth.signUp(email, password, username);
 
       console.log('Made it');
-      if(!session) {
-        router.replace({
-        pathname: '/verifyemail',
-        params: { email }
-      });
-      } else {
+      if(!session) { //if the user has not been automatically logged in, then presumably the verifciation requirement is enabled on supababase dashboard
+          router.replace({
+          pathname: '/verifyemail',
+          params: { email }
+        });
+      } else {  //otherwise, they have automatically been logged in; direct user to the home screen
         setUser(user);
         setSession(session);
+        router.replace({ pathname: '/(tabs)'});
       }
     } catch (err: any) {
       setError(err instanceof Error ? err.message : String(err));

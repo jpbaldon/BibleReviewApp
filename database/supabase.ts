@@ -57,25 +57,20 @@ export const SupabaseService = {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            username: username.trim().toLowerCase(), // This gets passed into raw_user_meta_data
+          },
+        },
       });
-
-      console.log("Signup data:", authData);
 
       if (authError) {
         console.log(authError.message);
-        throw new Error(authError.message);}
-      if (!authData.user) throw new Error('Signup failed');
+        throw new Error(authError.message);
+      }
 
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: authData.user.id,
-          username: username.toLowerCase()
-        });
-      
-      if (profileError) {
-        console.log(profileError)
-        throw new Error(profileError.message);
+      if (!authData.user) {
+        throw new Error('Signup failed');
       }
 
       return {

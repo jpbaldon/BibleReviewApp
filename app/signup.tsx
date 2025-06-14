@@ -53,19 +53,19 @@ export default function SignUpScreen() {
     setSubmitting(true);
     try {
       // Final username availability check
-      const available = await checkUsernameAvailability(username);
+      const available = await checkUsernameAvailability(username.trim().toLowerCase());
       if (!available) {
         Alert.alert('Error', 'Username is no longer available');
         return;
       }
 
-      await signUp(email, password, username.trim());
+      await signUp(email, password, username.trim().toLowerCase());
 
       Alert.alert('Success', 'Account created successfully!');
     
-      router.replace({
-        pathname: '/verifyemail',
-        params: { email: email }});
+      //router.replace({
+      //  pathname: '/verifyemail',
+      //  params: { email: email }});
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Signup failed';
       Alert.alert('Error', errorMessage);
@@ -129,7 +129,7 @@ export default function SignUpScreen() {
             disabled={!!usernameError || !username || submitting}
           >
             {submitting ? (
-              <ActivityIndicator color="white" />
+              <ActivityIndicator color="green" />
             ) : (
               <Text style={styles.buttonText}>Create Account</Text>
             )}

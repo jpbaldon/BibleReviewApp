@@ -21,8 +21,6 @@ export interface BibleBook {
 export type AppUser = {
   id: string;
   email: string;
-  // You can add more fields if needed, like:
-  // displayName?: string;
   // role?: string;
 };
 

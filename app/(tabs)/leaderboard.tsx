@@ -49,8 +49,9 @@ export default function LeaderboardScreen() {
     }, [])
   );
 
-  // ... rest of your component remains the same ...
-  const renderItem = ({ item }: { item: LeaderboardEntry }) => (
+  const renderItem = ({ item }: { item: LeaderboardEntry }) => {
+    console.log(item);
+    return (
     <View style={styles.row}>
         <Text style={[styles.rank, { width: 60, textAlign: 'center' }]}>
         {item.rank}
@@ -69,8 +70,8 @@ export default function LeaderboardScreen() {
         <Text style={[styles.score, { width: 80, textAlign: 'right' }]}>
         {item.overall_score}
         </Text>
-    </View>
-  );
+    </View>);
+  };
 
   if (loading) {
     return (
