@@ -259,7 +259,10 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
   }, [toggleBookEnabled]);
 
   const updateChapterRarity = useCallback(async (bookName: string, chapterNum: number, rarity: Rarity) => {
-    if (!db) return;
+    if (!db || typeof db.runAsync !== 'function') {
+      console.warn('Database not ready yet');
+      return;
+    }
 
     try {
       await db.runAsync(

@@ -3,6 +3,7 @@ import { FlatList, Text, View, StyleSheet, ActivityIndicator, Alert, Pressable }
 import { useBibleBooks } from '../../context/BibleBooksContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BibleBook, Chapter } from '../../types';
+import BulkRarityEditor from '../../components/ui/BulkRarityEditor'
 
 
 const rarities: ('common' | 'uncommon' | 'rare' | 'ultraRare' | 'disabled')[] = [
@@ -70,13 +71,15 @@ export default function EnabledBooksScreen() {
   );
 
   const BookItem = React.memo(({ item, expandedBook, setExpandedBook, handleToggle, renderChapter }: {
-    item: BibleBook;
-    expandedBook: string | null;
-    setExpandedBook: (book: string | null) => void;
-    handleToggle: (bookName: string) => void;
-    renderChapter: (bookName: string, chapter: Chapter) => JSX.Element;
-  }) => {
-    const isExpanded = expandedBook === item.bookName;
+  item: BibleBook;
+  expandedBook: string | null;
+  setExpandedBook: (book: string | null) => void;
+  handleToggle: (bookName: string) => void;
+  renderChapter: (bookName: string, chapter: Chapter) => JSX.Element;
+}) => {
+  const isExpanded = expandedBook === item.bookName;
+
+    const { chapters } = item;
 
     return (
       <View style={styles.bookContainer}>
@@ -97,10 +100,16 @@ export default function EnabledBooksScreen() {
           />
         </Pressable>
 
-        {isExpanded && item.enabled && (
-          <View style={styles.chapterList}>
-            {item.chapters?.map(ch => renderChapter(item.bookName, ch))}
-          </View>
+        {isExpanded && item.enabled && chapters && (
+          <>
+            <BulkRarityEditor
+                book={{ bookName: item.bookName, chapters }}
+                updateChapterRarity={updateChapterRarity}
+              />
+            <View style={styles.chapterList}>
+              {item.chapters?.map(ch => renderChapter(item.bookName, ch))}
+            </View>
+          </>
         )}
       </View>
     );
@@ -217,6 +226,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 6,
+    flexWrap: 'nowrap',
+    overflow: 'visible',
   },
   chapterText: {
     color: '#ccc',
@@ -224,13 +235,16 @@ const styles = StyleSheet.create({
   },
   rarityBadge: {
     borderRadius: 6,
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 2,
+    flexShrink: 1,
+    alignSelf: 'flex-start',
   },
   rarityText: {
     color: '#fff',
     fontSize: 12,
     textTransform: 'capitalize',
+    paddingBottom: 1,
   },
   rarity_common: {
     backgroundColor: '#4caf50',
