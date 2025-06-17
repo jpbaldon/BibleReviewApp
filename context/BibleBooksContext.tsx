@@ -13,6 +13,9 @@ interface BibleBooksContextType {
   isLoading: boolean;
   error: string | null;
   refreshBooks: () => Promise<void>;
+  enabledChapterCount: number;
+  scoreEnabledFlag: boolean;
+  setScoreEnabledFlag: (status: boolean) => void;
 }
 
 const BibleBooksContext = createContext<BibleBooksContextType>({
@@ -23,7 +26,12 @@ const BibleBooksContext = createContext<BibleBooksContextType>({
   isLoading: true,
   error: null,
   refreshBooks: async () => {},
+  enabledChapterCount: 0,
+  scoreEnabledFlag: false,
+  setScoreEnabledFlag: () => {},
 });
+
+export const MIN_CHAPTERS_ENABLED_FOR_SCORE = 20;
 
 export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [bibleBooks, setBibleBooks] = useState<BibleBook[]>([]);
@@ -31,6 +39,13 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
   const [error, setError] = useState<string | null>(null);
   const [db, setDb] = useState<SQLite.SQLiteDatabase | null>(null);
   const { user } = useAuth();
+
+  const enabledChapterCount = bibleBooks.reduce((total, book) => {
+    if (!book.enabled || !book.chapters) return total;
+    return total + book.chapters.filter(ch => ch.rarity !== 'disabled').length;
+  }, 0);
+
+  const [scoreEnabledFlag, setScoreEnabledFlag] = useState(enabledChapterCount >= MIN_CHAPTERS_ENABLED_FOR_SCORE);
 
   // Initialize database asynchronously
   const openDatabase = useCallback(async () => {
@@ -327,6 +342,9 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     isLoading,
     error,
     refreshBooks,
+    enabledChapterCount,
+    scoreEnabledFlag,
+    setScoreEnabledFlag,
   }), [bibleBooks, error]);
 
   return (

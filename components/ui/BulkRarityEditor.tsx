@@ -62,7 +62,7 @@ export default function BulkRarityEditor({
 
         await updateBookEnabledStatus(book.bookName);
 
-        Alert.alert('Success', `Rarities ${direction}d for ${chaptersToUpdate.length} chapters.`);
+        //Alert.alert('Success', `Rarities ${direction}d for ${chaptersToUpdate.length} chapters.`);
     } catch (err: any) {
         console.error(err);
         Alert.alert('Error', 'Failed to adjust chapter rarities.');
@@ -104,7 +104,7 @@ export default function BulkRarityEditor({
 
       await updateBookEnabledStatus(book.bookName);
 
-      Alert.alert('Success', `Updated ${chaptersToUpdate.length} chapters.`);
+      //Alert.alert('Success', `Updated ${chaptersToUpdate.length} chapters.`);
     } catch (err: any) {
       console.error(err);
       Alert.alert('Error', 'Failed to update chapter rarities.');

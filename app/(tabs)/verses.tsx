@@ -65,7 +65,7 @@ export default function Verses() {
   return (
     <ReviewScreenTemplate
       title="Verse Review"
-      points={5}
+      points={10}
       getRandomItem={getRandomVerse}
       checkCorrectness={checkCorrectness}
       renderQuestion={renderQuestion}

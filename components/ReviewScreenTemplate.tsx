@@ -6,7 +6,8 @@ import {
   ScrollView,
   StyleSheet,
   Dimensions,
-  Animated
+  Animated,
+  Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBibleBooks } from '../context/BibleBooksContext';
@@ -42,6 +43,8 @@ interface ReviewScreenTemplateProps {
   renderQuestion: (item: ReviewItem, showAnswer: boolean) => JSX.Element;
 }
 
+const MIN_CHAPTERS_ENABLED_FOR_SCORE = 20;
+
 export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   title,
   points,
@@ -49,7 +52,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   checkCorrectness,
   renderQuestion,
 }) => {
-  const { bibleBooks } = useBibleBooks();
+  const { bibleBooks, enabledChapterCount } = useBibleBooks();
   const [item, setItem] = useState<ReviewItem | null>(null);
   const [currentChapter, setCurrentChapter] = useState<Chapter | null>(null);
   const [currentBookName, setCurrentBookName] = useState<string | null>(null);
@@ -68,6 +71,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   const [isSheetVisible, setIsSheetVisible] = useState(false);
   const [showConfetti, setShowConfetti] = React.useState(false);
   const shakeAnim = useRef(new Animated.Value(0)).current;
+  const [scoreEnabledFlag, setScoreEnabledFlag] = useState(enabledChapterCount >= MIN_CHAPTERS_ENABLED_FOR_SCORE);
 
   const {
     overallScore,
@@ -83,13 +87,24 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
 
   const enabledBooks = bibleBooks.filter((book) => book.enabled);
 
-  useEffect(() => {
+  useEffect(() => {  //a new prompt is loaded any time biblebooks (which includes chapter rarities) is changed
     const currentEnabledCount = bibleBooks.filter(book => book.enabled).length;
     if(currentEnabledCount !== enabledBooksCount) {
         setEnabledBooksCount(currentEnabledCount);
-        loadNewItem();
     }
+    loadNewItem();
   }, [bibleBooks]);
+
+  useEffect(() => {
+    if(enabledChapterCount < MIN_CHAPTERS_ENABLED_FOR_SCORE && scoreEnabledFlag) {
+      Alert.alert(`Score has been disabled since fewer than ${MIN_CHAPTERS_ENABLED_FOR_SCORE} chapters are enabled.`);
+      setScoreEnabledFlag(false);
+    }
+    else if(enabledChapterCount >= MIN_CHAPTERS_ENABLED_FOR_SCORE && !scoreEnabledFlag) {
+      Alert.alert(`Score has been enabled since at least ${MIN_CHAPTERS_ENABLED_FOR_SCORE} chapters are enabled.`);
+      setScoreEnabledFlag(true);
+    }
+  }, [enabledChapterCount]);
 
   const playFeedbackSound = async (isCorrect: boolean) => {
     const soundFile = isCorrect
@@ -163,13 +178,32 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
     if (!item) return;
     const isCorrect = checkCorrectness(selectedBook, selectedChapter, item);
 
-    if (isCorrect && attempts === 0) {
-      incrementSessionScore(points);
-      incrementOverallScore(points);
-      setFeedbackText(`Correct! (${points} pts)`);
-      setShowConfetti(true);
-    } else if (isCorrect) {
-      setFeedbackText('Correct!');
+    if (isCorrect) {
+      let pointsObtained = 0;
+      if(scoreEnabledFlag) {
+        switch(attempts) {
+          case 0:
+            pointsObtained = points;
+            setShowConfetti(true);
+            break;
+          case 1:
+            pointsObtained = points * 0.4;
+            break;
+          case 2:
+            pointsObtained = points * 0.2;
+            break;
+          default:
+            break;
+        }
+      }
+      incrementSessionScore(pointsObtained);
+      incrementOverallScore(pointsObtained);
+
+      if(pointsObtained > 0)
+        setFeedbackText(`Correct! (${pointsObtained} pts)`);
+      else
+        setFeedbackText(`Correct!`);
+
     } else {
       triggerShake();
       setFeedbackText('Try again!');
