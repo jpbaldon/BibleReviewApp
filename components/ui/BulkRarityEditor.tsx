@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, Alert } from 'react-native';
-import { Picker } from '@react-native-picker/picker'; // Install this if needed
 import { Rarity, Chapter } from '../../types';
+import { useBibleBooks } from '../../context/BibleBooksContext'
 
 const rarities: Rarity[] = ['common', 'uncommon', 'rare', 'ultraRare', 'disabled'];
 
@@ -10,13 +10,14 @@ export default function BulkRarityEditor({
   updateChapterRarity,
 }: {
   book: { bookName: string; chapters: Chapter[] };
-  updateChapterRarity: (bookName: string, chapter: number, rarity: Rarity) => Promise<void>;
+  updateChapterRarity: (bookName: string, chapter: number, rarity: Rarity, shouldUpdateBook: boolean) => Promise<void>;
 }) {
-  const [fromChapter, setFromChapter] = useState('');
-  const [toChapter, setToChapter] = useState('');
+  const [fromChapter, setFromChapter] = useState('1');
+  const [toChapter, setToChapter] = useState(book.chapters.length.toString());
   const [fromRarities, setFromRarities] = useState<Rarity[]>([]);
   const [applyAllFrom, setApplyAllFrom] = useState(false);
   const [toRarity, setToRarity] = useState<Rarity>('common');
+  const { updateBookEnabledStatus } = useBibleBooks();
 
   const handleBulkRarityUpdate = async () => {
     const from = parseInt(fromChapter);
@@ -47,9 +48,12 @@ export default function BulkRarityEditor({
     try {
       await Promise.all(
         chaptersToUpdate.map(ch =>
-          updateChapterRarity(book.bookName, ch.chapter, toRarity)
+          updateChapterRarity(book.bookName, ch.chapter, toRarity, false)
         )
       );
+
+      await updateBookEnabledStatus(book.bookName);
+
       Alert.alert('Success', `Updated ${chaptersToUpdate.length} chapters.`);
     } catch (err: any) {
       console.error(err);

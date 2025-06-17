@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { FlatList, Text, View, StyleSheet, ActivityIndicator, Alert, Pressable } from 'react-native';
 import { useBibleBooks } from '../../context/BibleBooksContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -21,31 +21,49 @@ export default function EnabledBooksScreen() {
     updateChapterRarity,
     isLoading,
     error,
-    refreshBooks,
   } = useBibleBooks();
   const [expandedBook, setExpandedBook] = useState<string | null>(null);
+  const [longPressActive, setLongPressActive] = useState(false);
 
-  useEffect(() => {
-    if (error) {
-      Alert.alert('Error', error, [
-        { text: 'OK', onPress: refreshBooks },
-      ]);
-    }
-  }, [error, refreshBooks]);
-
-  const handleToggle = useCallback(async (bookName: string) => {
-    if (!bookName) {
-      console.warn('Book name is invalid.');
+  const handlePress = useCallback(async (bookName: string) => {
+    // Skip if this was a long press
+    if (longPressActive) {
+      setLongPressActive(false);
       return;
     }
-
+    
     try {
       await toggleBookEnabled(bookName);
+      // Collapse if we just disabled the expanded book
+      if (expandedBook === bookName) {
+        setExpandedBook(null);
+      }
     } catch (err) {
       console.error('Toggle failed:', err);
       Alert.alert('Error', 'Failed to update book status.');
     }
-  }, [toggleBookEnabled]);
+  }, [longPressActive, toggleBookEnabled, expandedBook]);
+
+  const handleLongPress = useCallback((bookName: string) => {
+    setLongPressActive(true);
+    // Only allow expanding enabled books
+    if (bibleBooks.find(b => b.bookName === bookName)?.enabled) {
+      setExpandedBook(prev => prev === bookName ? null : bookName);
+    }
+  }, [bibleBooks]);
+
+  const handleToggle = useCallback(async (bookName: string) => {
+    try {
+      await toggleBookEnabled(bookName);
+      // Collapse if we just disabled the expanded book
+      if (expandedBook === bookName) {
+        setExpandedBook(null);
+      }
+    } catch (err) {
+      console.error('Toggle failed:', err);
+      Alert.alert('Error', 'Failed to update book status.');
+    }
+  }, [toggleBookEnabled, expandedBook]);
 
   const handleRarityChange = async (
     bookName: string,
@@ -54,7 +72,14 @@ export default function EnabledBooksScreen() {
   ) => {
     const currentIndex = rarities.indexOf(currentRarity as any);
     const nextRarity = rarities[(currentIndex + 1) % rarities.length];
-    await updateChapterRarity(bookName, chapterNum, nextRarity);
+    
+    try {
+      await updateChapterRarity(bookName, chapterNum, nextRarity, true);
+      // The true parameter ensures book status gets checked after update
+    } catch (err) {
+      console.error('Rarity update failed:', err);
+      Alert.alert('Error', 'Failed to update chapter rarity');
+    }
   };
 
   const renderChapter = (bookName: string, chapter: Chapter) => (
@@ -70,22 +95,19 @@ export default function EnabledBooksScreen() {
     </Pressable>
   );
 
-  const BookItem = React.memo(({ item, expandedBook, setExpandedBook, handleToggle, renderChapter }: {
-  item: BibleBook;
-  expandedBook: string | null;
-  setExpandedBook: (book: string | null) => void;
-  handleToggle: (bookName: string) => void;
-  renderChapter: (bookName: string, chapter: Chapter) => JSX.Element;
-}) => {
-  const isExpanded = expandedBook === item.bookName;
-
-    const { chapters } = item;
-
+  const BookItem = React.memo(({ item, isExpanded, onPress, onLongPress, renderChapter }: {
+    item: BibleBook;
+    isExpanded: boolean;
+    onPress: () => void;
+    onLongPress: () => void;
+    renderChapter: (bookName: string, chapter: Chapter) => JSX.Element;
+  }) => {
     return (
       <View style={styles.bookContainer}>
         <Pressable
-          onPress={() => handleToggle(item.bookName)}
-          onLongPress={() => setExpandedBook(isExpanded ? null : item.bookName)}
+          onPress={onPress}
+          onLongPress={onLongPress}
+          delayLongPress={300}
           style={[
             styles.bookItem,
             item.enabled ? styles.enabled : styles.disabled,
@@ -100,14 +122,14 @@ export default function EnabledBooksScreen() {
           />
         </Pressable>
 
-        {isExpanded && item.enabled && chapters && (
+        {isExpanded && item.enabled && item.chapters && (
           <>
             <BulkRarityEditor
-                book={{ bookName: item.bookName, chapters }}
-                updateChapterRarity={updateChapterRarity}
-              />
+              book={{ bookName: item.bookName, chapters: item.chapters }}
+              updateChapterRarity={updateChapterRarity}
+            />
             <View style={styles.chapterList}>
-              {item.chapters?.map(ch => renderChapter(item.bookName, ch))}
+              {item.chapters.map(ch => renderChapter(item.bookName, ch))}
             </View>
           </>
         )}
@@ -115,15 +137,20 @@ export default function EnabledBooksScreen() {
     );
   });
 
-  const renderItem = useCallback(({ item }: { item: BibleBook }) => (
-    <BookItem
-      item={item}
-      expandedBook={expandedBook}
-      setExpandedBook={setExpandedBook}
-      handleToggle={handleToggle}
-      renderChapter={renderChapter}
-    />
-  ), [expandedBook, handleToggle]);
+
+  const renderItem = useCallback(({ item }: { item: BibleBook }) => {
+    const isExpanded = expandedBook === item.bookName;
+    
+    return (
+      <BookItem
+        item={item}
+        isExpanded={isExpanded}
+        onPress={() => handlePress(item.bookName)}
+        onLongPress={() => handleLongPress(item.bookName)}
+        renderChapter={renderChapter}
+      />
+    );
+  }, [expandedBook, handlePress, handleLongPress, renderChapter]);
 
   if (isLoading) {
     return (
@@ -147,7 +174,7 @@ export default function EnabledBooksScreen() {
         renderItem={renderItem}
         keyExtractor={item => item.bookName}
         contentContainerStyle={styles.listContent}
-        extraData={[expandedBook, bibleBooks]}
+        extraData={{expandedBook, bibleBooks}}
       />
     </View>
   );
