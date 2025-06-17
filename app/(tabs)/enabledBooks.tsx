@@ -1,6 +1,6 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { FlatList, Text, View, StyleSheet, ActivityIndicator, Alert, Pressable } from 'react-native';
-import { useBibleBooks } from '../../context/BibleBooksContext';
+import { MIN_CHAPTERS_ENABLED_FOR_SCORE, useBibleBooks } from '@/context/BibleBooksContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BibleBook, Chapter } from '../../types';
 import BulkRarityEditor from '../../components/ui/BulkRarityEditor'
@@ -21,9 +21,28 @@ export default function EnabledBooksScreen() {
     updateChapterRarity,
     isLoading,
     error,
+    enabledChapterCount,
+    scoreEnabledFlag,
+    setScoreEnabledFlag
   } = useBibleBooks();
   const [expandedBook, setExpandedBook] = useState<string | null>(null);
   const [longPressActive, setLongPressActive] = useState(false);
+
+  useEffect(() => {
+    if (enabledChapterCount < MIN_CHAPTERS_ENABLED_FOR_SCORE && scoreEnabledFlag) {
+      Alert.alert(
+        'Score Disabled',
+        `Score has been disabled since fewer than ${MIN_CHAPTERS_ENABLED_FOR_SCORE} chapters are enabled.`
+      );
+      setScoreEnabledFlag(false);
+    } else if (enabledChapterCount >= MIN_CHAPTERS_ENABLED_FOR_SCORE && !scoreEnabledFlag) {
+      Alert.alert(
+        'Score Enabled',
+        `Score has been enabled since at least ${MIN_CHAPTERS_ENABLED_FOR_SCORE} chapters are enabled.`
+      );
+      setScoreEnabledFlag(true);
+    }
+  }, [enabledChapterCount, scoreEnabledFlag]);
 
   const handlePress = useCallback(async (bookName: string) => {
     // Skip if this was a long press
@@ -161,11 +180,13 @@ export default function EnabledBooksScreen() {
     );
   }
 
+  const totalEnabledBooks = bibleBooks.filter(b => b.enabled).length;
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.subHeaderText}>
-          {bibleBooks.filter(b => b.enabled).length} books enabled
+          {totalEnabledBooks} books enabled — {enabledChapterCount} chapters enabled
         </Text>
       </View>
 
