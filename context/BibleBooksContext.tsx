@@ -8,7 +8,8 @@ import { useAuth } from '../context/AuthContext';
 interface BibleBooksContextType {
   bibleBooks: BibleBook[];
   toggleBookEnabled: (bookName: string) => Promise<void>;
-  updateChapterRarity: (bookName: string, chapter: number, rarity: Rarity) => Promise<void>;
+  updateChapterRarity: (bookName: string, chapter: number, rarity: Rarity, shouldUpdateBook?: boolean) => Promise<void>;
+  updateBookEnabledStatus: (bookName: string) => Promise<void>;
   isLoading: boolean;
   error: string | null;
   refreshBooks: () => Promise<void>;
@@ -18,6 +19,7 @@ const BibleBooksContext = createContext<BibleBooksContextType>({
   bibleBooks: [],
   toggleBookEnabled: async () => {},
   updateChapterRarity: async () => {},
+  updateBookEnabledStatus: async () => {},
   isLoading: true,
   error: null,
   refreshBooks: async () => {},
@@ -197,89 +199,120 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
   }, [db, initializeDatabase]);
 
   const toggleBookEnabled = useCallback(async (bookName: string) => {
+  if (!db) return;
+
+  try {
+    await db.runAsync(
+      'UPDATE BibleBooks SET Enabled = NOT Enabled WHERE Book = ?;',
+      [bookName]
+    );
+
+    // Optimistically update the local state
+    setBibleBooks(prevBooks =>
+      prevBooks.map(book =>
+        book.bookName === bookName
+          ? { ...book, enabled: !book.enabled }
+          : book
+      )
+    );
+  } catch (err) {
+    console.error('Toggle failed:', err);
+    setError(`Toggle failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+}, [db]);
+
+  // Automatically disables a book if no chapters in the book are enabled (prevents awkwardness on other tabs when the user is being)
+  const updateBookEnabledStatus = useCallback(async (bookName: string) => {
     if (!db) return;
 
     try {
-      setError(null);
+      // 1. Get all chapters for this book from the database
+      const chapters = await db.getAllAsync<{Chapter: number, Rarity: Rarity}>(
+        'SELECT Chapter, Rarity FROM ChapterRarities WHERE Book = ?;',
+        [bookName]
+      );
 
-      // Get the most up-to-date enabled value from the DB
-      const result = await db.getFirstAsync<{ Enabled: number }>(
+      // 2. Get the book's current enabled status
+      const bookStatus = await db.getFirstAsync<{Enabled: number}>(
         'SELECT Enabled FROM BibleBooks WHERE Book = ?;',
         [bookName]
       );
 
-      if (!result) {
-        throw new Error(`Book not found: ${bookName}`);
+      // 3. Check if all chapters are disabled (handles case when there's only one chapter)
+      const allChaptersDisabled = chapters.length > 0 && 
+        chapters.every(ch => ch.Rarity === 'disabled');
+
+      if (allChaptersDisabled && bookStatus?.Enabled === 1) {
+        // 4. Disable the book in database
+        await db.runAsync(
+          'UPDATE BibleBooks SET Enabled = ? WHERE Book = ?;',
+          [0, bookName]
+        );
+
+        // 5. Reset all chapters to 'common'
+        await Promise.all(
+          chapters.map(chapter =>
+            db.runAsync(
+              'UPDATE ChapterRarities SET Rarity = ? WHERE Book = ? AND Chapter = ?;',
+              ['common', bookName, chapter.Chapter]
+            )
+          )
+        );
+
+        // 6. Update local state
+        setBibleBooks(prevBooks =>
+          prevBooks.map(book => {
+            if (book.bookName !== bookName) return book;
+            return {
+              ...book,
+              enabled: false,
+              chapters: book.chapters?.map(ch => ({
+                ...ch,
+                rarity: 'common'
+              }))
+            };
+          })
+        );
       }
-
-      const currentEnabled = result.Enabled === 1;
-      const newEnabled = !currentEnabled;
-
-      // Update in DB
-      await db.runAsync(
-        'UPDATE BibleBooks SET Enabled = ? WHERE Book = ?;',
-        [newEnabled ? 1 : 0, bookName]
-      );
-
-      setBibleBooks(prevBooks => {
-          const bookIndex = prevBooks.findIndex(b => b.bookName === bookName);
-          if (bookIndex === -1) return prevBooks;
-
-          const newBooks = [...prevBooks];
-          newBooks[bookIndex] = {
-            ...newBooks[bookIndex],
-            enabled: newEnabled
-          };
-          return newBooks;
-        }
-      );
-
     } catch (err) {
-      console.error('Toggle failed:', err);
-      setError(`Toggle failed: ${err instanceof Error ? err.message : String(err)}`);
-    } finally {
-
+      console.error('Failed to update book status:', err);
     }
   }, [db]);
 
-  // Automatically disables a book if no chapters in the book are enabled (prevents awkwardness on other tabs when the user is being)
-  const updateBookEnabledStatus = useCallback(async (bookName: string) => {
-    setBibleBooks(prevBooks => {
-      const book = prevBooks.find(b => b.bookName === bookName);
-      if(!book) return prevBooks;
-
-      const allDisabled = book.chapters?.every(chapter => chapter.rarity === 'disabled');
-
-      if(allDisabled) {
-        toggleBookEnabled(bookName);
-      }
-      return prevBooks;
-    });
-    
-  }, [toggleBookEnabled]);
-
-  const updateChapterRarity = useCallback(async (bookName: string, chapterNum: number, rarity: Rarity) => {
+  const updateChapterRarity = useCallback(async (
+    bookName: string,
+    chapterNum: number,
+    rarity: Rarity,
+    shouldUpdateBook = true
+  ) => {
     if (!db) return;
 
     try {
+      // Update the chapter rarity in database
       await db.runAsync(
         'INSERT OR REPLACE INTO ChapterRarities (Book, Chapter, Rarity) VALUES (?, ?, ?);',
         [bookName, chapterNum, rarity]
       );
 
+      // Update local state
       setBibleBooks(prevBooks => 
         prevBooks.map(book => {
           if (book.bookName !== bookName) return book;
+          
+          const updatedChapters = book.chapters?.map(ch => 
+            ch.chapter === chapterNum ? { ...ch, rarity } : ch
+          ) ?? [];
+          
           return {
             ...book,
-            chapters: book.chapters?.map(ch => 
-              ch.chapter === chapterNum ? { ...ch, rarity } : ch
-            ),
+            chapters: updatedChapters
           };
         })
       );
 
-      await updateBookEnabledStatus(bookName);
+      if (shouldUpdateBook) {
+        await updateBookEnabledStatus(bookName);
+      }
 
     } catch (err) {
       console.error('Failed to update rarity:', err);
@@ -290,6 +323,7 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     bibleBooks,
     toggleBookEnabled,
     updateChapterRarity,
+    updateBookEnabledStatus,
     isLoading,
     error,
     refreshBooks,
