@@ -155,7 +155,7 @@ export default function BulkRarityEditor({
         <Pressable
             onPress={() => bulkAdjustRarities('increase')}
             style={{
-            backgroundColor: '#40c4ff',
+            backgroundColor: '#ff5252',
             padding: 8,
             borderRadius: 6,
             flex: 1,
@@ -163,7 +163,7 @@ export default function BulkRarityEditor({
             alignItems: 'center',
             }}
         >
-            <Text style={{ color: '#000', fontWeight: 'bold' }}>Make All More Rare</Text>
+            <Text style={{ color: '#fff', fontWeight: 'bold' }}>Make All More Rare</Text>
         </Pressable>
       </View>
 
@@ -245,7 +245,7 @@ export default function BulkRarityEditor({
           alignItems: 'center',
         }}
       >
-        <Text style={{ color: '#000', fontWeight: 'bold' }}>Update Rarities</Text>
+        <Text style={{ color: '#000', fontWeight: 'bold' }}>Update Selected Rarities</Text>
       </Pressable>
     </View>
   );
