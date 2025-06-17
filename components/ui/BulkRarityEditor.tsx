@@ -19,6 +19,56 @@ export default function BulkRarityEditor({
   const [toRarity, setToRarity] = useState<Rarity>('common');
   const { updateBookEnabledStatus } = useBibleBooks();
 
+  const getNextRarity = (rarity: Rarity): Rarity => {
+    const index = rarities.indexOf(rarity);
+    return rarities[Math.min(index + 1, rarities.length - 1)];
+  };
+
+  const getPreviousRarity = (rarity: Rarity): Rarity => {
+    const index = rarities.indexOf(rarity);
+    return rarities[Math.max(index - 1, 0)];
+  };
+
+  const bulkAdjustRarities = async (direction: 'increase' | 'decrease') => {
+    const from = parseInt(fromChapter); 
+    const to = parseInt(toChapter);
+
+    if (isNaN(from) || isNaN(to) || from > to) {
+        Alert.alert('Invalid Range', 'Please enter a valid chapter number range.');
+        return;
+    }
+
+    const chaptersToUpdate = book.chapters.filter(
+        ch => ch.chapter >= from && ch.chapter <= to
+    );
+
+    if (chaptersToUpdate.length === 0) {
+        Alert.alert('No Chapters Matched', 'No chapters matched the selected range.');
+        return;
+    }
+
+    try {
+        await Promise.all(
+        chaptersToUpdate.map(ch => {
+            const current = (ch.rarity || 'common') as Rarity;
+            const newRarity =
+            direction === 'increase' ? getNextRarity(current) : getPreviousRarity(current);
+
+            if (newRarity === current) return Promise.resolve(); // no change
+
+            return updateChapterRarity(book.bookName, ch.chapter, newRarity, false);
+        })
+        );
+
+        await updateBookEnabledStatus(book.bookName);
+
+        Alert.alert('Success', `Rarities ${direction}d for ${chaptersToUpdate.length} chapters.`);
+    } catch (err: any) {
+        console.error(err);
+        Alert.alert('Error', 'Failed to adjust chapter rarities.');
+    }
+  };
+
   const handleBulkRarityUpdate = async () => {
     const from = parseInt(fromChapter);
     const to = parseInt(toChapter);
@@ -85,6 +135,36 @@ export default function BulkRarityEditor({
           value={toChapter}
           onChangeText={setToChapter}
         />
+      </View>
+
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+        <Pressable
+            onPress={() => bulkAdjustRarities('decrease')}
+            style={{
+            backgroundColor: '#ff5252',
+            padding: 8,
+            borderRadius: 6,
+            flex: 1,
+            marginRight: 6,
+            alignItems: 'center',
+            }}
+        >
+            <Text style={{ color: '#fff', fontWeight: 'bold' }}>Make All Less Rare</Text>
+        </Pressable>
+
+        <Pressable
+            onPress={() => bulkAdjustRarities('increase')}
+            style={{
+            backgroundColor: '#40c4ff',
+            padding: 8,
+            borderRadius: 6,
+            flex: 1,
+            marginLeft: 6,
+            alignItems: 'center',
+            }}
+        >
+            <Text style={{ color: '#000', fontWeight: 'bold' }}>Make All More Rare</Text>
+        </Pressable>
       </View>
 
       {/* From rarity selection */}
