@@ -241,21 +241,32 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     if (!db) return;
 
     try {
-      // 1. Get all chapters for this book from the database
+      const asvBook = ASV.Bible.find(b => b.Book === bookName);
+      if(!asvBook) return;
+
+      const totalChapters = asvBook.Chapters.map(ch => ch.Chapter);
+
       const chapters = await db.getAllAsync<{Chapter: number, Rarity: Rarity}>(
         'SELECT Chapter, Rarity FROM ChapterRarities WHERE Book = ?;',
         [bookName]
       );
+
+      const rarityMap: Record<number, Rarity> = {};
+        chapters.forEach(ch => {
+          rarityMap[ch.Chapter] = ch.Rarity;
+        });
+
+      const allChaptersDisabled = totalChapters.every(chNum => {
+        const rarity = rarityMap[chNum] ?? 'common';
+        return rarity === 'disabled';
+      });
+
 
       // 2. Get the book's current enabled status
       const bookStatus = await db.getFirstAsync<{Enabled: number}>(
         'SELECT Enabled FROM BibleBooks WHERE Book = ?;',
         [bookName]
       );
-
-      // 3. Check if all chapters are disabled (handles case when there's only one chapter)
-      const allChaptersDisabled = chapters.length > 0 && 
-        chapters.every(ch => ch.Rarity === 'disabled');
 
       if (allChaptersDisabled && bookStatus?.Enabled === 1) {
         // 4. Disable the book in database

@@ -43,8 +43,6 @@ interface ReviewScreenTemplateProps {
   renderQuestion: (item: ReviewItem, showAnswer: boolean) => JSX.Element;
 }
 
-const MIN_CHAPTERS_ENABLED_FOR_SCORE = 20;
-
 export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   title,
   points,
@@ -52,7 +50,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   checkCorrectness,
   renderQuestion,
 }) => {
-  const { bibleBooks, enabledChapterCount } = useBibleBooks();
+  const { bibleBooks, enabledChapterCount, scoreEnabledFlag } = useBibleBooks();
   const [item, setItem] = useState<ReviewItem | null>(null);
   const [currentChapter, setCurrentChapter] = useState<Chapter | null>(null);
   const [currentBookName, setCurrentBookName] = useState<string | null>(null);
@@ -71,7 +69,6 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   const [isSheetVisible, setIsSheetVisible] = useState(false);
   const [showConfetti, setShowConfetti] = React.useState(false);
   const shakeAnim = useRef(new Animated.Value(0)).current;
-  const [scoreEnabledFlag, setScoreEnabledFlag] = useState(enabledChapterCount >= MIN_CHAPTERS_ENABLED_FOR_SCORE);
 
   const {
     overallScore,
@@ -94,17 +91,6 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
     }
     loadNewItem();
   }, [bibleBooks]);
-
-  useEffect(() => {
-    if(enabledChapterCount < MIN_CHAPTERS_ENABLED_FOR_SCORE && scoreEnabledFlag) {
-      Alert.alert(`Score has been disabled since fewer than ${MIN_CHAPTERS_ENABLED_FOR_SCORE} chapters are enabled.`);
-      setScoreEnabledFlag(false);
-    }
-    else if(enabledChapterCount >= MIN_CHAPTERS_ENABLED_FOR_SCORE && !scoreEnabledFlag) {
-      Alert.alert(`Score has been enabled since at least ${MIN_CHAPTERS_ENABLED_FOR_SCORE} chapters are enabled.`);
-      setScoreEnabledFlag(true);
-    }
-  }, [enabledChapterCount]);
 
   const playFeedbackSound = async (isCorrect: boolean) => {
     const soundFile = isCorrect

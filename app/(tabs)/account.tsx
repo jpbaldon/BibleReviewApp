@@ -5,10 +5,13 @@ import { ThemedView } from '@/components/ThemedView';
 import { TouchableOpacity, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
+import { Switch, View } from 'react-native';
+import { useThemeContext } from '@/context/ThemeContext';
 
 export default function Settings() {
   const router = useRouter();
   const { signOut } = useAuth();
+  const { colorScheme, setColorScheme } = useThemeContext();
 
   const handleSwitchAccount = async (router: any) => {
     await signOut();
@@ -28,6 +31,18 @@ export default function Settings() {
       }>
       <ThemedView style={styles.titleContainer}>
         <ThemedText type="title">Account</ThemedText>
+      </ThemedView>
+
+      <ThemedView style={{ marginTop: 20 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20 }}>
+          <Text style={{ color: '#fff', fontSize: 16 }}>Dark Mode</Text>
+          <Switch
+            value={colorScheme === 'dark'}
+            onValueChange={(value) => setColorScheme(value ? 'dark' : 'light')}
+            thumbColor="#fff"
+            trackColor={{ false: '#767577', true: '#81b0ff' }}
+          />
+        </View>
       </ThemedView>
 
       <ThemedView style={{ marginTop: 40 }}>
