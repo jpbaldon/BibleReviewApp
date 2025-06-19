@@ -175,7 +175,7 @@ export default function BulkRarityEditor({
       <Pressable
         onPress={() => setApplyAllFrom(!applyAllFrom)}
         style={{
-            backgroundColor: applyAllFrom ? '#00e676' : '#333',
+            backgroundColor: applyAllFrom ? '#00e676' : '#222',
             padding: 6,
             borderRadius: 4,
             alignSelf: 'flex-start',
@@ -201,7 +201,7 @@ export default function BulkRarityEditor({
                 style={{
                 paddingHorizontal: 6,
                 paddingVertical: 6,
-                backgroundColor: isSelected ? '#00e676' : '#333',
+                backgroundColor: isSelected ? '#00e676' : '#222',
                 margin: 4,
                 borderRadius: 4,
                 opacity: applyAllFrom ? 0.5 : 1,
@@ -224,7 +224,7 @@ export default function BulkRarityEditor({
           style={{
             paddingHorizontal: 6,
             paddingVertical: 6,
-            backgroundColor: toRarity === r ? '#00e676' : '#333',
+            backgroundColor: toRarity === r ? '#00e676' : '#222',
             margin: 4,
             borderRadius: 4,
             opacity: 1,
