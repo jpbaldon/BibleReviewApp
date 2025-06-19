@@ -3,12 +3,13 @@ import { View, Text, ActivityIndicator } from 'react-native';
 import { ReviewScreenTemplate } from '../../components/ReviewScreenTemplate';
 import { useBibleBooks } from '../../context/BibleBooksContext';
 import { getWeightedChapters, selectWeightedChapter } from '@/utils/randomChapter';
-import { Chapter } from '../../types';
+import { useThemeContext } from '../../context/ThemeContext';
 
 export default function Verses() {
     const { bibleBooks } = useBibleBooks();
   
     const enabledBooks = bibleBooks.filter(b => b.enabled && b.chapters && b.chapters.length > 0);
+    const { theme } = useThemeContext();
   
     // If no enabled books with chapters, show loading or info
     if (enabledBooks.length === 0) {
@@ -43,14 +44,14 @@ export default function Verses() {
     if (showAnswer) {
       return (
         <View>
-          <Text style={{ fontWeight: 'bold', fontSize: 22, color: 'white' }}>{item.book} {item.chapter}</Text>
+          <Text style={{ fontWeight: 'bold', fontSize: 22, color: theme.text }}>{item.book} {item.chapter}</Text>
           {item.context.map((v: any) => (
             <Text
-              key={v.VerseNumber}
-              style={{ color: v.VerseNumber === item.verseNumber ? 'yellow' : 'white' }}
+              key={v.verseNumber}
+              style={{ color: v.verseNumber === item.verseNumber ? theme.highlightedText : theme.text }}
             >
-              <Text style={{ fontWeight: 'bold' }}>{v.VerseNumber} </Text>
-              {v.Text}
+              <Text style={{ fontWeight: 'bold' }}>{v.verseNumber} </Text>
+              {v.text}
             </Text>
           ))}
         </View>
@@ -58,7 +59,7 @@ export default function Verses() {
     }
 
     return (
-      <Text style={{ fontSize: 18, fontStyle: 'italic', color: 'white' }}>{item.text}</Text>
+      <Text style={{ fontSize: 18, fontStyle: 'italic', color: theme.text }}>{item.text}</Text>
     );
   };
 

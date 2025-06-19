@@ -18,6 +18,7 @@ import { ASV } from '@/data/asv';
 import { SimpleBottomSheet } from './SimpleBottomSheet'; // Adjust path if needed
 import ConfettiCannon from 'react-native-confetti-cannon'
 import { Chapter } from '../types';
+import { useThemeContext } from '../context/ThemeContext';
 
 interface ContextVerse {
   verseNumber: number;
@@ -43,8 +44,6 @@ interface ReviewScreenTemplateProps {
   renderQuestion: (item: ReviewItem, showAnswer: boolean) => JSX.Element;
 }
 
-const MIN_CHAPTERS_ENABLED_FOR_SCORE = 20;
-
 export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   title,
   points,
@@ -52,7 +51,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   checkCorrectness,
   renderQuestion,
 }) => {
-  const { bibleBooks, enabledChapterCount } = useBibleBooks();
+  const { bibleBooks, scoreEnabledFlag } = useBibleBooks();
   const [item, setItem] = useState<ReviewItem | null>(null);
   const [currentChapter, setCurrentChapter] = useState<Chapter | null>(null);
   const [currentBookName, setCurrentBookName] = useState<string | null>(null);
@@ -71,7 +70,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   const [isSheetVisible, setIsSheetVisible] = useState(false);
   const [showConfetti, setShowConfetti] = React.useState(false);
   const shakeAnim = useRef(new Animated.Value(0)).current;
-  const [scoreEnabledFlag, setScoreEnabledFlag] = useState(enabledChapterCount >= MIN_CHAPTERS_ENABLED_FOR_SCORE);
+  const { theme } = useThemeContext();
 
   const {
     overallScore,
@@ -94,17 +93,6 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
     }
     loadNewItem();
   }, [bibleBooks]);
-
-  useEffect(() => {
-    if(enabledChapterCount < MIN_CHAPTERS_ENABLED_FOR_SCORE && scoreEnabledFlag) {
-      Alert.alert(`Score has been disabled since fewer than ${MIN_CHAPTERS_ENABLED_FOR_SCORE} chapters are enabled.`);
-      setScoreEnabledFlag(false);
-    }
-    else if(enabledChapterCount >= MIN_CHAPTERS_ENABLED_FOR_SCORE && !scoreEnabledFlag) {
-      Alert.alert(`Score has been enabled since at least ${MIN_CHAPTERS_ENABLED_FOR_SCORE} chapters are enabled.`);
-      setScoreEnabledFlag(true);
-    }
-  }, [enabledChapterCount]);
 
   const playFeedbackSound = async (isCorrect: boolean) => {
     const soundFile = isCorrect
@@ -255,20 +243,20 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
     }));
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, {backgroundColor: theme.background}]}>
       <Animated.View style={[{ flex: 1, transform: [{translateX: shakeAnim}] }]}>
       <View style={[styles.contentContainer, { height: contentContainerHeight }]}>
-        <Text style={styles.title}>{title}</Text>
+        <Text style={[styles.title, {color: theme.text}]}>{title}</Text>
 
         <View style={styles.scoreRow}>
-          <Text style={styles.scoreText}>Session:</Text>
-          <Text style={styles.scoreValue}>{sessionScore}</Text>
-          <Text style={styles.scoreText}>Overall:</Text>
-          <Text style={styles.scoreValue}>{overallScore}</Text>
+          <Text style={[styles.scoreText, {color: theme.text}]}>Session:</Text>
+          <Text style={[styles.scoreValue, {color: theme.text}]}>{sessionScore}</Text>
+          <Text style={[styles.scoreText, {color: theme.text}]}>Overall:</Text>
+          <Text style={[styles.scoreValue, {color: theme.text}]}>{overallScore}</Text>
         </View>
 
         {item ? (
-          <View style={[styles.verseContainer, { height: verseContainerHeight }]}>
+          <View style={[styles.verseContainer, { height: verseContainerHeight, backgroundColor: theme.secondary }]}>
             <ScrollView>{renderQuestion(item, showAnswer)}</ScrollView>
             {showAnswer && currentBookName && currentChapter && (
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10}}>
@@ -278,7 +266,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
                 >
                   <Text
                     style={[
-                      currentChapter.chapter === 1 ? styles.disabledLinkText : styles.linkText,
+                      currentChapter.chapter === 1 ? [styles.disabledLinkText, {color: theme.disabledLinkText}] : [styles.linkText, {color: theme.linkText}],
                       { marginRight: 5 }
                     ]}
                   >
@@ -307,7 +295,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
 
         <View style={styles.inputContainer}>
             <TouchableOpacity 
-              style={styles.dropdown} 
+              style={[styles.dropdown, {backgroundColor: theme.secondary}]} 
               onPress={() => {
                 if(enabledBooks.length === 1) {
                   const singleBook = enabledBooks[0];
@@ -318,7 +306,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
                 }
               }}
             >
-                <Text style={styles.selectedTextStyle}>
+                <Text style={[styles.selectedTextStyle, {color: theme.text}]}>
                     {selectedBook && selectedChapter ? `${selectedBook} - Chapter ${selectedChapter}` : 'Select Book & Chapter'}
                 </Text>
             </TouchableOpacity>
@@ -340,7 +328,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
         {!showAnswer && showSubmit && (
           <View style={styles.buttonContainer}>
             <TouchableOpacity style={[styles.submitButton, !selectedChapter && styles.submitButtonDisabled]} onPress={checkGuess} disabled={!selectedChapter}>
-              <Text style={styles.submitButtonText}>Submit Guess</Text>
+              <Text style={[styles.submitButtonText, !selectedChapter && {color: theme.disabledButtonText}]}>Submit Guess</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.forfeitButton} onPress={forfeit}>
@@ -358,7 +346,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
         )}
 
         <View style={styles.bottomButtonContainer}>
-          <TouchableOpacity style={styles.tryAnotherButton} onPress={loadNewItem}>
+          <TouchableOpacity style={[styles.tryAnotherButton, {backgroundColor: theme.neutralButton}]} onPress={loadNewItem}>
             <Text style={styles.tryAnotherButtonText}>Try Another</Text>
           </TouchableOpacity>
         </View>
@@ -384,7 +372,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#fff',
     textAlign: 'center',
     marginBottom: 16,
   },
@@ -393,11 +380,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 10,
   },
-  scoreText: { fontSize: 16, color: '#fff' },
-  scoreValue: { fontSize: 16, color: '#fff', fontWeight: 'bold' },
+  scoreText: { fontSize: 16 },
+  scoreValue: { fontSize: 16, fontWeight: 'bold' },
   verseContainer: {
     padding: 10,
-    backgroundColor: '#2D2D2D',
     borderRadius: 10,
     marginBottom: 20,
   },
@@ -409,12 +395,11 @@ const styles = StyleSheet.create({
   dropdown: {
     flex: 1,
     marginHorizontal: 5,
-    backgroundColor: '#333',
     borderRadius: 8,
     padding: 12,
     justifyContent: 'center',
   },
-  selectedTextStyle: { fontSize: 16, color: '#fff' },
+  selectedTextStyle: { fontSize: 16 },
   submitButton: {
     flex: 1,
     backgroundColor: '#4CAF50',
@@ -435,7 +420,6 @@ const styles = StyleSheet.create({
   forfeitButtonText: { color: '#fff', fontWeight: 'bold' },
   tryAnotherButton: {
     marginTop: 10,
-    backgroundColor: '#2196F3',
     padding: 12,
     borderRadius: 5,
     alignItems: 'center',
@@ -472,13 +456,11 @@ const styles = StyleSheet.create({
   },
   linkText: {
     fontSize: 18,
-    color: '#FFFFFF', 
     textDecorationLine: 'underline',
     cursor: 'pointer',
   },
     disabledLinkText: {
     fontSize: 18,
-    color: '#888888',
     cursor: 'pointer',
   },
   submitButtonDisabled: {

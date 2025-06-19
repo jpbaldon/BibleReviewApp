@@ -10,6 +10,7 @@ import {
   Dimensions,
   TouchableWithoutFeedback,
 } from 'react-native';
+import { useThemeContext } from '../context/ThemeContext';
 
 interface ChapterItem {
   label: string;
@@ -41,6 +42,7 @@ const BookItem = React.memo(({
   onToggleExpand,
   onSelectChapter,
   selectedChapter,
+  theme,
 }: {
   item: BookItemData;
   isExpanded: boolean;
@@ -48,14 +50,15 @@ const BookItem = React.memo(({
   onToggleExpand: (bookValue: string) => void;
   onSelectChapter: (bookValue: string, chapterValue: string) => void;
   selectedChapter: string;
+  theme: any;
 }) => {
   return (
     <View>
       <TouchableOpacity
         onPress={() => onToggleExpand(item.value)}
-        style={[styles.bookItem, isBookSelected && styles.selectedBookItem]}
+        style={[styles.bookItem, {borderBottomColor: theme.horizontalDivider}, isBookSelected && styles.selectedBookItem]}
       >
-        <Text style={[styles.bookText, isBookSelected && styles.selectedBookText]}>
+        <Text style={[styles.bookText, {color: theme.text}, isBookSelected && styles.selectedBookText]}>
           {item.label}
         </Text>
       </TouchableOpacity>
@@ -66,9 +69,9 @@ const BookItem = React.memo(({
             <TouchableOpacity
               key={chapter.value}
               onPress={() => onSelectChapter(item.value, chapter.value)}
-              style={[styles.chapterItem, isChapterSelected && styles.selectedChapterItem]}
+              style={[styles.chapterItem, {borderBottomColor: theme.horizontalDivider}, isChapterSelected && styles.selectedChapterItem]}
             >
-              <Text style={[styles.chapterText, isChapterSelected && styles.selectedChapterText]}>
+              <Text style={[styles.chapterText, {color: theme.fadedText}, isChapterSelected && styles.selectedChapterText]}>
                 {chapter.label}
               </Text>
             </TouchableOpacity>
@@ -89,6 +92,7 @@ export const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({
 }) => {
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const [expandedBook, setExpandedBook] = useState<string>('');
+  const { theme } = useThemeContext();
 
   useEffect(() => {
     if (visible) {
@@ -126,6 +130,7 @@ export const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({
         onToggleExpand={toggleExpand}
         onSelectChapter={handleSelectChapter}
         selectedChapter={selectedChapter}
+        theme={theme}
       />
     );
   }, [expandedBook, selectedBook, selectedChapter, toggleExpand, handleSelectChapter]);
@@ -141,8 +146,8 @@ export const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({
         <View style={styles.backdrop} />
       </TouchableWithoutFeedback>
 
-      <Animated.View style={[styles.sheetContainer, { transform: [{ translateY }] }]}>
-        <Text style={styles.title}>{title}</Text>
+      <Animated.View style={[styles.sheetContainer, {backgroundColor: theme.secondary, transform: [{ translateY }] }]}>
+        <Text style={[styles.title, {color: theme.text}]}>{title}</Text>
         <FlatList
           data={data}
           keyExtractor={(item) => item.value}
@@ -166,7 +171,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     width: '100%',
-    backgroundColor: '#1a1a1a',
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     paddingVertical: 20,
@@ -177,37 +181,31 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 12,
-    color: '#fff',
     textAlign: 'center',
   },
   bookItem: {
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
   },
   selectedBookItem: {
     //backgroundColor: '#4CAF50',
   },
   bookText: {
     fontSize: 16,
-    color: '#fff',
   },
   selectedBookText: {
     fontWeight: 'bold',
-    color: '#fff',
   },
   chapterItem: {
     paddingVertical: 12,
     paddingLeft: 30,
     borderBottomWidth: 1,
-    borderBottomColor: '#222',
   },
   selectedChapterItem: {
     backgroundColor: '#66bb6a',
   },
   chapterText: {
     fontSize: 15,
-    color: '#ddd',
   },
   selectedChapterText: {
     fontWeight: 'bold',

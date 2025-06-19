@@ -1,26 +1,22 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform } from 'react-native';
-
 import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { TabBarBackground } from '@/components/ui/TabBarBackground';
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
 import { useThemeContext } from '../../context/ThemeContext';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-  const theme = useThemeContext();
+  const { theme } = useThemeContext();
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarActiveTintColor: theme.tint,
         headerShown: false,
         headerTitleAlign: 'center',
         tabBarButton: HapticTab,
-        tabBarBackground: () => <TabBarBackground color="black" />,
+        tabBarBackground: () => <TabBarBackground color={theme.tabBarBackground} />,
         tabBarStyle: Platform.select({
           ios: {
             position: 'absolute',
@@ -76,9 +72,9 @@ export default function TabLayout() {
           href: null,
           headerShown: true,
           headerStyle: {
-            backgroundColor: '#1a1a1a', // Dark gray
+            backgroundColor: theme.background,
           },
-          headerTintColor: '#ffffff', // White text
+          headerTintColor: theme.text, // White text
         }}
       />
       <Tabs.Screen
@@ -88,9 +84,9 @@ export default function TabLayout() {
           href: null,
           headerShown: true,
           headerStyle: {
-            backgroundColor: '#1a1a1a', // Dark gray
+            backgroundColor: theme.background,
           },
-          headerTintColor: '#ffffff', // White text
+          headerTintColor: theme.text, // White text
         }}
       />
     </Tabs>

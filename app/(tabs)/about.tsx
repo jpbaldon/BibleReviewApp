@@ -1,14 +1,14 @@
 import { Image, StyleSheet } from 'react-native';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useThemeContext } from '../../context/ThemeContext';
 
 export default function About() {
-  const router = useRouter();
+  const { theme } = useThemeContext();
 
   return (
     <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
+      headerBackgroundColor={ theme.logoBackground }
       headerImage={
         <Image
           source={require('@/assets/images/biblelogo.png')}
@@ -18,16 +18,16 @@ export default function About() {
       }>
 
       <View>
-        <Text style={styles.welcomeText}>Welcome!</Text>
-        <Text style={styles.bodyText}>This app is designed to test your knowledge of each chapter of the Bible.
+        <Text style={[styles.welcomeText, {color: theme.text}]}>Welcome!</Text>
+        <Text style={[styles.bodyText, {color: theme.text}]}>This app is designed to test your knowledge of each chapter of the Bible.
         </Text>
-        <Text style={styles.bodyText}>The Verses tab will give you a verse from one of the Bible books you have enabled.
+        <Text style={[styles.bodyText, {color: theme.text}]}>The Verses tab will give you a verse from one of the Bible books you have enabled.
             Guessing the chapter where the verse is found correctly on your first attempt will earn you points!
         </Text>
-        <Text style={styles.bodyText}>The Summaries tab works the same way, except that you will be given a summary of a
+        <Text style={[styles.bodyText, {color: theme.text}]}>The Summaries tab works the same way, except that you will be given a summary of a
             Bible chapter instead of a verse.
         </Text>
-        <Text style={styles.bodyText}>I hope this app is a fun way to help develop your knowledge of the Scripture!
+        <Text style={[styles.bodyText, {color: theme.text}]}>I hope this app is a fun way to help develop your knowledge of the Scripture!
         </Text>
       </View>
     </ParallaxScrollView>
@@ -36,12 +36,10 @@ export default function About() {
 
 const styles = StyleSheet.create({
   welcomeText: {
-    color: 'white',
     fontSize: 20,
     marginBottom: 15,
   },
   bodyText: {
-    color: 'white',
     fontSize: 18,
     marginBottom: 7,
   },

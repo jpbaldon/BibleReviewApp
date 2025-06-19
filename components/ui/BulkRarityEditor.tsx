@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, Alert } from 'react-native';
 import { Rarity, Chapter } from '../../types';
 import { useBibleBooks } from '../../context/BibleBooksContext'
+import { useThemeContext } from '../../context/ThemeContext';
 
 const rarities: Rarity[] = ['common', 'uncommon', 'rare', 'ultraRare', 'disabled'];
 
@@ -18,6 +19,7 @@ export default function BulkRarityEditor({
   const [applyAllFrom, setApplyAllFrom] = useState(false);
   const [toRarity, setToRarity] = useState<Rarity>('common');
   const { updateBookEnabledStatus } = useBibleBooks();
+  const { theme } = useThemeContext();
 
   const getNextRarity = (rarity: Rarity): Rarity => {
     const index = rarities.indexOf(rarity);
@@ -112,23 +114,23 @@ export default function BulkRarityEditor({
   };
 
   return (
-    <View style={{ backgroundColor: '#1e1e1e', padding: 12, marginBottom: 12, borderRadius: 8 }}>
-      <Text style={{ color: 'white', fontWeight: 'bold', marginBottom: 8 }}>Bulk Rarity Update</Text>
+    <View style={{ backgroundColor: theme.secondary, padding: 12, marginBottom: 12, marginTop: 2, borderRadius: 12 }}>
+      <Text style={{ color: theme.text, fontWeight: 'bold', marginBottom: 8 }}>Bulk Rarity Update</Text>
 
       {/* Chapter range inputs */}
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
-        <Text style={{ color: 'white', marginRight: 8 }}>Chapters</Text>
+        <Text style={{ color: theme.text, marginRight: 8 }}>Chapters</Text>
         <TextInput
-          style={inputStyle}
+          style={[inputStyle, {color: theme.text}]}
           placeholder="From"
           placeholderTextColor="#888"
           keyboardType="number-pad"
           value={fromChapter}
           onChangeText={setFromChapter}
         />
-        <Text style={{ color: 'white', marginHorizontal: 8 }}>to</Text>
+        <Text style={{ color: theme.text, marginHorizontal: 8 }}>to</Text>
         <TextInput
-          style={inputStyle}
+          style={[inputStyle, {color: theme.text}]}
           placeholder="To"
           placeholderTextColor="#888"
           keyboardType="number-pad"
