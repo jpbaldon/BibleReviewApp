@@ -52,15 +52,14 @@ export default function LeaderboardScreen() {
   const renderItem = ({ item }: { item: LeaderboardEntry }) => {
     console.log(item);
     return (
-    <View style={styles.row}>
-        <Text style={[styles.rank, { width: 60, textAlign: 'center' }]}>
+    <View style={[styles.row, {borderBottomColor: theme.horizontalDivider}]}>
+        <Text style={[styles.rank, { width: 60, textAlign: 'center', color: theme.text }]}>
         {item.rank}
         </Text>
         <Text 
         style={[
-            styles.username, 
-            { flex: 1, paddingLeft: 10 },
-            user?.id === item.id && { color: 'yellow', fontWeight: 'bold' }
+            { flex: 1, paddingLeft: 10, color: theme.text },
+            user?.id === item.id && { color: theme.highlightedText, fontWeight: 'bold' }
         ]}
         numberOfLines={1}
         ellipsizeMode="tail"
@@ -96,7 +95,7 @@ export default function LeaderboardScreen() {
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
         
-        <View style={[styles.headerRow, { borderBottomColor: '#FFFFFF' }]}>
+        <View style={[styles.headerRow, { borderBottomColor: theme.horizontalDivider }]}>
           <Text style={[styles.headerText, { width: 60, textAlign: 'center', color: theme.text }]}>Rank</Text>
           <Text style={[styles.headerText, { flex: 1, paddingLeft: 10, color: theme.text }]}>User</Text>
           <Text style={[styles.headerText, { width: 80, textAlign: 'right', color: theme.text }]}>Score</Text>
@@ -136,14 +135,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   rank: {
     fontWeight: 'bold',
-    color: '#FFF',
-  },
-  username: {
-    color: '#FFF',
   },
   score: {
     fontWeight: 'bold',

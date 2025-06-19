@@ -8,6 +8,7 @@ import React, {
 import { useBackend } from '../context/BackendContext';
 import { AppUser, AppSession } from '../types/index';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type AuthContextType = {
   user: AppUser | null;
@@ -49,6 +50,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setSession(session);
         setUser(user);
         setProfile(profile);
+        if(user)
+          await AsyncStorage.setItem('currentUserId', user.id);
 
       } catch (err: any) {
         setError(err instanceof Error ? err.message : String(err));

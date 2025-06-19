@@ -4,6 +4,7 @@ import { MIN_CHAPTERS_ENABLED_FOR_SCORE, useBibleBooks } from '@/context/BibleBo
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BibleBook, Chapter } from '../../types';
 import BulkRarityEditor from '../../components/ui/BulkRarityEditor'
+import { useThemeContext } from '../../context/ThemeContext';
 
 
 const rarities: ('common' | 'uncommon' | 'rare' | 'ultraRare' | 'disabled')[] = [
@@ -27,6 +28,7 @@ export default function EnabledBooksScreen() {
   } = useBibleBooks();
   const [expandedBook, setExpandedBook] = useState<string | null>(null);
   const [longPressActive, setLongPressActive] = useState(false);
+  const { theme } = useThemeContext();
 
   useEffect(() => {
     if (enabledChapterCount < MIN_CHAPTERS_ENABLED_FOR_SCORE && scoreEnabledFlag) {
@@ -107,7 +109,7 @@ export default function EnabledBooksScreen() {
       style={styles.chapterItem}
       onPress={() => handleRarityChange(bookName, chapter.chapter, chapter.rarity || 'common')}
     >
-      <Text style={styles.chapterText}>Chapter {chapter.chapter}</Text>
+      <Text style={[styles.chapterText, {color: theme.text}]}>Chapter {chapter.chapter}</Text>
       <View style={[styles.rarityBadge, styles[`rarity_${chapter.rarity || 'common'}`]]}>
         <Text style={styles.rarityText}>{chapter.rarity === 'ultraRare' ? 'ultra-rare' : (chapter.rarity || 'common')}</Text>
       </View>
@@ -122,17 +124,18 @@ export default function EnabledBooksScreen() {
     renderChapter: (bookName: string, chapter: Chapter) => JSX.Element;
   }) => {
     return (
-      <View style={styles.bookContainer}>
+      <View style={[styles.bookContainer, {backgroundColor: theme.background + '#000000ff'}]}>
         <Pressable
           onPress={onPress}
           onLongPress={onLongPress}
           delayLongPress={300}
           style={[
             styles.bookItem,
+            {backgroundColor: theme.secondary},
             item.enabled ? styles.enabled : styles.disabled,
           ]}
         >
-          <Text style={styles.bookText}>{item.bookName}</Text>
+          <Text style={[styles.bookText, {color: theme.text}]}>{item.bookName}</Text>
           <View
             style={[
               styles.statusIndicator,
@@ -173,7 +176,7 @@ export default function EnabledBooksScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, {backgroundColor: theme.background}]}>
         <ActivityIndicator size="large" color="#00e676" />
         <Text style={styles.loadingText}>Loading books...</Text>
       </SafeAreaView>
@@ -184,8 +187,8 @@ export default function EnabledBooksScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.subHeaderText}>
+      <View style={[styles.header, {borderBottomColor: theme.horizontalDivider}]}>
+        <Text style={[styles.subHeaderText, {color: theme.text}]}>
           {totalEnabledBooks} books enabled — {enabledChapterCount} chapters enabled
         </Text>
       </View>
@@ -204,16 +207,13 @@ export default function EnabledBooksScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#121212',
   },
   header: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#333',
   },
   subHeaderText: {
     fontSize: 16,
-    color: '#ccc',
     marginTop: 4,
   },
   listContent: {
@@ -222,7 +222,6 @@ const styles = StyleSheet.create({
   bookItem: {
     padding: 12,
     borderRadius: 10,
-    backgroundColor: '#2e2e2e',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
@@ -244,7 +243,6 @@ const styles = StyleSheet.create({
   },
   bookText: {
     fontSize: 16,
-    color: '#eee',
   },
   statusIndicator: {
     width: 12,
@@ -278,7 +276,6 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   chapterText: {
-    color: '#ccc',
     fontSize: 14,
   },
   rarityBadge: {

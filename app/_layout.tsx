@@ -13,6 +13,7 @@ import { useSegments, useRouter } from 'expo-router';
 import { ServicesProvider } from '../context/ServicesContext';
 import { BackendProvider } from '../context/BackendContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { ThemeLoader } from '../context/ThemeLoader';
 
 export default function Layout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -59,6 +60,7 @@ function InnerApp() {
         <BibleBooksProvider>
           <ScoreProvider>
             <ThemeProvider>
+              <ThemeLoader userId={user.id} />
               <LayoutContent />
             </ThemeProvider>
           </ScoreProvider>
