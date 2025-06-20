@@ -50,6 +50,7 @@ Join our community of developers creating universal apps.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
 
 ## Bible App Recent Changes
+- "Hold to Try Another" option added to the Accounts Screen
 - Refactor of colors and "light" mode added (toggle switch added to Accounts page)
 - Increased height on the content container in the second and third tabs (since feedback is now an overlay)
 - Context buttons that appear after correct answer is shown to allow user to navigate to next or previous chapter
