@@ -14,6 +14,7 @@ import { ServicesProvider } from '../context/ServicesContext';
 import { BackendProvider } from '../context/BackendContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeLoader } from '../context/ThemeLoader';
+import { SettingsProvider } from '../context/SettingsContext';
 
 export default function Layout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -60,8 +61,10 @@ function InnerApp() {
         <BibleBooksProvider>
           <ScoreProvider>
             <ThemeProvider>
-              <ThemeLoader userId={user.id} />
-              <LayoutContent />
+              <SettingsProvider userId={user.id}>
+                <ThemeLoader userId={user.id} />
+                <LayoutContent />
+              </SettingsProvider>
             </ThemeProvider>
           </ScoreProvider>
         </BibleBooksProvider>
