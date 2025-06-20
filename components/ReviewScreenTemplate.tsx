@@ -19,6 +19,8 @@ import { SimpleBottomSheet } from './SimpleBottomSheet'; // Adjust path if neede
 import ConfettiCannon from 'react-native-confetti-cannon'
 import { Chapter } from '../types';
 import { useThemeContext } from '../context/ThemeContext';
+import { useSettings } from '../context/SettingsContext';
+import { LongPressButton } from '../components/ui/LongPressButton';
 
 interface ContextVerse {
   verseNumber: number;
@@ -70,6 +72,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   const [isSheetVisible, setIsSheetVisible] = useState(false);
   const [showConfetti, setShowConfetti] = React.useState(false);
   const shakeAnim = useRef(new Animated.Value(0)).current;
+  const { holdToTryAnother } = useSettings();
   const { theme } = useThemeContext();
 
   const {
@@ -346,9 +349,13 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
         )}
 
         <View style={styles.bottomButtonContainer}>
-          <TouchableOpacity style={[styles.tryAnotherButton, {backgroundColor: theme.neutralButton}]} onPress={loadNewItem}>
-            <Text style={styles.tryAnotherButtonText}>Try Another</Text>
-          </TouchableOpacity>
+          {holdToTryAnother ? (
+            <LongPressButton onLongPress={loadNewItem} label="Try Another" />
+          ) : (
+            <TouchableOpacity onPress={loadNewItem} style={[styles.tryAnotherButton, {backgroundColor: theme.neutralButton}]}>
+              <Text style={styles.tryAnotherButtonText}>Try Another</Text>
+            </TouchableOpacity>
+          ) }
         </View>
         
         {showConfetti && (
