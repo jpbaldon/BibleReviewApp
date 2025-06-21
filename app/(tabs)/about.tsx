@@ -22,7 +22,7 @@ export default function About() {
         <Text style={[styles.bodyText, {color: theme.text}]}>This app is designed to test your knowledge of each chapter of the Bible.
         </Text>
         <Text style={[styles.bodyText, {color: theme.text}]}>The Verses tab will give you a verse from one of the Bible books you have enabled.
-            Guessing the chapter where the verse is found correctly on your first attempt will earn you points!
+            Guessing the chapter where the verse is found correctly within three attempts earns you points. The fewer attempts you use, the more points you earn!
         </Text>
         <Text style={[styles.bodyText, {color: theme.text}]}>The Summaries tab works the same way, except that you will be given a summary of a
             Bible chapter instead of a verse.

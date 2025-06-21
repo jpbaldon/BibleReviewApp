@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import { Chapter } from '../types';
 import { useThemeContext } from '../context/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
 import { LongPressButton } from '../components/ui/LongPressButton';
+import { MIN_CHAPTERS_ENABLED_FOR_SCORE } from '../context/BibleBooksContext';
 
 interface ContextVerse {
   verseNumber: number;
@@ -86,6 +87,16 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   const [enabledBooksCount, setEnabledBooksCount] = useState(
     bibleBooks.filter(book => book.enabled).length
   );
+
+  const isScoreEnabled = useMemo(() => {
+    const totalEnabledChapters = bibleBooks.reduce((sum, b) => {
+      const chapterCount = b.enabled
+        ? (b.chapters?.filter((ch) => ch.rarity !== 'disabled').length ?? 0)
+        : 0;
+      return sum + chapterCount;
+    }, 0);
+    return totalEnabledChapters >= MIN_CHAPTERS_ENABLED_FOR_SCORE;
+  }, [bibleBooks]);
 
   const enabledBooks = bibleBooks.filter((book) => book.enabled);
 
@@ -171,9 +182,10 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
 
     if (isCorrect) {
       let pointsObtained = 0;
-      if(scoreEnabledFlag) {
+      if(isScoreEnabled) {
         switch(attempts) {
           case 0:
+            console.log('scoreEnabledFlag:', scoreEnabledFlag);
             pointsObtained = points;
             setShowConfetti(true);
             break;
