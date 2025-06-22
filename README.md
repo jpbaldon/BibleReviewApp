@@ -68,3 +68,9 @@ Join our community of developers creating universal apps.
 ## Bible App Upcoming Changes
 - Potential rework of correct answer feedback (perhaps use confetti more sparingly)
 - Forgot password system?
+
+## Credits for Externally Produced Assets
+- Hompage Bible Image: http://www.publicdomainfiles.com/show_file.php?id=13932879013386
+- Feedback Audio:
+  - Dat's Right! by Beetlemuse -- https://freesound.org/s/587252/ -- License: Attribution 4.0
+  - Dat's Wrong! by Beetlemuse -- https://freesound.org/s/587253/ -- License: Attribution 4.0
