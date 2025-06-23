@@ -294,7 +294,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
                 >
                   <Text
                     style={[
-                      isNextChapterDisabled() ? styles.disabledLinkText : styles.linkText,
+                      isNextChapterDisabled() ? [styles.disabledLinkText, {color: theme.disabledLinkText}] : [styles.linkText, {color: theme.linkText}],
                       { marginRight: 5 }
                     ]}
                   >
