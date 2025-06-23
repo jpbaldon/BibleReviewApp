@@ -29,6 +29,9 @@ export default function EnabledBooksScreen() {
   const [expandedBook, setExpandedBook] = useState<string | null>(null);
   const [longPressActive, setLongPressActive] = useState(false);
   const { theme } = useThemeContext();
+  const [bookGrammar, setBookGrammar] = useState('book');
+  const [chapterGrammar, setChapterGrammar] = useState('chapter');
+  const totalEnabledBooks = bibleBooks.filter(b => b.enabled).length;
 
   useEffect(() => {
     if (enabledChapterCount < MIN_CHAPTERS_ENABLED_FOR_SCORE && scoreEnabledFlag) {
@@ -45,6 +48,17 @@ export default function EnabledBooksScreen() {
       setScoreEnabledFlag(true);
     }
   }, [enabledChapterCount, scoreEnabledFlag]);
+
+  useEffect(() => {
+    if(totalEnabledBooks === 1)
+      setBookGrammar('book');
+    else
+      setBookGrammar('books');
+    if(enabledChapterCount === 1)
+      setChapterGrammar('chapter');
+    else
+      setChapterGrammar('chapters')
+  }, [enabledChapterCount, totalEnabledBooks]);
 
   const handlePress = useCallback(async (bookName: string) => {
     // Skip if this was a long press
@@ -72,19 +86,6 @@ export default function EnabledBooksScreen() {
       setExpandedBook(prev => prev === bookName ? null : bookName);
     }
   }, [bibleBooks]);
-
-  const handleToggle = useCallback(async (bookName: string) => {
-    try {
-      await toggleBookEnabled(bookName);
-      // Collapse if we just disabled the expanded book
-      if (expandedBook === bookName) {
-        setExpandedBook(null);
-      }
-    } catch (err) {
-      console.error('Toggle failed:', err);
-      Alert.alert('Error', 'Failed to update book status.');
-    }
-  }, [toggleBookEnabled, expandedBook]);
 
   const handleRarityChange = async (
     bookName: string,
@@ -183,13 +184,11 @@ export default function EnabledBooksScreen() {
     );
   }
 
-  const totalEnabledBooks = bibleBooks.filter(b => b.enabled).length;
-
   return (
     <View style={styles.container}>
       <View style={[styles.header, {borderBottomColor: theme.horizontalDivider}]}>
         <Text style={[styles.subHeaderText, {color: theme.text}]}>
-          {totalEnabledBooks} books enabled — {enabledChapterCount} chapters enabled
+          {totalEnabledBooks} {bookGrammar} enabled — {enabledChapterCount} {chapterGrammar} enabled
         </Text>
       </View>
 
