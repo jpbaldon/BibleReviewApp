@@ -38,3 +38,6 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+# Python Data Manipulation Scripts
+data_manip_scripts/
