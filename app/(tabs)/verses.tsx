@@ -4,6 +4,7 @@ import { ReviewScreenTemplate } from '../../components/ReviewScreenTemplate';
 import { useBibleBooks } from '../../context/BibleBooksContext';
 import { getWeightedChapters, selectWeightedChapter } from '@/utils/randomChapter';
 import { useThemeContext } from '../../context/ThemeContext';
+import { DuplicateLocation } from '../../types';
 
 export default function Verses() {
     const { bibleBooks } = useBibleBooks();
@@ -33,12 +34,28 @@ export default function Verses() {
       chapter: chapterIndex,
       verseNumber: verse.verseNumber,
       text: verse.text,
+      duplicateLocations: verse.duplicateLocations,
       context: chapter.verses,
     };
   };
 
-  const checkCorrectness = (book: string, chapter: string, item: any) =>
-    book === item.book && parseInt(chapter, 10) === item.chapter;
+  const checkCorrectness = (book: string, chapter: string, item: any) => {
+    const inputBook = book.trim();
+    const inputChapter = parseInt(chapter, 10);
+
+    console.log(item);
+
+    if(inputBook === item.book && inputChapter === item.chapter)
+      return true;
+
+    if(item.duplicateLocations && Array.isArray(item.duplicateLocations)) {
+      return item.duplicateLocations.some((loc: DuplicateLocation) => 
+        loc.Book === inputBook && loc.Chapter === inputChapter
+      );
+    }
+
+    return false;
+  }
 
   const renderQuestion = (item: any, showAnswer: boolean) => {
     if (showAnswer) {
