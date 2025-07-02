@@ -1,15 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { ReviewScreenTemplate } from '../../components/ReviewScreenTemplate';
 import { useBibleBooks } from '../../context/BibleBooksContext';
 import { getWeightedChapters, selectWeightedChapter } from '@/utils/randomChapter';
 import { useThemeContext } from '../../context/ThemeContext';
+import { DuplicateLocation } from '../../types';
 
 export default function Verses() {
     const { bibleBooks } = useBibleBooks();
   
     const enabledBooks = bibleBooks.filter(b => b.enabled && b.chapters && b.chapters.length > 0);
     const { theme } = useThemeContext();
+
   
     // If no enabled books with chapters, show loading or info
     if (enabledBooks.length === 0) {
@@ -33,22 +35,61 @@ export default function Verses() {
       chapter: chapterIndex,
       verseNumber: verse.verseNumber,
       text: verse.text,
+      duplicateLocations: verse.duplicateLocations,
       context: chapter.verses,
     };
   };
 
-  const checkCorrectness = (book: string, chapter: string, item: any) =>
-    book === item.book && parseInt(chapter, 10) === item.chapter;
+  const getRandomItem = async () => {
+    const item = await getRandomVerse();
+    return {
+      ...item,
+      originalBook: item.book,
+      originalChapter: item.chapter,
+      originalVerseNumber: item.verseNumber,
+      originalDuplicateLocations: item.duplicateLocations ?? [],
+    };
+  };
+
+  const checkCorrectness = (book: string, chapter: string, item: any) => {
+    const inputBook = book.trim();
+    const inputChapter = parseInt(chapter, 10);
+
+    console.log(item);
+
+    if(inputBook === item.book && inputChapter === item.chapter)
+      return true;
+
+    if(item.duplicateLocations && Array.isArray(item.duplicateLocations)) {
+      return item.duplicateLocations.some((loc: DuplicateLocation) => 
+        loc.Book === inputBook && loc.Chapter === inputChapter
+      );
+    }
+
+    return false;
+  }
 
   const renderQuestion = (item: any, showAnswer: boolean) => {
     if (showAnswer) {
+      const isOriginalChapter = item.book === item.originalBook && item.chapter === item.originalChapter;
       return (
         <View>
+          {isOriginalChapter && Array.isArray(item.originalDuplicateLocations) && item.originalDuplicateLocations.length ? (
+            <Text style={{color: theme.text}}>The given verse also appears in:</Text>
+          ) : null}
+          {isOriginalChapter && Array.isArray(item.originalDuplicateLocations) && item.originalDuplicateLocations.map((dl: any, index: number) => (
+            <Text
+              key={`${dl.Book}-${dl.Chapter}-${dl.Verse}-${index}`}
+              style={{color: theme.text, marginBottom: 5}}
+            >
+              {dl.Book} {dl.Chapter}:{dl.Verse}
+            </Text>
+          ))}
           <Text style={{ fontWeight: 'bold', fontSize: 22, color: theme.text }}>{item.book} {item.chapter}</Text>
           {item.context.map((v: any) => (
             <Text
               key={v.verseNumber}
-              style={{ color: v.verseNumber === item.verseNumber ? theme.highlightedText : theme.text }}
+              style={{ color: isOriginalChapter && v.verseNumber === item.originalVerseNumber ? theme.highlightedText : theme.text }}
             >
               <Text style={{ fontWeight: 'bold' }}>{v.verseNumber} </Text>
               {v.text}
@@ -67,9 +108,10 @@ export default function Verses() {
     <ReviewScreenTemplate
       title="Verse Review"
       points={10}
-      getRandomItem={getRandomVerse}
+      getRandomItem={getRandomItem}
       checkCorrectness={checkCorrectness}
-      renderQuestion={renderQuestion}
+      renderQuestion={(item, showAnswer) => 
+        renderQuestion(item, showAnswer)}
     />
   );
 }

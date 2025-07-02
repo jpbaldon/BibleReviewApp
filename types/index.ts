@@ -3,6 +3,7 @@ export type Rarity = 'common' | 'uncommon' | 'rare' | 'ultraRare' | 'disabled';
 export interface Verse {
   verseNumber: number;
   text: string;
+  duplicateLocations: DuplicateLocation[];
 }
 
 export interface Chapter {
@@ -17,6 +18,12 @@ export interface BibleBook {
   enabled: boolean;
   chapters?: Chapter[];
 }
+
+export type DuplicateLocation = {
+  Book: string;
+  Chapter: number;
+  Verse: number;
+};
 
 export type AppUser = {
   id: string;

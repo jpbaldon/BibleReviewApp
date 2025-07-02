@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo, useRef } from 'react';
 import * as SQLite from 'expo-sqlite';
 import * as FileSystem from 'expo-file-system';
 import { ASV } from '@/data/asv';
@@ -37,7 +37,7 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
   const [bibleBooks, setBibleBooks] = useState<BibleBook[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [db, setDb] = useState<SQLite.SQLiteDatabase | null>(null);
+  const dbRef = useRef<SQLite.SQLiteDatabase | null>(null);
   const { user } = useAuth();
 
   const enabledChapterCount = bibleBooks.reduce((total, book) => {
@@ -148,6 +148,7 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
             verses: ch.Verses.map(v => ({
               verseNumber: v.VerseNumber,
               text: v.Text,
+              duplicateLocations: v.duplicateLocations ?? [],
             })),
             summary: ch.Summary,
             rarity: match?.rarity ?? 'common',
@@ -180,7 +181,7 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
         if(!user?.id) return;
         const database = await openDatabase();
         if (mounted) {
-          setDb(database);
+          dbRef.current = database;
           await initializeDatabase(database);
         }
       } catch (err) {
@@ -199,11 +200,11 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
   }, [openDatabase, initializeDatabase, user?.id]);
 
   const refreshBooks = useCallback(async () => {
-    if (!db) return;
+    if (!dbRef.current) return;
 
     try {
       setIsLoading(true);
-      await initializeDatabase(db); // Reuse the full loading logic
+      await initializeDatabase(dbRef.current); // Reuse the full loading logic
       setError(null);
     } catch (err) {
       console.error('Refresh failed:', err);
@@ -211,13 +212,14 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  }, [db, initializeDatabase]);
+  }, [dbRef.current, initializeDatabase]);
 
   const toggleBookEnabled = useCallback(async (bookName: string) => {
-  if (!db) return;
+  if (!dbRef.current) return;
 
   try {
-    await db.runAsync(
+    if(!dbRef.current) return;
+    await dbRef.current.runAsync(
       'UPDATE BibleBooks SET Enabled = NOT Enabled WHERE Book = ?;',
       [bookName]
     );
@@ -234,11 +236,11 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     console.error('Toggle failed:', err);
     setError(`Toggle failed: ${err instanceof Error ? err.message : String(err)}`);
   }
-}, [db]);
+}, [dbRef.current]);
 
   // Automatically disables a book if no chapters in the book are enabled (prevents awkwardness on other tabs when the user is being)
   const updateBookEnabledStatus = useCallback(async (bookName: string) => {
-    if (!db) return;
+    if (!dbRef.current) return;
 
     try {
       const asvBook = ASV.Bible.find(b => b.Book === bookName);
@@ -246,7 +248,7 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
 
       const totalChapters = asvBook.Chapters.map(ch => ch.Chapter);
 
-      const chapters = await db.getAllAsync<{Chapter: number, Rarity: Rarity}>(
+      const chapters = await dbRef.current.getAllAsync<{Chapter: number, Rarity: Rarity}>(
         'SELECT Chapter, Rarity FROM ChapterRarities WHERE Book = ?;',
         [bookName]
       );
@@ -263,14 +265,14 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
 
 
       // 2. Get the book's current enabled status
-      const bookStatus = await db.getFirstAsync<{Enabled: number}>(
+      const bookStatus = await dbRef.current.getFirstAsync<{Enabled: number}>(
         'SELECT Enabled FROM BibleBooks WHERE Book = ?;',
         [bookName]
       );
 
       if (allChaptersDisabled && bookStatus?.Enabled === 1) {
         // 4. Disable the book in database
-        await db.runAsync(
+        await dbRef.current.runAsync(
           'UPDATE BibleBooks SET Enabled = ? WHERE Book = ?;',
           [0, bookName]
         );
@@ -278,7 +280,7 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
         // 5. Reset all chapters to 'common'
         await Promise.all(
           chapters.map(chapter =>
-            db.runAsync(
+            dbRef.current?.runAsync(
               'UPDATE ChapterRarities SET Rarity = ? WHERE Book = ? AND Chapter = ?;',
               ['common', bookName, chapter.Chapter]
             )
@@ -303,7 +305,7 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     } catch (err) {
       console.error('Failed to update book status:', err);
     }
-  }, [db]);
+  }, [dbRef.current]);
 
   const updateChapterRarity = useCallback(async (
     bookName: string,
@@ -311,11 +313,11 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     rarity: Rarity,
     shouldUpdateBook = true
   ) => {
-    if (!db) return;
+    if (!dbRef.current) return;
 
     try {
       // Update the chapter rarity in database
-      await db.runAsync(
+      await dbRef.current.runAsync(
         'INSERT OR REPLACE INTO ChapterRarities (Book, Chapter, Rarity) VALUES (?, ?, ?);',
         [bookName, chapterNum, rarity]
       );
@@ -343,7 +345,7 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     } catch (err) {
       console.error('Failed to update rarity:', err);
     }
-  }, [db, updateBookEnabledStatus]);
+  }, [dbRef.current, updateBookEnabledStatus]);
 
   const contextValue = useMemo(() => ({
     bibleBooks,
