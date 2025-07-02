@@ -17,7 +17,7 @@ import { Audio } from 'expo-av';
 import { ASV } from '@/data/asv';
 import { SimpleBottomSheet } from './SimpleBottomSheet'; // Adjust path if needed
 import ConfettiCannon from 'react-native-confetti-cannon'
-import { Chapter } from '../types';
+import { Chapter, DuplicateLocation } from '../types';
 import { useThemeContext } from '../context/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
 import { LongPressButton } from '../components/ui/LongPressButton';
@@ -33,6 +33,11 @@ export interface ReviewItem {
   chapter: number;
   text: string;
   context: ContextVerse[];
+  duplicateLocations: DuplicateLocation[];
+  originalBook?: string;
+  originalChapter?: number;
+  originalVerseNumber?: number;
+  originalDuplicateLocations?: DuplicateLocation[];
 }
 
 interface ReviewScreenTemplateProps {
@@ -138,17 +143,22 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
     }
   };
 
-  const loadChapter = (bookName: string, chapterNumber: number) => {
+  const loadChapter = (bookName: string, chapterNumber: number, duplicateLocations?: DuplicateLocation[], originalBook?: string, originalChapter?: number, originalVerseNumber?: number, originalDuplicateLocations?: DuplicateLocation[]) => {
     const book = bibleBooks.find(b => b.bookName === bookName);
     const chapter = book?.chapters?.find(c => c.chapter === chapterNumber);
     if(!chapter) return;
 
-    setItem({
+    setItem(prevItem => ({
       book: bookName,
       chapter: chapter.chapter,
       text: chapter.summary ?? '',
       context: chapter.verses,
-    });
+      duplicateLocations: duplicateLocations ?? [],
+      originalBook: originalBook ?? prevItem?.originalBook ?? bookName,
+      originalChapter: originalChapter ?? prevItem?.originalChapter ?? chapter.chapter,
+      originalVerseNumber: originalVerseNumber ?? prevItem?.originalVerseNumber,
+      originalDuplicateLocations: originalDuplicateLocations ?? prevItem?.originalDuplicateLocations ?? [],
+    }));
     setCurrentChapter(chapter);
     setCurrentBookName(bookName);
     setShowAnswer(true);
@@ -157,7 +167,14 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
 
   const goToNextChapter = () => {
     if(!currentBookName || !currentChapter) return;
-    loadChapter(currentBookName, currentChapter.chapter + 1);
+    loadChapter(currentBookName, 
+      currentChapter.chapter + 1,
+      undefined,
+      item?.originalBook,
+      item?.originalChapter,
+      item?.originalVerseNumber,
+      item?.originalDuplicateLocations,
+    );
   };
 
   const isNextChapterDisabled = () => {

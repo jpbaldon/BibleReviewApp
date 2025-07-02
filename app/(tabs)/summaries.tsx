@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { ReviewScreenTemplate, ReviewItem } from '@/components/ReviewScreenTemplate';
 import { useBibleBooks } from '../../context/BibleBooksContext';
@@ -7,12 +7,9 @@ import { useThemeContext } from '../../context/ThemeContext';
 
 export default function Summaries() {
   const { bibleBooks } = useBibleBooks();
+  const { theme } = useThemeContext();
 
   const enabledBooks = bibleBooks.filter(b => b.enabled && b.chapters && b.chapters.length > 0);
-
-  const [originalBook, setOriginalBook] = useState<string | null>(null);
-  const [originalChapter, setOriginalChapter] = useState<number | null>(null);
-  const { theme } = useThemeContext();
 
   // If no enabled books with chapters, show loading or info
   if (enabledBooks.length === 0) {
@@ -25,42 +22,48 @@ export default function Summaries() {
   }
 
   const getRandomSummary = async () => {
-    const weightedChapters = getWeightedChapters(enabledBooks);
+    try {
+      const weightedChapters = getWeightedChapters(enabledBooks);
+      console.log('Weighted chapters count:', weightedChapters.length);
 
-    if(weightedChapters.length === 0) throw new Error('No eligible chapters.');
+      if (weightedChapters.length === 0) {
+        throw new Error('No eligible chapters.');
+      }
 
-    const { book, chapter, chapterIndex } = selectWeightedChapter(weightedChapters);
+      const { book, chapter, chapterIndex } = selectWeightedChapter(weightedChapters);
 
-    return {
-      book,
-      chapter: chapterIndex,
-      text: chapter.summary ?? "No summary available",
-      context: chapter.verses,
-    };
+      console.log('Selected chapter:', book, chapterIndex);
+
+      return {
+        book,
+        chapter: chapterIndex,
+        text: chapter.summary ?? "No summary available",
+        context: chapter.verses,
+        duplicateLocations: [],
+        originalBook: book,
+        originalChapter: chapterIndex,
+      };
+    } catch (error) {
+      console.error('Error in getRandomSummary:', error);
+      return null;  // Return null so loadNewItem can handle it gracefully
+    }
   };
 
-  // Update original chapter and book when item is fetched
   const getRandomItem = async () => {
     const item = await getRandomSummary();
-    setOriginalBook(item.book);
-    setOriginalChapter(item.chapter);
+    console.log('getRandomItem returned:', item);
     return item;
   };
 
   const checkCorrectness = (book: string, chapter: string, item: ReviewItem) =>
     book === item.book && parseInt(chapter, 10) === item.chapter;
 
-  const renderQuestion = (item: ReviewItem, showAnswer: boolean, originalBook: string, originalChapter: number) => {
-
-    if (!originalBook || originalChapter === null) {
-      return <Text style={{ color: theme.text }}>Loading Question...</Text>;
-    }
-
-    const isOriginalChapter = item.book === originalBook && item.chapter === originalChapter;
+  const renderQuestion = (item: ReviewItem, showAnswer: boolean) => {
+    const isOriginalChapter = item.book === item.originalBook && item.chapter === item.originalChapter;
 
     return (
       <View>
-        {/* Only show the summary if the chapter has not navigated away from the original chapter */}
+        {/* Only show summary if still on original chapter */}
         {isOriginalChapter && (
           <Text style={{ fontSize: 18, fontStyle: 'italic', color: showAnswer ? theme.highlightedText : theme.text, marginBottom: 5 }}>
             {item.text}
@@ -89,8 +92,8 @@ export default function Summaries() {
       points={5}
       getRandomItem={getRandomItem}
       checkCorrectness={checkCorrectness}
-      renderQuestion={(item, showAnswer) => 
-        renderQuestion(item, showAnswer, originalBook ?? '', originalChapter ?? 0)
+      renderQuestion={(item, showAnswer) =>
+        renderQuestion(item, showAnswer)
       }
     />
   );

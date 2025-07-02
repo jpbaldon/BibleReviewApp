@@ -10,9 +10,11 @@ export default {
     },
     scheme: "biblereviewapp",
     plugins: ["expo-router"],
+    version: "0.2.0-beta",
     android: {
       package: "com.jbaldon.biblereviewapp",
       edgeToEdge: true,
+      versionCode: 1,
     },
     runtimeVersion: {
       policy: 'sdkVersion',
