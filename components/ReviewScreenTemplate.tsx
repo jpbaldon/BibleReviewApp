@@ -1,15 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-  Dimensions,
-  Animated,
-  Vibration,
-  Alert
-} from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Animated, Vibration, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBibleBooks } from '../context/BibleBooksContext';
 import { useScore } from '../context/ScoreContext';
@@ -324,8 +314,8 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
         </View>
 
         {item ? (
-          <View style={[styles.verseContainer, { height: verseContainerHeight, backgroundColor: theme.secondary }]}>
-            <ScrollView>{renderQuestion(item, showAnswer)}</ScrollView>
+          <View style={[styles.verseContainer, { height: verseContainerHeight, backgroundColor: theme.secondary, shadowColor: theme.text }]}>
+            <ScrollView contentContainerStyle={{paddingHorizontal: 8}}>{renderQuestion(item, showAnswer)}</ScrollView>
             {showAnswer && currentBookName && currentChapter && (
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10}}>
                 <TouchableOpacity
@@ -334,8 +324,6 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
                 >
                   <View style={{ flexDirection: 'row', 
                         alignItems: 'center',
-                        borderBottomWidth: currentChapter.chapter === 1 ? 0 : 1,
-                        borderBottomColor: currentChapter.chapter === 1 ? theme.disabledLinkText : theme.linkText,
                          }}>
                     <Icon
                       name="chevron-back"
@@ -347,7 +335,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
                     />
                     <Text
                       style={[
-                        currentChapter.chapter === 1 ? [styles.disabledLinkText, { color: theme.disabledLinkText }] : [styles.linkText, { color: theme.linkText }],
+                        currentChapter.chapter === 1 ? [styles.disabledLinkText, { color: theme.disabledLinkText }] : [styles.linkText, { color: theme.linkText, textDecorationLine: 'underline' }],
                       ]}
                     >
                       Prev
@@ -360,12 +348,10 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
                 >
                   <View style={{ flexDirection: 'row', 
                         alignItems: 'center',
-                        borderBottomWidth: isNextChapterDisabled() ? 0 : 1,
-                        borderBottomColor: isNextChapterDisabled() ? theme.disabledLinkText : theme.linkText,
                          }}>
                     <Text
                       style={[
-                        isNextChapterDisabled() ? [styles.disabledLinkText, { color: theme.disabledLinkText }] : [styles.linkText, { color: theme.linkText }],
+                        isNextChapterDisabled() ? [styles.disabledLinkText, { color: theme.disabledLinkText }] : [styles.linkText, { color: theme.linkText, textDecorationLine: 'underline' }],
                       ]}
                     >
                       Next
@@ -389,9 +375,13 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
 
         <View style={styles.inputContainer}>
             <TouchableOpacity 
-              style={[styles.dropdown, {backgroundColor: theme.secondary}]} 
+              style={[styles.dropdown, {backgroundColor: !showAnswer ? theme.secondary : '#A0A0A0', borderColor: !showAnswer ? theme.text : theme.disabledButtonText, shadowColor: theme.text}]}
+              disabled={showAnswer} 
               onPress={() => {
-                if(enabledBooks.length === 1) {
+                if(showAnswer) {
+
+                }
+                else if(enabledBooks.length === 1) {
                   const singleBook = enabledBooks[0];
                   setSelectedBook(singleBook.bookName);
                   setIsSheetVisible(true);
@@ -400,9 +390,10 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
                 }
               }}
             >
-                <Text style={[styles.selectedTextStyle, {color: theme.text}]}>
+                <Text style={[styles.selectedTextStyle, {color: !showAnswer ? theme.text : theme.disabledButtonText}]}>
                     {selectedBook && selectedChapter ? `${selectedBook} - Chapter ${selectedChapter}` : 'Select Book & Chapter'}
                 </Text>
+                <Icon name="chevron-down-outline" size={20} color={!showAnswer ? theme.text : theme.disabledButtonText} />
             </TouchableOpacity>
 
             <SimpleBottomSheet
@@ -419,17 +410,15 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
             />
         </View>
 
-        {!showAnswer && showSubmit && (
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity style={[styles.submitButton, !selectedChapter && styles.submitButtonDisabled]} onPress={checkGuess} disabled={!selectedChapter}>
-              <Text style={[styles.submitButtonText, !selectedChapter && {color: theme.disabledButtonText}]}>Submit Guess</Text>
-            </TouchableOpacity>
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity style={[styles.submitButton, (!selectedChapter || showAnswer) && styles.buttonDisabled, {shadowColor: theme.text}]} onPress={checkGuess} disabled={!selectedChapter || showAnswer}>
+            <Text style={[styles.submitButtonText, (!selectedChapter || showAnswer) && {color: theme.disabledButtonText}]}>Submit Guess</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity style={styles.forfeitButton} onPress={forfeit}>
-              <Text style={styles.forfeitButtonText}>Give Up</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+          <TouchableOpacity style={[styles.forfeitButton, showAnswer && styles.buttonDisabled, {shadowColor: theme.text}]} onPress={forfeit} disabled={showAnswer}>
+            <Text style={[styles.forfeitButtonText, showAnswer && {color: theme.disabledButtonText}]}>Give Up</Text>
+          </TouchableOpacity>
+        </View>
 
         {showFeedback && (
           <View style={[styles.feedbackOverlay]}>
@@ -443,7 +432,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
           {holdToTryAnother ? (
             <LongPressButton onLongPress={loadNewItem} label="Try Another" />
           ) : (
-            <TouchableOpacity onPress={loadNewItem} style={[styles.tryAnotherButton, {backgroundColor: theme.neutralButton}]}>
+            <TouchableOpacity onPress={loadNewItem} style={[styles.tryAnotherButton, {backgroundColor: theme.neutralButton, shadowColor: theme.text}]}>
               <Text style={styles.tryAnotherButtonText}>Try Another</Text>
             </TouchableOpacity>
           ) }
@@ -482,8 +471,12 @@ const styles = StyleSheet.create({
   scoreValue: { fontSize: 16, fontWeight: 'bold' },
   verseContainer: {
     padding: 10,
-    borderRadius: 10,
+    borderRadius: 8,
     marginBottom: 20,
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -493,46 +486,54 @@ const styles = StyleSheet.create({
   dropdown: {
     flex: 1,
     marginHorizontal: 5,
+    borderWidth: 1,
     borderRadius: 8,
     padding: 12,
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 14,
+    elevation: 2,
   },
   selectedTextStyle: { fontSize: 16 },
   submitButton: {
     flex: 1,
     backgroundColor: '#4CAF50',
-    padding: 12,
-    borderRadius: 5,
+    paddingVertical: 14,
+    borderRadius: 8,
     alignItems: 'center',
-    marginRight: 5,
+    elevation: 2,
   },
-  submitButtonText: { color: '#fff', fontWeight: 'bold' },
+  submitButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   forfeitButton: {
     flex: 1,
     backgroundColor: '#FF0000',
-    padding: 12,
-    borderRadius: 5,
+    borderRadius: 8,
+    paddingVertical: 14,
     alignItems: 'center',
-    marginLeft: 5,
+    marginLeft: 10,
+    elevation: 2,
   },
-  forfeitButtonText: { color: '#fff', fontWeight: 'bold' },
+  forfeitButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   tryAnotherButton: {
     marginTop: 10,
-    padding: 12,
-    borderRadius: 5,
+    padding: 14,
+    borderRadius: 8,
     alignItems: 'center',
+    elevation: 2,
   },
-  tryAnotherButtonText: { color: '#fff', fontWeight: 'bold' },
+  tryAnotherButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   feedbackOverlay: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
+    top: '40%',
+    alignSelf: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
     zIndex: 1000, // ensures it's on top
-    backgroundColor: 'rgba(0, 0, 0, 0.4)', // optional dim background
+    backgroundColor: 'rgba(0, 0, 0, 0.75)', // optional dim background
+    elevation: 0,
   },
 
   feedbackText: {
@@ -540,9 +541,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     padding: 20,
-    //backgroundColor: '#00000022',
     borderRadius: 10,
-    color: '#fff',
   },
   loadingText: { textAlign: 'center', color: '#aaa', marginTop: 20 },
   bottomButtonContainer: { marginTop: 'auto' },
@@ -556,11 +555,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     cursor: 'pointer',
   },
-    disabledLinkText: {
+  disabledLinkText: {
     fontSize: 18,
     cursor: 'pointer',
   },
-  submitButtonDisabled: {
-    backgroundColor: '#A0A0A0', // or use `opacity: 0.5` for a faded look
+  buttonDisabled: {
+    backgroundColor: '#A0A0A0',
   },
 });

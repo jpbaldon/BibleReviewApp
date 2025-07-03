@@ -87,11 +87,12 @@ const styles = StyleSheet.create({
   button: {
     height: 48,
     backgroundColor: '#007AFF',
-    borderRadius: 6,
+    borderRadius: 8,
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+    elevation: 2,
   },
   progressFill: {
     ...StyleSheet.absoluteFillObject,

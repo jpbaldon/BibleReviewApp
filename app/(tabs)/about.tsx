@@ -20,7 +20,7 @@ export default function About() {
       }>
 
       <View>
-        <Text style={[styles.welcomeText, {color: theme.text}]}>Version: {version}</Text>
+        <Text style={[styles.versionText, {color: theme.text}]}>Version: {version}</Text>
         <Text style={[styles.welcomeText, {color: theme.text}]}>Welcome!</Text>
         <Text style={[styles.bodyText, {color: theme.text}]}>This app is designed to test your knowledge of each chapter of the Bible.
         </Text>
@@ -59,5 +59,9 @@ const styles = StyleSheet.create({
   },
   press: {
     color: 'white',
-  }
+  },
+  versionText: {
+    fontSize: 14,
+    marginBottom: 15,
+  },
 });
