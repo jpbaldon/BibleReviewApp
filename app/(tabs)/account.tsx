@@ -35,7 +35,7 @@ export default function Settings() {
         <ThemedText type="title" style={{color: theme.text}}>Account</ThemedText>
       </ThemedView>
 
-      <ThemedView style={{ marginTop: 10, borderBottomWidth: 2, borderBottomColor: theme.horizontalDivider }}>
+      <ThemedView style={{ marginTop: 10, marginBottom: 4 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, backgroundColor: theme.background }}>
           <Text style={{ color: theme.text, fontSize: 16 }}>Dark Mode</Text>
           <Switch
@@ -46,6 +46,8 @@ export default function Settings() {
           />
         </View>
       </ThemedView>
+
+      <View style={{ height: 1, backgroundColor: theme.horizontalDivider }}></View>
 
       <ThemedView style={{ marginTop: 0 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, backgroundColor: theme.background, marginTop: 0 }}>

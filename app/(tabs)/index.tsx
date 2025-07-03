@@ -5,6 +5,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { useNavigation } from '@react-navigation/native';
 import 'react-native-reanimated';
 import { useThemeContext } from '../../context/ThemeContext';
+import Icon from 'react-native-vector-icons/Ionicons';
 
 
 type LinkItem = {
@@ -48,8 +49,16 @@ export default function HomeScreen() {
         <View style={{ padding: 10, backgroundColor: theme.background, flex: 1 }}>
           <View style={{ height: 1 }}></View>
           {links.map((item) => (
-            <TouchableOpacity key={item.id} onPress={() => handlePress(item.route)}> 
-              <Text style={{ color: theme.text, marginVertical: 10, fontSize: 18 }}>{item.title}</Text>
+            <TouchableOpacity key={item.id} onPress={() => handlePress(item.route)}>
+              <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
+                <Text style={{ color: theme.text, marginVertical: 10, fontSize: 18 }}>{item.title}</Text>
+                <Icon
+                  name="chevron-forward"
+                  size={30}
+                  color={theme.text}
+                  style={{marginLeft: 8}}
+                />
+              </View> 
               <View style={{ height: 1, backgroundColor: theme.horizontalDivider }}></View>
             </TouchableOpacity>
           ))}

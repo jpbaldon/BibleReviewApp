@@ -9,7 +9,7 @@ const tintColorDark = '#fff';
 export const Colors = {
   light: {
     text: '#000000',
-    linkText: '#000000',
+    linkText: '#0000ff',
     disabledLinkText: '#888888',
     disabledButtonText: '#666666',
     highlightedText: '#ff8c00',
@@ -27,7 +27,7 @@ export const Colors = {
   },
   dark: {
     text: '#ECEDEE',
-    linkText: '#ffffff',
+    linkText: '#2196F3',
     disabledLinkText: '#888888',
     disabledButtonText: '#666666',
     highlightedText: 'yellow',
