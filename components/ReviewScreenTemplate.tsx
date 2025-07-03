@@ -7,6 +7,7 @@ import {
   StyleSheet,
   Dimensions,
   Animated,
+  Vibration,
   Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -82,6 +83,11 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   const { holdToTryAnother } = useSettings();
   const { theme } = useThemeContext();
 
+  const [soundObjects, setSoundObjects] = useState<{
+    correct: Audio.Sound | null;
+    incorrect: Audio.Sound | null;
+  }>({ correct: null, incorrect: null });
+
   const {
     overallScore,
     sessionScore,
@@ -114,16 +120,45 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
     loadNewItem();
   }, [bibleBooks]);
 
-  const playFeedbackSound = async (isCorrect: boolean) => {
-    const soundFile = isCorrect
-      ? require('../assets/sounds/correct.wav')
-      : require('../assets/sounds/incorrect.wav');
+  useEffect(() => {
+    const loadSounds = async () => {
+      try {
+        const { sound: correctSound } = await Audio.Sound.createAsync(
+          require('../assets/sounds/correct.wav')
+        );
+        const { sound: incorrectSound } = await Audio.Sound.createAsync(
+          require('../assets/sounds/incorrect.wav')
+        );
+        
+        setSoundObjects({
+          correct: correctSound,
+          incorrect: incorrectSound
+        });
+      } catch (error) {
+        console.error('Sound loading error:', error);
+      }
+    };
 
+    loadSounds();
+
+    return () => {
+      // Cleanup function
+      soundObjects.correct?.unloadAsync();
+      soundObjects.incorrect?.unloadAsync();
+    };
+  }, []);
+
+  const playFeedbackSound = async (isCorrect: boolean) => {
     try {
-      const { sound } = await Audio.Sound.createAsync(soundFile);
-      await sound.playAsync();
+      const sound = isCorrect ? soundObjects.correct : soundObjects.incorrect;
+      if (sound) {
+        await sound.replayAsync(); // More efficient than playAsync for repeated playback
+      } else {
+        Vibration.vibrate(isCorrect ? 100 : 400);
+      }
     } catch (error) {
-      console.log('Error playing sound', error);
+      console.error('Sound playback error:', error);
+      Vibration.vibrate(isCorrect ? 100 : 400);
     }
   };
 
