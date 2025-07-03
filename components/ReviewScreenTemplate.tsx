@@ -22,6 +22,7 @@ import { useThemeContext } from '../context/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
 import { LongPressButton } from '../components/ui/LongPressButton';
 import { MIN_CHAPTERS_ENABLED_FOR_SCORE } from '../context/BibleBooksContext';
+import Icon from 'react-native-vector-icons/Ionicons';
 
 interface ContextVerse {
   verseNumber: number;
@@ -296,27 +297,53 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
                   onPress={currentChapter.chapter === 1 ? () => {} : goToPreviousChapter} // Disable the onPress function when disabled
                   disabled={currentChapter.chapter === 1} // Disable the entire TouchableOpacity when the condition is true
                 >
-                  <Text
-                    style={[
-                      currentChapter.chapter === 1 ? [styles.disabledLinkText, {color: theme.disabledLinkText}] : [styles.linkText, {color: theme.linkText}],
-                      { marginRight: 5 }
-                    ]}
-                  >
-                    &lt;&lt; Prev
-                  </Text>
+                  <View style={{ flexDirection: 'row', 
+                        alignItems: 'center',
+                        borderBottomWidth: currentChapter.chapter === 1 ? 0 : 1,
+                        borderBottomColor: currentChapter.chapter === 1 ? theme.disabledLinkText : theme.linkText,
+                         }}>
+                    <Icon
+                      name="chevron-back"
+                      size={18}
+                      style={[
+                        currentChapter.chapter === 1 ? [styles.disabledLinkText, { color: theme.disabledLinkText }] : [styles.linkText, { color: theme.linkText }],
+                        { marginRight: 2 },
+                      ]}
+                    />
+                    <Text
+                      style={[
+                        currentChapter.chapter === 1 ? [styles.disabledLinkText, { color: theme.disabledLinkText }] : [styles.linkText, { color: theme.linkText }],
+                      ]}
+                    >
+                      Prev
+                    </Text>
+                  </View>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={goToNextChapter} // Disable the onPress function when disabled
                   disabled={isNextChapterDisabled()} // Disable the entire TouchableOpacity when the condition is true
                 >
-                  <Text
-                    style={[
-                      isNextChapterDisabled() ? [styles.disabledLinkText, {color: theme.disabledLinkText}] : [styles.linkText, {color: theme.linkText}],
-                      { marginRight: 5 }
-                    ]}
-                  >
-                    Next &gt;&gt;
-                  </Text>
+                  <View style={{ flexDirection: 'row', 
+                        alignItems: 'center',
+                        borderBottomWidth: isNextChapterDisabled() ? 0 : 1,
+                        borderBottomColor: isNextChapterDisabled() ? theme.disabledLinkText : theme.linkText,
+                         }}>
+                    <Text
+                      style={[
+                        isNextChapterDisabled() ? [styles.disabledLinkText, { color: theme.disabledLinkText }] : [styles.linkText, { color: theme.linkText }],
+                      ]}
+                    >
+                      Next
+                    </Text>
+                    <Icon
+                      name="chevron-forward"
+                      size={18}
+                      style={[
+                        isNextChapterDisabled() ? [styles.disabledLinkText, { color: theme.disabledLinkText }] : [styles.linkText, { color: theme.linkText }],
+                        { marginRight: 2 },
+                      ]}
+                    />
+                  </View>
                 </TouchableOpacity>
               </View>
             )}
@@ -492,7 +519,6 @@ const styles = StyleSheet.create({
   },
   linkText: {
     fontSize: 18,
-    textDecorationLine: 'underline',
     cursor: 'pointer',
   },
     disabledLinkText: {
