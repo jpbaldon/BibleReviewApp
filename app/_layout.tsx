@@ -46,29 +46,27 @@ export default function Layout() {
 function InnerApp() {
   const { isLoading, user } = useAuth();
 
-  if (isLoading) return null; // or spinner
-
-  if (!user) {
-    return (
-        <ThemeProvider>
-          <LayoutContent />
-        </ThemeProvider>
-    );
-  }
+  if (isLoading) return null;
 
   return (
-      <ServicesProvider>
-        <BibleBooksProvider>
-          <ScoreProvider>
-            <ThemeProvider>
-              <SettingsProvider userId={user.id}>
-                <ThemeLoader userId={user.id} />
-                <LayoutContent />
-              </SettingsProvider>
-            </ThemeProvider>
-          </ScoreProvider>
-        </BibleBooksProvider>
-      </ServicesProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <SettingsProvider userId={user?.id}> {/* Make userId optional */}
+          {!user ? (
+            <LayoutContent />
+          ) : (
+            <ServicesProvider>
+              <BibleBooksProvider>
+                <ScoreProvider>
+                  <ThemeLoader userId={user.id} />
+                  <LayoutContent />
+                </ScoreProvider>
+              </BibleBooksProvider>
+            </ServicesProvider>
+          )}
+        </SettingsProvider>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }
 
