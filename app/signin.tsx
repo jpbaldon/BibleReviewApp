@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SignInScreen() {
   const { user, isLoading, signIn, error } = useAuth();
@@ -44,12 +45,12 @@ export default function SignInScreen() {
   }
 
   return (
-
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <KeyboardAvoidingView 
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={styles.container}>
+        <View>
           <Text style={styles.title}>Welcome Back</Text>
           <TextInput
             style={styles.input}
@@ -87,6 +88,7 @@ export default function SignInScreen() {
         </View>
       </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
+    </SafeAreaView>
   );
 }
 
