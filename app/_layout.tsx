@@ -1,9 +1,8 @@
 import { Stack } from 'expo-router';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { StyleSheet, View, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, ActivityIndicator, Platform, StatusBar } from 'react-native';
 import { DarkTheme, DefaultTheme, ThemeProvider as NavThemeProvider } from '@react-navigation/native';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { ScoreProvider } from '../context/ScoreContext';
@@ -12,7 +11,7 @@ import { ThemeProvider, useThemeContext } from '../context/ThemeContext';
 import { useSegments, useRouter } from 'expo-router';
 import { ServicesProvider } from '../context/ServicesContext';
 import { BackendProvider } from '../context/BackendContext';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { ThemeLoader } from '../context/ThemeLoader';
 import { SettingsProvider } from '../context/SettingsContext';
 
@@ -34,41 +33,39 @@ export default function Layout() {
   if (!fontsLoaded && !fontError) return null;
 
   return (
-    <BackendProvider>
-      <AuthProvider>
-        <InnerApp />
-      </AuthProvider>
-    </BackendProvider>
+    <SafeAreaProvider>
+      <BackendProvider>
+        <AuthProvider>
+          <InnerApp />
+        </AuthProvider>
+      </BackendProvider>
+    </SafeAreaProvider>
   );
 }
 
 function InnerApp() {
   const { isLoading, user } = useAuth();
 
-  if (isLoading) return null; // or spinner
-
-  if (!user) {
-    return (
-      <ThemeProvider>
-        <LayoutContent />
-      </ThemeProvider>
-    );
-  }
+  if (isLoading) return null;
 
   return (
     <SafeAreaProvider>
-      <ServicesProvider>
-        <BibleBooksProvider>
-          <ScoreProvider>
-            <ThemeProvider>
-              <SettingsProvider userId={user.id}>
-                <ThemeLoader userId={user.id} />
-                <LayoutContent />
-              </SettingsProvider>
-            </ThemeProvider>
-          </ScoreProvider>
-        </BibleBooksProvider>
-      </ServicesProvider>
+      <ThemeProvider>
+        <SettingsProvider userId={user?.id}> {/* Make userId optional */}
+          {!user ? (
+            <LayoutContent />
+          ) : (
+            <ServicesProvider>
+              <BibleBooksProvider>
+                <ScoreProvider>
+                  <ThemeLoader userId={user.id} />
+                  <LayoutContent />
+                </ScoreProvider>
+              </BibleBooksProvider>
+            </ServicesProvider>
+          )}
+        </SettingsProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }
@@ -107,7 +104,8 @@ function LayoutContent() {
           headerStyle: { backgroundColor: theme.background },
           headerTintColor: theme.text,
           contentStyle: { backgroundColor: theme.background },
-          headerTitleAlign: 'center'
+          headerTitleAlign: 'center',
+          headerTransparent: false,
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -115,7 +113,8 @@ function LayoutContent() {
         <Stack.Screen name="signup" options={{ title: "Sign Up" }} />
         <Stack.Screen name="verifyemail" options={{ title: "Verify Email" }} />
       </Stack>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'}
+      backgroundColor={theme.background} />
     </NavThemeProvider>
   );
 }
