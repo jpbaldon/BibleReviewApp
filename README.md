@@ -70,7 +70,7 @@ Join our community of developers creating universal apps.
 - Forgot password system?
 
 ## Credits for Externally Produced Assets
-- Hompage Bible Image: http://www.publicdomainfiles.com/show_file.php?id=13932879013386
+- Homepage Bible Image: http://www.publicdomainfiles.com/show_file.php?id=13932879013386
 - Feedback Audio (Piano sound effects):
   - **"Dat's Right!"** by [Beetlemuse](https://freesound.org/s/587252/) Licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
   - **"Dat's Wrong!"** by [Beetlemuse](https://freesound.org/s/587253/) Licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
