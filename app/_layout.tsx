@@ -51,7 +51,7 @@ function InnerApp() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <SettingsProvider userId={user?.id}> {/* Make userId optional */}
+        <SettingsProvider userId={user?.id}>
           {!user ? (
             <LayoutContent />
           ) : (
