@@ -219,12 +219,17 @@ export const SupabaseService = {
         .eq('book_name', bookName)
         .single();
 
+      const newEnabled = !current?.enabled;
+
       //Then toggle
       const { data, error } = await supabase
         .from('user_bible_books')
-        .update({enabled: !current?.enabled})
-        .eq('user_id', userId)
-        .eq('book_name', bookName)
+        .upsert({
+          user_id: userId,
+          book_name: bookName,
+          enabled: newEnabled,
+          updated_at: new Date().toString(),
+        })
         .select()
         .single();
 
