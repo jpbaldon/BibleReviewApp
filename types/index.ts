@@ -56,6 +56,7 @@ export interface AuthService {
   signOut(): Promise<void>;
   getSession(): Promise<AppSession | null>;
   resendVerificationEmail(email: string): Promise<void>;
+  deleteAccount(accessToken: string, userId: string): Promise<void>;
   init(): Promise<{ session: AppSession | null; user: AppUser | null; profile: { username: string } | null }>;
 }
 

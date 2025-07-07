@@ -2,7 +2,7 @@ import { Image, StyleSheet } from 'react-native';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { TouchableOpacity, Text } from 'react-native';
+import { TouchableOpacity, Text, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { Switch, View } from 'react-native';
@@ -11,7 +11,7 @@ import { useSettings } from '../../context/SettingsContext';
 
 export default function Settings() {
   const router = useRouter();
-  const { signOut } = useAuth();
+  const { signOut, deleteAccount } = useAuth();
   const { colorScheme, setColorScheme, theme } = useThemeContext();
   const { holdToTryAnother, setHoldToTryAnotherSetting } = useSettings();
 
@@ -19,6 +19,17 @@ export default function Settings() {
     await signOut();
     
     //router.replace('/signin');
+  };
+
+  const handleDeleteAccount = async () => {
+    Alert.alert(
+      "Delete Account",
+      "Are you sure you want to delete your account? This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel"},
+        { text: "Delete", style: "destructive", onPress: () => deleteAccount()}
+      ]
+    );
   };
 
   return (
@@ -72,6 +83,20 @@ export default function Settings() {
             alignItems: 'center',
           }}>
           <Text style={{ color: '#fff', fontWeight: 'bold' }}>Switch Account</Text>
+        </TouchableOpacity>
+      </ThemedView>
+
+      <ThemedView style={{ marginTop: 20, backgroundColor: theme.background }}>
+        <TouchableOpacity
+          onPress={() => handleDeleteAccount()}
+          style={{
+            backgroundColor: '#ff0000',
+            paddingVertical: 12,
+            paddingHorizontal: 20,
+            borderRadius: 8,
+            alignItems: 'center',
+          }}>
+          <Text style={{ color: '#fff', fontWeight: 'bold' }}>Delete My Account</Text>
         </TouchableOpacity>
       </ThemedView>
     </ParallaxScrollView>

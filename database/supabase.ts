@@ -2,6 +2,7 @@ import { createClient, User as SupabaseUser, Session as SupabaseSession } from '
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BibleBook, Chapter, Rarity, UserSettings, AppUser, AppSession } from '../types/index'
 import Constants from 'expo-constants';
+import { Alert } from 'react-native';
 
 console.log('Expo Config:', Constants.expoConfig); // Debug log
 
@@ -96,6 +97,25 @@ export const SupabaseService = {
         email,
       });
       if (error) throw error;
+    },
+
+    deleteAccount: async (accessToken: string, userId: string) => {
+      const res = await fetch('https://uohnbyejhxxypjvbauks.supabase.co/functions/v1/delete-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ userId }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to delete account.');
+      }
+
+      return data;
     },
 
     init: async (): Promise<{
