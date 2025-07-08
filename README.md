@@ -50,20 +50,7 @@ Join our community of developers creating universal apps.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
 
 ## Bible App Recent Changes
-- "Hold to Try Another" option added to the Accounts Screen
-- Refactor of colors and "light" mode added (toggle switch added to Accounts page)
-- Increased height on the content container in the second and third tabs (since feedback is now an overlay)
-- Context buttons that appear after correct answer is shown to allow user to navigate to next or previous chapter
-- Reworked Enabled Books screen so that users can disable chapters in addition to books (long press now toggles books, short press expands books)
-- All Bible chapters now have summaries!
-- Feedback is now an overlay
-- Feedback sounds have been replaced so that correct and incorrect are comparable in instrumentation and style
-- Incorrect answers shake the screen
-- Correct answers submitted on first try now display confetti
-- Added an about page
-- Changing the state of Enabled Books now automatically changes the Prompts on the Verses and Summaries tabs (and resets attempts to 0)
-- Username of current user now displays in yellow on leaderboard
-- On summaries tab, when correct answer is shown, the original prompt displays in yellow above the chapter text
+- The Verses screen now accepts multiple correct answers for verses that appear in multiple different Bible chapters
 
 ## Bible App Upcoming Changes
 - Potential rework of correct answer feedback (perhaps use confetti more sparingly)
