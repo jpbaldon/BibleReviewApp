@@ -10,33 +10,6 @@ To use the app, download the latest APK from the releases.
 
 If you want to know more about the features of the app, check out the latest [User Manual](./Review_App_User_Manual.pdf)
 
-## For Developers
-
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
-
-### Get started
-
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-    npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
 ## Bible App Recent Changes
 - The Verses screen now accepts multiple correct answers for verses that appear in multiple different Bible chapters
 
@@ -72,3 +45,31 @@ When you create an account in our app, we collect the following information:
 - Feedback Audio (Piano sound effects):
   - **"Dat's Right!"** by [Beetlemuse](https://freesound.org/s/587252/) Licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
   - **"Dat's Wrong!"** by [Beetlemuse](https://freesound.org/s/587253/) Licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)
+ 
+## For Developers
+
+This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+
+### Get started
+
+1. Install dependencies
+
+   ```bash
+   npm install
+   ```
+
+2. Start the app
+
+   ```bash
+    npx expo start
+   ```
+
+In the output, you'll find options to open the app in a
+
+- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
+- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
+- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
+- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+
+You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+
