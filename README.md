@@ -2,7 +2,7 @@
 
 ## Getting Started
 
-
+Check out the latest [User Manual](./Review_App_User_Manual.pdf)
 
 ## For Developers
 
