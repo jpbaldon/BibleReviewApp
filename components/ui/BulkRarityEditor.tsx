@@ -208,7 +208,7 @@ export default function BulkRarityEditor({
                 }}
             >
                 <Text style={{ color: '#fff', fontSize: 12, textTransform: 'capitalize' }}>
-                {r}
+                {r.toLowerCase() === 'ultrarare' ? 'Ultra-Rare' : r}
                 </Text>
             </Pressable>
             );
@@ -232,7 +232,7 @@ export default function BulkRarityEditor({
         >
           <Text style={{ color: '#fff', fontSize: 12, textTransform: 'capitalize' }}
             numberOfLines={1}
-            adjustsFontSizeToFit={false}>{r}</Text>
+            adjustsFontSizeToFit={false}>{r.toLowerCase() === 'ultrarare' ? 'Ultra-Rare' : r}</Text>
         </Pressable>
       ))}</View>
 

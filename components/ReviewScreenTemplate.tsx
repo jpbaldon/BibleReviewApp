@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBibleBooks } from '../context/BibleBooksContext';
 import { useScore } from '../context/ScoreContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Audio } from 'expo-av';
+import { useAudioPlayer } from 'expo-audio';
 import { ASV } from '@/data/asv';
 import { SimpleBottomSheet } from './SimpleBottomSheet'; // Adjust path if needed
 import ConfettiCannon from 'react-native-confetti-cannon'
@@ -44,6 +44,9 @@ interface ReviewScreenTemplateProps {
   renderQuestion: (item: ReviewItem, showAnswer: boolean) => JSX.Element;
 }
 
+const correctSound = require('../assets/sounds/correct.wav');
+const incorrectSound = require('../assets/sounds/incorrect.wav');
+
 export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   title,
   points,
@@ -73,10 +76,8 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   const { holdToTryAnother } = useSettings();
   const { theme } = useThemeContext();
 
-  const [soundObjects, setSoundObjects] = useState<{
-    correct: Audio.Sound | null;
-    incorrect: Audio.Sound | null;
-  }>({ correct: null, incorrect: null });
+  const correctPlayer = useAudioPlayer(correctSound);
+  const incorrectPlayer = useAudioPlayer(incorrectSound);
 
   const {
     overallScore,
@@ -110,45 +111,13 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
     loadNewItem();
   }, [bibleBooks]);
 
-  useEffect(() => {
-    const loadSounds = async () => {
-      try {
-        const { sound: correctSound } = await Audio.Sound.createAsync(
-          require('../assets/sounds/correct.wav')
-        );
-        const { sound: incorrectSound } = await Audio.Sound.createAsync(
-          require('../assets/sounds/incorrect.wav')
-        );
-        
-        setSoundObjects({
-          correct: correctSound,
-          incorrect: incorrectSound
-        });
-      } catch (error) {
-        console.error('Sound loading error:', error);
-      }
-    };
-
-    loadSounds();
-
-    return () => {
-      // Cleanup function
-      soundObjects.correct?.unloadAsync();
-      soundObjects.incorrect?.unloadAsync();
-    };
-  }, []);
-
-  const playFeedbackSound = async (isCorrect: boolean) => {
-    try {
-      const sound = isCorrect ? soundObjects.correct : soundObjects.incorrect;
-      if (sound) {
-        await sound.replayAsync(); // More efficient than playAsync for repeated playback
-      } else {
-        Vibration.vibrate(isCorrect ? 100 : 400);
-      }
-    } catch (error) {
-      console.error('Sound playback error:', error);
-      Vibration.vibrate(isCorrect ? 100 : 400);
+  const playFeedbackSound = (isCorrect: boolean) => {
+    if (isCorrect) {
+      correctPlayer.seekTo(0);
+      correctPlayer.play();
+    } else {
+      incorrectPlayer.seekTo(0);
+      incorrectPlayer.play();
     }
   };
 

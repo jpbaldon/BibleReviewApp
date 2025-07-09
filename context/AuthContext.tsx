@@ -19,6 +19,7 @@ type AuthContextType = {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, username: string) => Promise<void>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   checkUsernameAvailability: (username: string) => Promise<boolean>;
   updateUsername: (newUsername: string) => Promise<void>;
   resendVerificationEmail: (email: string) => Promise<void>;
@@ -118,6 +119,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const deleteAccount = async () => {
+    if (!user || !session || !session.accessToken) return;
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await backend.auth.deleteAccount(session.accessToken, user.id);
+
+      // After deletion, also sign the user out locally
+      await backend.auth.signOut();
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+    } catch (err: any) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const checkUsernameAvailability = async (username: string) => {
     const result = await backend.usernames.checkAvailability(username);
     return result.available;
@@ -144,6 +165,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         signIn,
         signUp,
         signOut,
+        deleteAccount,
         checkUsernameAvailability,
         updateUsername,
         resendVerificationEmail,

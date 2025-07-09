@@ -4,6 +4,7 @@ import * as FileSystem from 'expo-file-system';
 import { ASV } from '@/data/asv';
 import { BibleBook, Rarity } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { useServices } from '../context/ServicesContext';
 
 interface BibleBooksContextType {
   bibleBooks: BibleBook[];
@@ -64,9 +65,9 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   }, []);
 
-  const loadBooksFromDB = useCallback(async (dbInstance: SQLite.SQLiteDatabase) => {
+  const loadBooksFromDB = useCallback(async (localdbInstance: SQLite.SQLiteDatabase) => {
     try {
-      const results = await dbInstance.getAllAsync<{Book: string, Enabled: number}>(
+      const results = await localdbInstance.getAllAsync<{Book: string, Enabled: number}>(
         'SELECT * FROM BibleBooks;'
       );
       console.log(results);
@@ -80,55 +81,70 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   }, []);
 
-  const initializeDatabase = useCallback(async (dbInstance: SQLite.SQLiteDatabase) => {
+  const initializeDatabase = useCallback(async (localdbInstance: SQLite.SQLiteDatabase) => {
     setIsLoading(true);
     setError(null);
     
     try {
       // 1. Create table if not exists
-      await dbInstance.execAsync(`
+      await localdbInstance.execAsync(`
         CREATE TABLE IF NOT EXISTS BibleBooks (
           Book TEXT PRIMARY KEY NOT NULL,
-          Enabled INTEGER NOT NULL DEFAULT 0
+          Enabled INTEGER NOT NULL DEFAULT 0,
+          updated_at TEXT DEFAULT '${new Date().toISOString()}'
         );
       `);
 
-      await dbInstance.execAsync(`
+      await localdbInstance.execAsync(`
         CREATE TABLE IF NOT EXISTS ChapterRarities (
         Book TEXT NOT NULL,
         Chapter INTEGER NOT NULL,
         Rarity TEXT NOT NULL DEFAULT 'common',
+        updated_at TEXT DEFAULT '${new Date().toISOString()}',
         PRIMARY KEY (Book, Chapter)
         );
       `);
 
+      const columns = await localdbInstance.getAllAsync<{name: string}>(
+        "PRAGMA table_info('BibleBooks');"
+      );
+
+      const hasUpdatedAt = columns.some(col => col.name === 'updated_at');
+      //This IF can be removed in build 0.5.0-beta or later (users will just have to uninstall the app and redownload if updating from 0.3.0-beta or earlier)
+      if (!hasUpdatedAt) {
+        await localdbInstance.execAsync(`
+          ALTER TABLE BibleBooks ADD COLUMN updated_at TEXT DEFAULT '${new Date().toISOString()}';
+          ALTER TABLE ChapterRarities ADD COLUMN updated_at TEXT DEFAULT '${new Date().toISOString()}';
+        `);
+      }
+
       // 2. Check if table is empty
-      const countResult = await dbInstance.getFirstAsync<{ count: number }>(
+      const countResult = await localdbInstance.getFirstAsync<{ count: number }>(
         'SELECT COUNT(*) as count FROM BibleBooks;'
       );
       
       // 3. Initialize with default books if empty
       if (!countResult || countResult.count === 0) {
-        await dbInstance.execAsync('BEGIN TRANSACTION');
+        await localdbInstance.execAsync('BEGIN TRANSACTION');
         try {
           for (const book of ASV.Bible) {
             const isGenesis = book.Book === "Genesis";
-            await dbInstance.runAsync(
+            await localdbInstance.runAsync(
               'INSERT OR IGNORE INTO BibleBooks (Book, Enabled) VALUES (?, ?);',
               [book.Book, isGenesis ? 1 : 0]
             );
           }
-          await dbInstance.execAsync('COMMIT');
+          await localdbInstance.execAsync('COMMIT');
         } catch (txError) {
-          await dbInstance.execAsync('ROLLBACK');
+          await localdbInstance.execAsync('ROLLBACK');
           throw txError;
         }
       }
 
       // 4. Load books
-      const loadedBooks = await loadBooksFromDB(dbInstance);
+      const loadedBooks = await loadBooksFromDB(localdbInstance);
 
-      const rarityResults = await dbInstance.getAllAsync<{bookName: string, chapter: number, rarity: Rarity}>(
+      const rarityResults = await localdbInstance.getAllAsync<{bookName: string, chapter: number, rarity: Rarity}>(
         'SELECT Book as bookName, Chapter as chapter, Rarity as rarity FROM ChapterRarities'
       );
 
