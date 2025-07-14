@@ -8,7 +8,7 @@ This is currently an Android only app, but future support for iPhone is expected
 
 To use the app, download the latest APK from the releases.
 
-If you want to know more about the features of the app, check out the latest [User Manual](./Review_App_User_Manual.pdf)
+If you want to know more about the features of the app, check out the latest [User Manual](./Review_App_Specs_User_Guide.pdf)
 
 ## Bible App Recent Changes
 - The Verses screen now accepts multiple correct answers for verses that appear in multiple different Bible chapters
