@@ -89,6 +89,18 @@ export default function TabLayout() {
           headerTintColor: theme.text, // White text
         }}
       />
+      <Tabs.Screen
+        name="timers"
+        options={{
+          title: 'Session Timers',
+          href: null,
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: theme.background,
+          },
+          headerTintColor: theme.text, // White text
+        }}
+      />
     </Tabs>
   );
 }

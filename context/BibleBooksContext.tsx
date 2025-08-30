@@ -51,19 +51,22 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
   // Initialize database asynchronously
   const openDatabase = useCallback(async () => {
     try {
+      if (!user?.id) {
+        throw new Error('User ID is not defined. Cannot open user-scoped database.');
+      }
       // Ensure SQLite directory exists
       if (!(await FileSystem.getInfoAsync(`${FileSystem.documentDirectory}SQLite`)).exists) {
         await FileSystem.makeDirectoryAsync(`${FileSystem.documentDirectory}SQLite`);
       }
 
-      const userScopedDbName = `BibleBooks_${user?.id}.db`;
+      const userScopedDbName = `BibleBooks_${user.id}.db`;
 
       return await SQLite.openDatabaseAsync(userScopedDbName);
     } catch (err) {
       console.error('Failed to open database:', err);
       throw err;
     }
-  }, []);
+  }, [user?.id]);
 
   const loadBooksFromDB = useCallback(async (localdbInstance: SQLite.SQLiteDatabase) => {
     try {
@@ -81,10 +84,14 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   }, []);
 
-  const initializeDatabase = useCallback(async (localdbInstance: SQLite.SQLiteDatabase) => {
+  const initializeDatabase = useCallback(async (localdbInstance: SQLite.SQLiteDatabase | null) => {
     setIsLoading(true);
     setError(null);
-    
+    if (!localdbInstance) {
+      setError('Database instance is not available.');
+      setIsLoading(false);
+      return;
+    }
     try {
       // 1. Create table if not exists
       await localdbInstance.execAsync(`

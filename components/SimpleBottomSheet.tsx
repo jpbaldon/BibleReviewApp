@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   Modal,
@@ -11,6 +12,8 @@ import {
   TouchableWithoutFeedback,
 } from 'react-native';
 import { useThemeContext } from '../context/ThemeContext';
+import Icon from 'react-native-vector-icons/Ionicons';
+import { on } from 'events';
 
 interface ChapterItem {
   label: string;
@@ -29,57 +32,12 @@ interface SimpleBottomSheetProps {
   data: BookItemData[];
   onSelect: (bookValue: string, chapterValue: string) => void;
   title: string;
+  submenuTitle: string;
   selectedBook: string;
   selectedChapter: string;
 }
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
-
-const BookItem = React.memo(({
-  item,
-  isExpanded,
-  isBookSelected,
-  onToggleExpand,
-  onSelectChapter,
-  selectedChapter,
-  theme,
-}: {
-  item: BookItemData;
-  isExpanded: boolean;
-  isBookSelected: boolean;
-  onToggleExpand: (bookValue: string) => void;
-  onSelectChapter: (bookValue: string, chapterValue: string) => void;
-  selectedChapter: string;
-  theme: any;
-}) => {
-  return (
-    <View>
-      <TouchableOpacity
-        onPress={() => onToggleExpand(item.value)}
-        style={[styles.bookItem, {borderBottomColor: theme.horizontalDivider}, isBookSelected && styles.selectedBookItem]}
-      >
-        <Text style={[styles.bookText, {color: theme.text}, isBookSelected && styles.selectedBookText]}>
-          {item.label}
-        </Text>
-      </TouchableOpacity>
-      {isExpanded &&
-        item.chapters.map((chapter) => {
-          const isChapterSelected = isBookSelected && chapter.value === selectedChapter;
-          return (
-            <TouchableOpacity
-              key={chapter.value}
-              onPress={() => onSelectChapter(item.value, chapter.value)}
-              style={[styles.chapterItem, {borderBottomColor: theme.horizontalDivider}, isChapterSelected && styles.selectedChapterItem]}
-            >
-              <Text style={[styles.chapterText, {color: theme.fadedText}, isChapterSelected && styles.selectedChapterText]}>
-                {chapter.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-    </View>
-  );
-});
 
 export const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({
   visible,
@@ -87,16 +45,40 @@ export const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({
   data,
   onSelect,
   title,
+  submenuTitle,
   selectedBook,
   selectedChapter,
 }) => {
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-  const [expandedBook, setExpandedBook] = useState<string>('');
+  const [currentBook, setCurrentBook] = useState<BookItemData | null>(null);
+
+  // Helper to abbreviate book names (first 3-4 letters, or custom map)
+  const abbreviate = useCallback((label: string) => {
+    // Custom abbreviations for common Bible books
+    const custom: Record<string, string> = {
+      'Genesis': 'Gen', 'Exodus': 'Exo', 'Leviticus': 'Lev', 'Numbers': 'Num', 'Deuteronomy': 'Deut',
+      'Joshua': 'Josh', 'Judges': 'Judg', 'Ruth': 'Ruth', '1 Samuel': '1Sa', '2 Samuel': '2Sa',
+      '1 Kings': '1Ki', '2 Kings': '2Ki', '1 Chronicles': '1Ch', '2 Chronicles': '2Ch',
+      'Ezra': 'Ezr', 'Nehemiah': 'Neh', 'Esther': 'Est', 'Job': 'Job', 'Psalms': 'Ps',
+      'Proverbs': 'Prov', 'Ecclesiastes': 'Ecc', 'Song of Solomon': 'Song', 'Isaiah': 'Isa',
+      'Jeremiah': 'Jer', 'Lamentations': 'Lam', 'Ezekiel': 'Ezek', 'Daniel': 'Dan',
+      'Hosea': 'Hos', 'Joel': 'Joel', 'Amos': 'Amos', 'Obadiah': 'Obad', 'Jonah': 'Jon',
+      'Micah': 'Mic', 'Nahum': 'Nah', 'Habakkuk': 'Hab', 'Zephaniah': 'Zeph', 'Haggai': 'Hag',
+      'Zechariah': 'Zech', 'Malachi': 'Mal',
+      'Matthew': 'Matt', 'Mark': 'Mark', 'Luke': 'Luke', 'John': 'John', 'Acts': 'Acts',
+      'Romans': 'Rom', '1 Corinthians': '1Co', '2 Corinthians': '2Co', 'Galatians': 'Gal',
+      'Ephesians': 'Eph', 'Philippians': 'Phil', 'Colossians': 'Col', '1 Thessalonians': '1Th',
+      '2 Thessalonians': '2Th', '1 Timothy': '1Ti', '2 Timothy': '2Ti', 'Titus': 'Titus',
+      'Philemon': 'Phlm', 'Hebrews': 'Heb', 'James': 'Jas', '1 Peter': '1Pe', '2 Peter': '2Pe',
+      '1 John': '1Jn', '2 John': '2Jn', '3 John': '3Jn', 'Jude': 'Jude', 'Revelation': 'Rev',
+    };
+    return custom[label] || label.slice(0, 4);
+  }, []);
   const { theme } = useThemeContext();
 
   useEffect(() => {
     if (visible) {
-      setExpandedBook(selectedBook);
+      //setCurrentBook(null);
       Animated.timing(translateY, {
         toValue: 0,
         duration: 250,
@@ -108,32 +90,22 @@ export const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({
         duration: 250,
         useNativeDriver: true,
       }).start();
-      setExpandedBook(''); // collapse on close
+      //setCurrentBook(null);
     }
   }, [visible, translateY]);
 
-  const toggleExpand = useCallback((bookValue: string) => {
-    setExpandedBook((prev) => (prev === bookValue ? '' : bookValue));
+  const handleBookSelect = useCallback((book: BookItemData) => {
+    setCurrentBook(book);
+    if (book.chapters.length === 1) {
+      handleSelectChapter(book.value, book.chapters[0].value);
+      onClose();
+    }
   }, []);
 
   const handleSelectChapter = useCallback((bookValue: string, chapterValue: string) => {
     onSelect(bookValue, chapterValue);
     onClose();
   }, [onSelect, onClose]);
-
-  const renderItem = useCallback(({ item }: { item: BookItemData }) => {
-    return (
-      <BookItem
-        item={item}
-        isExpanded={item.value === expandedBook}
-        isBookSelected={item.value === selectedBook}
-        onToggleExpand={toggleExpand}
-        onSelectChapter={handleSelectChapter}
-        selectedChapter={selectedChapter}
-        theme={theme}
-      />
-    );
-  }, [expandedBook, selectedBook, selectedChapter, toggleExpand, handleSelectChapter]);
 
   return (
     <Modal
@@ -146,23 +118,86 @@ export const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({
         <View style={styles.backdrop} />
       </TouchableWithoutFeedback>
 
-      <Animated.View style={[styles.sheetContainer, {backgroundColor: theme.secondary, transform: [{ translateY }] }]}>
-        <Text style={[styles.title, {color: theme.text}]}>{title}</Text>
-        <FlatList
-          data={data}
-          keyExtractor={(item) => item.value}
-          renderItem={renderItem}
-          initialNumToRender={10}
-          maxToRenderPerBatch={10}
-          windowSize={10}
-          removeClippedSubviews={true}
-        />
+      <Animated.View style={[styles.sheetContainer, {backgroundColor: theme.secondary, transform: [{ translateY }] }]}> 
+        {!currentBook ? (
+          <>
+            <Text style={[styles.title, {color: theme.text}]}>{title}</Text>
+            <FlatList
+              data={data}
+              keyExtractor={item => item.value}
+              numColumns={5}
+              contentContainerStyle={styles.gridContainer}
+              showsVerticalScrollIndicator={true}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={{...styles.gridItem, backgroundColor: theme.background}}
+                  onPress={() => handleBookSelect(item)}
+                >
+                  <Text style={[styles.bookText, {color: theme.text}]}>{abbreviate(item.label)}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          </>
+        ) : (
+          <>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+              <TouchableOpacity style={styles.backButton} onPress={() => setCurrentBook(null)}>
+                <Icon name="arrow-back" size={30} />
+              </TouchableOpacity>
+                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }}>
+                  <Text style={[styles.title, {color: theme.text}]}>{currentBook.label}</Text>
+                </View>
+                <View style={{ width: 40 }} />
+            </View>
+            <FlatList
+              data={currentBook.chapters}
+              keyExtractor={item => item.value}
+              numColumns={5}
+              contentContainerStyle={styles.gridContainer}
+              showsVerticalScrollIndicator={true}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={{...styles.gridItem, backgroundColor: theme.background}}
+                  onPress={() => handleSelectChapter(currentBook.value, item.value)}
+                >
+                  <Text style={[styles.chapterText, {color: theme.fadedText}]}>{item.label.replace('Chapter ', '')}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          </>
+        )}
       </Animated.View>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  gridContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 20,
+  },
+  gridItem: {
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    margin: 6,
+    minWidth: 62,
+    maxWidth: 62,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backButton: {
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+    marginLeft: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+  },
+  backButtonText: {
+    fontSize: 15,
+    textDecorationLine: 'underline',
+  },
   backdrop: {
     flex: 1,
     backgroundColor: '#00000088',
@@ -212,3 +247,4 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
 });
+

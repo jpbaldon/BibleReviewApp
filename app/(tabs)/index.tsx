@@ -24,7 +24,8 @@ export default function HomeScreen() {
     { id: '1', title: 'About', route: 'about' },
     { id: '2', title: 'Account', route: 'account' },
     { id: '3', title: 'Enabled Books', route: 'enabledBooks' },
-    { id: '4', title: 'Leader Board', route: 'leaderboard'}
+    { id: '4', title: 'Leader Board', route: 'leaderboard'},
+    { id: '5', title: 'Session Timers', route: 'timers' },
   ];
 
   const handlePress = (route: string) => {

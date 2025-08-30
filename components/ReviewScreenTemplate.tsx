@@ -1,3 +1,4 @@
+import { useTimer } from '../context/TimerContext';
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Animated, Vibration, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,7 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAudioPlayer } from 'expo-audio';
 import { ASV } from '@/data/asv';
 import { SimpleBottomSheet } from './SimpleBottomSheet'; // Adjust path if needed
-import ConfettiCannon from 'react-native-confetti-cannon'
+import { useConfetti } from '../context/ConfettiContext';
 import { Chapter, DuplicateLocation } from '../types';
 import { useThemeContext } from '../context/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
@@ -55,6 +56,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   renderQuestion,
 }) => {
   const { bibleBooks, scoreEnabledFlag } = useBibleBooks();
+  const { activeTimer, timedSessionScore, incrementTimedSessionScore } = useTimer();
   const [item, setItem] = useState<ReviewItem | null>(null);
   const [currentChapter, setCurrentChapter] = useState<Chapter | null>(null);
   const [currentBookName, setCurrentBookName] = useState<string | null>(null);
@@ -71,7 +73,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   const verseContainerHeight = screenHeight * 0.50;
   const contentContainerHeight = screenHeight * 0.84;
   const [isSheetVisible, setIsSheetVisible] = useState(false);
-  const [showConfetti, setShowConfetti] = React.useState(false);
+  const { showConfetti } = useConfetti();
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const { holdToTryAnother } = useSettings();
   const { theme } = useThemeContext();
@@ -199,7 +201,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
           case 0:
             console.log('scoreEnabledFlag:', scoreEnabledFlag);
             pointsObtained = points;
-            setShowConfetti(true);
+            showConfetti();
             break;
           case 1:
             pointsObtained = points * 0.4;
@@ -213,6 +215,8 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
       }
       incrementSessionScore(pointsObtained);
       incrementOverallScore(pointsObtained);
+      if(activeTimer && activeTimer.isActive)
+        incrementTimedSessionScore(pointsObtained);
 
       if(pointsObtained > 0)
         setFeedbackText(`Correct! (${pointsObtained} pts)`);
@@ -235,7 +239,6 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
 
     setShowFeedback(true);
     setTimeout(() => setShowFeedback(false), 1500);
-    setTimeout(() => setShowConfetti(false), 3000);
   };
 
   const forfeit = () => {
@@ -269,17 +272,33 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
         })) || [],
     }));
 
+  const inTimedSession = activeTimer && activeTimer.isActive;
+
   return (
-    <SafeAreaView style={[styles.container, {backgroundColor: theme.background}]}>
-      <Animated.View style={[{ flex: 1, transform: [{translateX: shakeAnim}] }]}>
-      <View style={[styles.contentContainer, { height: contentContainerHeight }]}>
+    <SafeAreaView style={[styles.container, {backgroundColor: theme.background}]}> 
+      <Animated.View style={[{ flex: 1, transform: [{translateX: shakeAnim}] }]}> 
+      <View style={[styles.contentContainer, { height: contentContainerHeight }]}> 
+        {activeTimer && activeTimer.isActive && (
+          <View style={{alignItems: 'center', marginBottom: 8, flexDirection: 'row', justifyContent: 'center'}}>
+            <Text
+              style={{fontSize: 20, fontWeight: 'bold', color: 'red', maxWidth: 300}}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              Timer: {activeTimer.name}
+            </Text>
+            <Text style={{fontSize: 20, fontWeight: 'bold', color: 'red', marginLeft: 8}}>
+              - {Math.floor(activeTimer.remaining / 60)}:{(activeTimer.remaining % 60).toString().padStart(2, '0')}
+            </Text>
+          </View>
+        )}
         <Text style={[styles.title, {color: theme.text}]}>{title}</Text>
 
         <View style={styles.scoreRow}>
-          <Text style={[styles.scoreText, {color: theme.text}]}>Session:</Text>
-          <Text style={[styles.scoreValue, {color: theme.text}]}>{sessionScore}</Text>
-          <Text style={[styles.scoreText, {color: theme.text}]}>Overall:</Text>
-          <Text style={[styles.scoreValue, {color: theme.text}]}>{overallScore}</Text>
+          <Text style={[styles.scoreText, {color: (inTimedSession ? 'red' : theme.text)}]}>{inTimedSession ? 'Timed Session:' : 'Session:'}</Text>
+          <Text style={[styles.scoreValue, {color: (inTimedSession ? 'red' : theme.text)}]}>{inTimedSession ? timedSessionScore : sessionScore}</Text>
+          <Text style={[styles.scoreText, {color: (inTimedSession ? 'red' : theme.text)}]}>{inTimedSession ? 'Personal Best:' : 'Overall:'}</Text>
+          <Text style={[styles.scoreValue, {color: (inTimedSession ? 'red' : theme.text)}]}>{inTimedSession ? activeTimer.bestSessionScore : overallScore}</Text>
         </View>
 
         {item ? (
@@ -344,7 +363,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
 
         <View style={styles.inputContainer}>
             <TouchableOpacity 
-              style={[styles.dropdown, {backgroundColor: !showAnswer ? theme.secondary : '#A0A0A0', borderColor: !showAnswer ? theme.text : theme.disabledButtonText, shadowColor: theme.text}]}
+              style={[styles.dropdown, {backgroundColor: !showAnswer ? theme.secondary : '#A0A0A0', borderColor: theme.text, shadowColor: theme.text}]}
               disabled={showAnswer} 
               onPress={() => {
                 if(showAnswer) {
@@ -373,18 +392,19 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
                 setSelectedBook(book);
                 setSelectedChapter(chapter);
             }}
-            title="Select Book & Chapter"
+            title="Select Book"
+            submenuTitle="Select Chapter"
             selectedBook={selectedBook}
             selectedChapter={selectedChapter}
             />
         </View>
 
         <View style={styles.buttonContainer}>
-          <TouchableOpacity style={[styles.submitButton, (!selectedChapter || showAnswer) && styles.buttonDisabled, {shadowColor: theme.text}]} onPress={checkGuess} disabled={!selectedChapter || showAnswer}>
+          <TouchableOpacity style={[styles.submitButton, (!selectedChapter || showAnswer) && styles.buttonDisabled, {shadowColor: theme.text, borderColor: theme.text}]} onPress={checkGuess} disabled={!selectedChapter || showAnswer}>
             <Text style={[styles.submitButtonText, (!selectedChapter || showAnswer) && {color: theme.disabledButtonText}]}>Submit Guess</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.forfeitButton, showAnswer && styles.buttonDisabled, {shadowColor: theme.text}]} onPress={forfeit} disabled={showAnswer}>
+          <TouchableOpacity style={[styles.forfeitButton, showAnswer && styles.buttonDisabled, {shadowColor: theme.text, borderColor: theme.text}]} onPress={forfeit} disabled={showAnswer}>
             <Text style={[styles.forfeitButtonText, showAnswer && {color: theme.disabledButtonText}]}>Give Up</Text>
           </TouchableOpacity>
         </View>
@@ -401,21 +421,12 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
           {holdToTryAnother ? (
             <LongPressButton onLongPress={loadNewItem} label="Try Another" />
           ) : (
-            <TouchableOpacity onPress={loadNewItem} style={[styles.tryAnotherButton, {backgroundColor: theme.neutralButton, shadowColor: theme.text}]}>
+            <TouchableOpacity onPress={loadNewItem} style={[styles.tryAnotherButton, {backgroundColor: theme.neutralButton, shadowColor: theme.text, borderColor: theme.text}]}>
               <Text style={styles.tryAnotherButtonText}>Try Another</Text>
             </TouchableOpacity>
           ) }
         </View>
         
-        {showConfetti && (
-        <ConfettiCannon
-          count={200}
-          origin={{ x: -10, y: 0 }}
-          fadeOut={true}
-          fallSpeed={3000}
-          explosionSpeed={350}
-        />
-      )}
       </View>
       </Animated.View>
     </SafeAreaView>
@@ -424,7 +435,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 10, backgroundColor: '#1a1a1a' },
-  contentContainer: { flex: 1, padding: 0 },
+  contentContainer: { flex: 1, padding: 0, marginBottom: 0 },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -439,9 +450,9 @@ const styles = StyleSheet.create({
   scoreText: { fontSize: 16 },
   scoreValue: { fontSize: 16, fontWeight: 'bold' },
   verseContainer: {
-    padding: 10,
+    padding: 8,
     borderRadius: 8,
-    marginBottom: 20,
+    marginBottom: 10,
     shadowOpacity: 0.1,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
@@ -450,7 +461,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    marginBottom: 10,
   },
   dropdown: {
     flex: 1,
@@ -473,6 +484,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
     elevation: 2,
+    borderWidth: 1,
   },
   submitButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   forfeitButton: {
@@ -483,14 +495,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: 10,
     elevation: 2,
+    borderWidth: 1,
   },
   forfeitButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   tryAnotherButton: {
-    marginTop: 10,
-    padding: 14,
+    marginTop: 4,
+    padding: 12,
     borderRadius: 8,
     alignItems: 'center',
     elevation: 2,
+    borderWidth: 1,
   },
   tryAnotherButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   feedbackOverlay: {
@@ -513,7 +527,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   loadingText: { textAlign: 'center', color: '#aaa', marginTop: 20 },
-  bottomButtonContainer: { marginTop: 'auto' },
+  bottomButtonContainer: { marginTop: 'auto', marginBottom: 0 },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',

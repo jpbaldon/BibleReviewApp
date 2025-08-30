@@ -1,4 +1,6 @@
 import { Stack } from 'expo-router';
+import { TimerProvider } from '../context/TimerContext';
+import { ConfettiProvider } from '../context/ConfettiContext';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -36,7 +38,11 @@ export default function Layout() {
     <SafeAreaProvider>
       <BackendProvider>
         <AuthProvider>
-          <InnerApp />
+          <TimerProvider>
+            <ConfettiProvider>
+              <InnerApp />
+            </ConfettiProvider>
+          </TimerProvider>
         </AuthProvider>
       </BackendProvider>
     </SafeAreaProvider>
