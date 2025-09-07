@@ -81,8 +81,12 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
               return { ...t, remaining: t.remaining - 1 };
             } else {
               // Timer hits 0, reset to duration and alert
-              if (timedSessionScore > (oldSessionBest ?? 0) && confetti) {
-                confetti.showConfetti();
+              if (timedSessionScore > (oldSessionBest ?? 0)) {
+                if (confetti && typeof confetti.showConfetti === 'function') {
+                  confetti.showConfetti();
+                } else {
+                  console.warn('Confetti context is missing or showConfetti is not a function:', confetti);
+                }
                 updateBestSessionScore(activeTimer.id, timedSessionScore);
                 Alert.alert('Timer Finished', `${t.name} Timer (${Math.floor(t.duration / 60)}:${(t.duration % 60).toString().padStart(2, '0')}) has finished! You beat your previous session score of ${oldSessionBest}`);
               } else {

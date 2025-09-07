@@ -265,12 +265,12 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   const booksWithChapters = enabledBooks.map((book) => ({
     label: book.bookName,
     value: book.bookName,
-    chapters:
-        ASV.Bible.find((b) => b.Book === book.bookName)?.Chapters.map((chapter) => ({
-        label: `Chapter ${chapter.Chapter}`,
-        value: chapter.Chapter.toString(),
-        })) || [],
-    }));
+    chapters: (book.chapters || []).map((chapter) => ({
+      label: `Chapter ${chapter.chapter}`,
+      value: chapter.chapter.toString(),
+      rarity: chapter.rarity || 'common',
+    })),
+  }));
 
   const inTimedSession = activeTimer && activeTimer.isActive;
 

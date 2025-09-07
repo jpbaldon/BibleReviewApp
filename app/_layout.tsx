@@ -38,11 +38,11 @@ export default function Layout() {
     <SafeAreaProvider>
       <BackendProvider>
         <AuthProvider>
-          <TimerProvider>
-            <ConfettiProvider>
+          <ConfettiProvider>
+            <TimerProvider>
               <InnerApp />
-            </ConfettiProvider>
-          </TimerProvider>
+            </TimerProvider>
+          </ConfettiProvider>
         </AuthProvider>
       </BackendProvider>
     </SafeAreaProvider>

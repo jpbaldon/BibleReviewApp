@@ -43969,7 +43969,7 @@ export const ASV = {
 			},
 			{
 			  "VerseNumber": 4,
-			  "Text": "But he princes of the Philistines were wroth with him; and the princes of the Philistines said unto him, Make the man return, that he may go back to his place where thou hast appointed him, and let him not go down with us to battle, lest in the battle he become an adversary to us: for wherewith should this [fellow] reconcile himself unto his lord? should it not be with the heads of these men?"
+			  "Text": "But the princes of the Philistines were wroth with him; and the princes of the Philistines said unto him, Make the man return, that he may go back to his place where thou hast appointed him, and let him not go down with us to battle, lest in the battle he become an adversary to us: for wherewith should this [fellow] reconcile himself unto his lord? Should it not be with the heads of these men?"
 			},
 			{
 			  "VerseNumber": 5,

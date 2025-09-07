@@ -13,11 +13,11 @@ import {
 } from 'react-native';
 import { useThemeContext } from '../context/ThemeContext';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { on } from 'events';
 
 interface ChapterItem {
   label: string;
   value: string;
+  rarity?: string;
 }
 
 interface BookItemData {
@@ -78,7 +78,9 @@ export const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({
 
   useEffect(() => {
     if (visible) {
-      //setCurrentBook(null);
+      if (!selectedBook) {
+        setCurrentBook(null);
+      }
       Animated.timing(translateY, {
         toValue: 0,
         duration: 250,
@@ -92,7 +94,7 @@ export const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({
       }).start();
       //setCurrentBook(null);
     }
-  }, [visible, translateY]);
+  }, [visible, translateY, selectedBook]);
 
   const handleBookSelect = useCallback((book: BookItemData) => {
     setCurrentBook(book);
@@ -155,14 +157,25 @@ export const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({
               numColumns={5}
               contentContainerStyle={styles.gridContainer}
               showsVerticalScrollIndicator={true}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={{...styles.gridItem, backgroundColor: theme.background}}
-                  onPress={() => handleSelectChapter(currentBook.value, item.value)}
-                >
-                  <Text style={[styles.chapterText, {color: theme.fadedText}]}>{item.label.replace('Chapter ', '')}</Text>
-                </TouchableOpacity>
-              )}
+              renderItem={({ item }) => {
+                // If chapter is disabled, make it unselectable and faded
+                const isDisabled = item.rarity === 'disabled';
+                return (
+                  <TouchableOpacity
+                    style={{
+                      ...styles.gridItem,
+                      backgroundColor: theme.background,
+                      opacity: isDisabled ? 0.4 : 1,
+                    }}
+                    onPress={() => {
+                      if (!isDisabled) handleSelectChapter(currentBook.value, item.value);
+                    }}
+                    disabled={isDisabled}
+                  >
+                    <Text style={[styles.chapterText, {color: theme.fadedText}]}>{item.label.replace('Chapter ', '')}</Text>
+                  </TouchableOpacity>
+                );
+              }}
             />
           </>
         )}
