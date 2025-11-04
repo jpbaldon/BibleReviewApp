@@ -215,7 +215,41 @@ export const SupabaseService = {
 
       if (error) throw error;
       return data;
-    }
+    },
+    
+    getCompetitiveScoreFromServer: async (userId: string) => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('competitive_score')
+        .eq('id', userId)
+        .single();
+
+      if (error) throw new Error(error.message);
+
+      return {
+        competitiveScore: data?.competitive_score ?? 0,
+      };
+    },
+    
+    updateCompetitiveScoreOnServer: async (userId: string, competitiveScore: number) => {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ competitive_score: competitiveScore })
+        .eq('id', userId);
+
+      if (error) throw error;
+    },
+    
+    fetchTopCompetitiveScores: async (limit = LEADERBOARD_ENTRIES_LIMIT) => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, username, competitive_score')
+        .order('competitive_score', { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+      return data;
+    },
 
   },
 

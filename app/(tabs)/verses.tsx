@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { ReviewScreenTemplate } from '../../components/ReviewScreenTemplate';
 import { useBibleBooks } from '../../context/BibleBooksContext';
-import { getWeightedChapters, selectWeightedChapter } from '@/utils/randomChapter';
+import { useWeightedChapters, selectWeightedChapter } from '@/utils/randomChapter';
 import { useThemeContext } from '../../context/ThemeContext';
 import { DuplicateLocation } from '../../types';
 
@@ -10,11 +10,12 @@ export default function Verses() {
     const { bibleBooks } = useBibleBooks();
   
     const enabledBooks = bibleBooks.filter(b => b.enabled && b.chapters && b.chapters.length > 0);
+    const weightedChapters = useWeightedChapters(enabledBooks);
     const { theme } = useThemeContext();
 
   
     // If no enabled books with chapters, show loading or info
-    if (enabledBooks.length === 0) {
+    if (weightedChapters.length === 0) {
       return (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#121212' }}>
           <ActivityIndicator size="large" color="#00e676" />
@@ -23,7 +24,6 @@ export default function Verses() {
       );
     }
   const getRandomVerse = async () => {
-    const weightedChapters = getWeightedChapters(enabledBooks);
 
     if(weightedChapters.length === 0) throw new Error('No eligible chapters.');
 

@@ -15,6 +15,9 @@ export const createBackendServices = (backend: BackendService, userId: string) =
       updateOverallScoreOnServer: (overallScore: number) => backend.score.updateOverallScoreOnServer(userId, overallScore),
       incrementUserScoreRpc: (points: number) => backend.score.incrementUserScoreRpc(userId, points),
       fetchTopScores: (limit?: number) => backend.score.fetchTopScores(limit),
+      getCompetitiveScoreFromServer: () => backend.score.getCompetitiveScoreFromServer(userId),
+      updateCompetitiveScoreOnServer: (competitiveScore: number) => backend.score.updateCompetitiveScoreOnServer(userId, competitiveScore),
+      fetchTopCompetitiveScores: (limit?: number) => backend.score.fetchTopCompetitiveScores(limit),
     },
     usernames: {
       checkAvailability: (username: string) => backend.usernames.checkAvailability(username),

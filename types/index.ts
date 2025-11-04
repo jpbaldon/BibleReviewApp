@@ -50,6 +50,13 @@ export interface LeaderboardEntry {
   rank?: number;
 }
 
+export interface CompetitiveLeaderboardEntry {
+  id: string;
+  username: string;
+  competitive_score: number;
+  rank?: number;
+}
+
 export interface AuthService {
   signIn(email: string, password: string): Promise<{ user: AppUser; session: AppSession }>;
   signUp(email: string, password: string, username: string): Promise<any>;
@@ -70,6 +77,9 @@ export interface ScoreService {
   updateOverallScoreOnServer(userId: string, overallScore: number): Promise<void>;
   incrementUserScoreRpc(userId: string, points: number): Promise<void>;
   fetchTopScores(limit?: number): Promise<LeaderboardEntry[]>;
+  getCompetitiveScoreFromServer(userId: string): Promise<{ competitiveScore: number; error?: string }>;
+  updateCompetitiveScoreOnServer(userId: string, competitiveScore: number): Promise<void>;
+  fetchTopCompetitiveScores(limit?: number): Promise<CompetitiveLeaderboardEntry[]>;
 }
 
 export interface BibleBooksService {
