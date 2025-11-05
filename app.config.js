@@ -13,7 +13,6 @@ export default {
     version: "0.6.0-beta",
     android: {
       package: "com.jbaldon.biblereviewapp",
-      edgeToEdge: true,
       versionCode: 1,
     },
     runtimeVersion: {
