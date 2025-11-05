@@ -63,6 +63,8 @@ export default function CompetitiveLeaderboardScreen() {
   const renderItem = ({ item }: { item: CompetitiveLeaderboardEntry }) => {
     const isCurrentUser = user?.id === item.id;
     const isTopThree = item.rank && item.rank <= 3;
+
+    if (item.competitive_score === 0) return null;
     
     return (
       <View 
@@ -111,9 +113,9 @@ export default function CompetitiveLeaderboardScreen() {
           >
             {item.competitive_score}
           </Text>
-          {isTopThree && (
+          {/* {isTopThree && (
             <Icon name="star" size={16} color={getMedalColor(item.rank || 0)} style={styles.starIcon} />
-          )}
+          )} */}
         </View>
       </View>
     );

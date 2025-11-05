@@ -236,7 +236,7 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
         { id: Date.now().toString(), name, duration, remaining: duration, isActive: false, bestSessionScore: 0 }
       ];
       if (user) {
-        AsyncStorage.setItem(`${user.id}_timers`, JSON.stringify(updated));
+        AsyncStorage.setItem(getKey('timers'), JSON.stringify(updated));
       }
       return updated;
     });
@@ -247,7 +247,7 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
         t.id === id && score > t.bestSessionScore ? { ...t, bestSessionScore: score } : t
       );
       if (user) {
-        AsyncStorage.setItem(`${user.id}_timers`, JSON.stringify(updated));
+        AsyncStorage.setItem(getKey('timers'), JSON.stringify(updated));
       }
       return updated;
     });
@@ -257,7 +257,7 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
     setTimers(prev => {
       const updated = prev.filter(t => t.id !== id);
       if (user) {
-        AsyncStorage.setItem(`${user.id}_timers`, JSON.stringify(updated));
+        AsyncStorage.setItem(getKey('timers'), JSON.stringify(updated));
       }
       return updated;
     });
@@ -315,7 +315,7 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
         t.id === id ? { ...t, name, duration, remaining: duration } : t
       );
       if (user) {
-        AsyncStorage.setItem(`${user.id}_timers`, JSON.stringify(updated));
+        AsyncStorage.setItem(getKey('timers'), JSON.stringify(updated));
       }
       return updated;
     });

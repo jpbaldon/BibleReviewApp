@@ -89,9 +89,11 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
     resetSessionScore,
   } = useScore();
 
-  const [enabledBooksCount, setEnabledBooksCount] = useState(
-    bibleBooks.filter(book => book.enabled).length
-  );
+  const [enabledBooksCount, setEnabledBooksCount] = useState(bibleBooks.filter(book => book.enabled).length);
+  const inTimedSession = activeTimer && activeTimer.isActive;
+  const inCompetitiveSession = competitiveTimer && competitiveTimer.isActive;
+  const enabledBooks = bibleBooks.filter((book) => book.enabled);
+  const allowedBooks = inCompetitiveSession ? bibleBooks : enabledBooks;
 
   const isScoreEnabled = useMemo(() => {
     const totalEnabledChapters = bibleBooks.reduce((sum, b) => {
@@ -103,15 +105,15 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
     return totalEnabledChapters >= MIN_CHAPTERS_ENABLED_FOR_SCORE;
   }, [bibleBooks]);
 
-  const enabledBooks = bibleBooks.filter((book) => book.enabled);
-
   useEffect(() => {  //a new prompt is loaded any time biblebooks (which includes chapter rarities) is changed
     const currentEnabledCount = bibleBooks.filter(book => book.enabled).length;
-    if(currentEnabledCount !== enabledBooksCount) {
+    if(!inCompetitiveSession) {
         setEnabledBooksCount(currentEnabledCount);
     }
-    loadNewItem();
-  }, [bibleBooks]);
+    if(!inCompetitiveSession) {
+      loadNewItem();
+    }
+  }, [bibleBooks, inCompetitiveSession]);
 
   const playFeedbackSound = (isCorrect: boolean) => {
     if (isCorrect) {
@@ -264,7 +266,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
     resetSessionScore();
   }, []);
 
-  const booksWithChapters = enabledBooks.map((book) => ({
+  const booksWithChapters = allowedBooks.map((book) => ({
     label: book.bookName,
     value: book.bookName,
     chapters: (book.chapters || []).map((chapter) => ({
@@ -273,9 +275,6 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
       rarity: chapter.rarity || 'common',
     })),
   }));
-
-  const inTimedSession = activeTimer && activeTimer.isActive;
-  const inCompetitiveSession = competitiveTimer && competitiveTimer.isActive;
 
   return (
     <SafeAreaView style={[styles.container, {backgroundColor: theme.background}]}> 
@@ -394,8 +393,8 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
                 if(showAnswer) {
 
                 }
-                else if(enabledBooks.length === 1) {
-                  const singleBook = enabledBooks[0];
+                else if(allowedBooks.length === 1) {
+                  const singleBook = allowedBooks[0];
                   setSelectedBook(singleBook.bookName);
                   setIsSheetVisible(true);
                 } else {

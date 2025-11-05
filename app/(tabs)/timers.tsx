@@ -132,7 +132,7 @@ export default function TimerScreen() {
                   </TouchableOpacity>
                 </View>
               )}
-              {item.bestSessionScore !== 0 && (
+              {(item.bestSessionScore ?? 0) > 0 && (
                 <View style={ styles.itemBottomRow }>
                   <Text style={{ color: theme.text, fontSize: 13 }}>
                     Highest session score: <Text style={{ fontWeight: 'bold' }}>{item.bestSessionScore}</Text>

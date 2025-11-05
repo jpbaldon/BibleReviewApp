@@ -30,6 +30,8 @@ export default function About() {
         <Text style={[styles.bodyText, {color: theme.text}]}>The Verses tab works the same way, except that you will be given a verse from a
             Bible chapter instead of a chapter summary. The Verses tab is worth double points.
         </Text>
+        <Text style={[styles.bodyText, {color: theme.text}]}>When the competitive timer is active, prompts will be pulled from all Bible Chapters, regardless of which ones you have enabled.
+        </Text>
         <Text style={[styles.bodyText, {color: theme.text}]}>I hope this app is a fun way to help develop your knowledge of the Scripture!
         </Text>
       </View>
