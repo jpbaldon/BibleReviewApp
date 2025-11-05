@@ -1,4 +1,6 @@
 import { BibleBook, Chapter } from '../types'
+import { useTimer } from '../context/TimerContext';
+import { useBibleBooks } from '../context/BibleBooksContext';
 
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'ultraRare' | 'disabled';
 
@@ -17,14 +19,22 @@ interface WeightedChapter {
     weight: number;
 }
 
-export function getWeightedChapters(enabledBooks: BibleBook[]): WeightedChapter[] {
+export function useWeightedChapters(enabledBooks: BibleBook[]): WeightedChapter[] {
+
+    const { competitiveTimer } = useTimer();
+    const { bibleBooks } = useBibleBooks();
+
+    const inCompetitiveSession = competitiveTimer && competitiveTimer.isActive;
+
+    const allowedBooks = inCompetitiveSession ? bibleBooks : enabledBooks; // Use all books in competitive session
+
     const weightedChapters: WeightedChapter[] = [];
 
-    for (const book of enabledBooks) {
+    for (const book of allowedBooks) {
         if(!book.chapters) continue;
 
         for (const chapter of book.chapters) {
-            const rarity = chapter.rarity ?? 'common';
+            const rarity = !inCompetitiveSession && chapter.rarity ? chapter.rarity : 'common';  // use all chapters in competitive session
             const weight = rarityWeightMap[rarity];
 
             if(weight > 0) {

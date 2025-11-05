@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { ReviewScreenTemplate, ReviewItem } from '@/components/ReviewScreenTemplate';
 import { useBibleBooks } from '../../context/BibleBooksContext';
-import { getWeightedChapters, selectWeightedChapter } from '@/utils/randomChapter';
+import { useWeightedChapters, selectWeightedChapter } from '@/utils/randomChapter';
 import { useThemeContext } from '../../context/ThemeContext';
 
 export default function Summaries() {
@@ -10,9 +10,10 @@ export default function Summaries() {
   const { theme } = useThemeContext();
 
   const enabledBooks = bibleBooks.filter(b => b.enabled && b.chapters && b.chapters.length > 0);
+  const weightedChapters = useWeightedChapters(enabledBooks);
 
   // If no enabled books with chapters, show loading or info
-  if (enabledBooks.length === 0) {
+  if (weightedChapters.length === 0) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#121212' }}>
         <ActivityIndicator size="large" color="#00e676" />
@@ -23,7 +24,6 @@ export default function Summaries() {
 
   const getRandomSummary = async () => {
     try {
-      const weightedChapters = getWeightedChapters(enabledBooks);
       console.log('Weighted chapters count:', weightedChapters.length);
 
       if (weightedChapters.length === 0) {

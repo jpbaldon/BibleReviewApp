@@ -6,7 +6,7 @@ import { TimerInputRow } from '../../components/TimerInputRow';
 import { useThemeContext } from '@/context/ThemeContext';
 
 export default function TimerScreen() {
-  const { timers, activeTimer, addTimer, removeTimer, startTimer, stopTimer, resetTimer, updateTimer } = useTimer();
+  const { timers, activeTimer, competitiveTimer, addTimer, removeTimer, startTimer, stopTimer, resetTimer, updateTimer, startCompetitiveTimer, stopCompetitiveTimer } = useTimer();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editMinutes, setEditMinutes] = useState('0');
@@ -22,6 +22,39 @@ export default function TimerScreen() {
 
   return (
     <View style={{...styles.container, backgroundColor: theme.background}}>
+      {/* Competitive Timer Section */}
+      <View style={{...styles.competitiveSection, borderBottomColor: theme.horizontalDivider}}>
+        <Text style={{...styles.competitiveTitle, color: theme.text}}>🏆 Competitive Timer</Text>
+        <View style={{...styles.competitiveTimerItem, backgroundColor: theme.background, borderColor: competitiveTimer.isActive ? '#FFD700' : theme.horizontalDivider}}>
+          <View style={styles.itemTopRow}>
+            <Text style={{...styles.timerName, color: theme.text, fontWeight: 'bold'}}>
+              {competitiveTimer.name}
+            </Text>
+            <Text style={{...styles.timerTime, color: competitiveTimer.isActive ? '#FFD700' : theme.text, fontWeight: 'bold', fontSize: 18}}>
+              {`${Math.floor(competitiveTimer.remaining / 60)}:${(competitiveTimer.remaining % 60).toString().padStart(2, '0')}`}
+            </Text>
+            <TouchableOpacity 
+              onPress={() => startCompetitiveTimer()} 
+              disabled={competitiveTimer.isActive}
+            >
+              <Icon name="play" size={28} color={competitiveTimer.isActive ? '#aaa' : '#FFD700'} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => stopCompetitiveTimer()}>
+              <Icon name="refresh" size={28} color="#607D8B" />
+            </TouchableOpacity>
+          </View>
+          {competitiveTimer.bestScore > 0 && (
+            <View style={styles.itemBottomRow}>
+              <Text style={{ color: theme.text, fontSize: 13 }}>
+                🏅 Personal Best: <Text style={{ fontWeight: 'bold', color: '#FFD700' }}>{competitiveTimer.bestScore}</Text>
+              </Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      {/* Session Timers Section */}
+      <Text style={{...styles.sectionTitle, color: theme.text}}>Session Timers</Text>
       <TimerInputRow onAdd={handleAdd} />
       <FlatList
         data={timers}
@@ -99,7 +132,7 @@ export default function TimerScreen() {
                   </TouchableOpacity>
                 </View>
               )}
-              {item.bestSessionScore !== 0 && (
+              {(item.bestSessionScore ?? 0) > 0 && (
                 <View style={ styles.itemBottomRow }>
                   <Text style={{ color: theme.text, fontSize: 13 }}>
                     Highest session score: <Text style={{ fontWeight: 'bold' }}>{item.bestSessionScore}</Text>
@@ -117,6 +150,34 @@ export default function TimerScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
   header: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, textAlign: 'center' },
+  competitiveSection: { 
+    marginBottom: 20, 
+    paddingBottom: 16, 
+    borderBottomWidth: 2,
+  },
+  competitiveTitle: { 
+    fontSize: 20, 
+    fontWeight: 'bold', 
+    marginBottom: 12, 
+    textAlign: 'center' 
+  },
+  competitiveTimerItem: { 
+    flexDirection: 'column', 
+    padding: 12, 
+    borderRadius: 10, 
+    borderWidth: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sectionTitle: { 
+    fontSize: 18, 
+    fontWeight: 'bold', 
+    marginTop: 8,
+    marginBottom: 12 
+  },
   inputRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 6, padding: 8, marginRight: 8, minWidth: 80 },
   addButton: { padding: 4 },

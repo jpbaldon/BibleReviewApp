@@ -39,9 +39,7 @@ export default function Layout() {
       <BackendProvider>
         <AuthProvider>
           <ConfettiProvider>
-            <TimerProvider>
               <InnerApp />
-            </TimerProvider>
           </ConfettiProvider>
         </AuthProvider>
       </BackendProvider>
@@ -62,12 +60,14 @@ function InnerApp() {
             <LayoutContent />
           ) : (
             <ServicesProvider>
-              <BibleBooksProvider>
-                <ScoreProvider>
-                  <ThemeLoader userId={user.id} />
-                  <LayoutContent />
-                </ScoreProvider>
-              </BibleBooksProvider>
+              <TimerProvider>
+                <BibleBooksProvider>
+                  <ScoreProvider>
+                    <ThemeLoader userId={user.id} />
+                    <LayoutContent />
+                  </ScoreProvider>
+                </BibleBooksProvider>
+              </TimerProvider>
             </ServicesProvider>
           )}
         </SettingsProvider>

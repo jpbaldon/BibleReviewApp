@@ -4,7 +4,6 @@ import * as FileSystem from 'expo-file-system';
 import { ASV } from '@/data/asv';
 import { BibleBook, Rarity } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { useServices } from '../context/ServicesContext';
 
 interface BibleBooksContextType {
   bibleBooks: BibleBook[];
@@ -49,23 +48,17 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
   const [scoreEnabledFlag, setScoreEnabledFlag] = useState(enabledChapterCount >= MIN_CHAPTERS_ENABLED_FOR_SCORE);
 
   // Initialize database asynchronously
-  const openDatabase = useCallback(async () => {
-    try {
-      if (!user?.id) {
-        throw new Error('User ID is not defined. Cannot open user-scoped database.');
-      }
-      // Ensure SQLite directory exists
-      if (!(await FileSystem.getInfoAsync(`${FileSystem.documentDirectory}SQLite`)).exists) {
-        await FileSystem.makeDirectoryAsync(`${FileSystem.documentDirectory}SQLite`);
-      }
+  const openDatabase = useCallback<() => Promise<SQLite.SQLiteDatabase>>(async () => {
+    if (!user?.id) throw new Error('User ID is not defined. Cannot open user-scoped database.');
 
-      const userScopedDbName = `BibleBooks_${user.id}.db`;
+    const sqliteDir = `${(FileSystem as any).documentDirectory}SQLite`;
 
-      return await SQLite.openDatabaseAsync(userScopedDbName);
-    } catch (err) {
-      console.error('Failed to open database:', err);
-      throw err;
-    }
+    const dbPath = `${sqliteDir}/BibleBooks_${user.id}.db`;
+
+    const db = await SQLite.openDatabaseAsync(dbPath);
+    dbRef.current = db;
+
+    return db;
   }, [user?.id]);
 
   const loadBooksFromDB = useCallback(async (localdbInstance: SQLite.SQLiteDatabase) => {

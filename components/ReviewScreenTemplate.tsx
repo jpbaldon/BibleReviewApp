@@ -1,6 +1,6 @@
 import { useTimer } from '../context/TimerContext';
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Animated, Vibration, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBibleBooks } from '../context/BibleBooksContext';
 import { useScore } from '../context/ScoreContext';
@@ -56,7 +56,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   renderQuestion,
 }) => {
   const { bibleBooks, scoreEnabledFlag } = useBibleBooks();
-  const { activeTimer, timedSessionScore, incrementTimedSessionScore } = useTimer();
+  const { activeTimer, timedSessionScore, incrementTimedSessionScore, competitiveTimer, competitiveScore, incrementCompetitiveScore } = useTimer();
   const [item, setItem] = useState<ReviewItem | null>(null);
   const [currentChapter, setCurrentChapter] = useState<Chapter | null>(null);
   const [currentBookName, setCurrentBookName] = useState<string | null>(null);
@@ -89,9 +89,11 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
     resetSessionScore,
   } = useScore();
 
-  const [enabledBooksCount, setEnabledBooksCount] = useState(
-    bibleBooks.filter(book => book.enabled).length
-  );
+  const [enabledBooksCount, setEnabledBooksCount] = useState(bibleBooks.filter(book => book.enabled).length);
+  const inTimedSession = activeTimer && activeTimer.isActive;
+  const inCompetitiveSession = competitiveTimer && competitiveTimer.isActive;
+  const enabledBooks = bibleBooks.filter((book) => book.enabled);
+  const allowedBooks = inCompetitiveSession ? bibleBooks : enabledBooks;
 
   const isScoreEnabled = useMemo(() => {
     const totalEnabledChapters = bibleBooks.reduce((sum, b) => {
@@ -103,15 +105,15 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
     return totalEnabledChapters >= MIN_CHAPTERS_ENABLED_FOR_SCORE;
   }, [bibleBooks]);
 
-  const enabledBooks = bibleBooks.filter((book) => book.enabled);
-
   useEffect(() => {  //a new prompt is loaded any time biblebooks (which includes chapter rarities) is changed
     const currentEnabledCount = bibleBooks.filter(book => book.enabled).length;
-    if(currentEnabledCount !== enabledBooksCount) {
+    if(!inCompetitiveSession) {
         setEnabledBooksCount(currentEnabledCount);
     }
-    loadNewItem();
-  }, [bibleBooks]);
+    if(!inCompetitiveSession) {
+      loadNewItem();
+    }
+  }, [bibleBooks, inCompetitiveSession]);
 
   const playFeedbackSound = (isCorrect: boolean) => {
     if (isCorrect) {
@@ -217,6 +219,8 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
       incrementOverallScore(pointsObtained);
       if(activeTimer && activeTimer.isActive)
         incrementTimedSessionScore(pointsObtained);
+      if(competitiveTimer && competitiveTimer.isActive)
+        incrementCompetitiveScore(pointsObtained);
 
       if(pointsObtained > 0)
         setFeedbackText(`Correct! (${pointsObtained} pts)`);
@@ -232,7 +236,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
     setShowAnswer(isCorrect);
     setShowSubmit(!isCorrect);
 
-    await playFeedbackSound(isCorrect);
+    playFeedbackSound(isCorrect);
     const newAttempts = attempts + 1;
     setAttempts(newAttempts);
     await AsyncStorage.setItem('attempts', newAttempts.toString());
@@ -262,7 +266,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
     resetSessionScore();
   }, []);
 
-  const booksWithChapters = enabledBooks.map((book) => ({
+  const booksWithChapters = allowedBooks.map((book) => ({
     label: book.bookName,
     value: book.bookName,
     chapters: (book.chapters || []).map((chapter) => ({
@@ -272,13 +276,11 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
     })),
   }));
 
-  const inTimedSession = activeTimer && activeTimer.isActive;
-
   return (
     <SafeAreaView style={[styles.container, {backgroundColor: theme.background}]}> 
       <Animated.View style={[{ flex: 1, transform: [{translateX: shakeAnim}] }]}> 
       <View style={[styles.contentContainer, { height: contentContainerHeight }]}> 
-        {activeTimer && activeTimer.isActive && (
+        {inTimedSession && (
           <View style={{alignItems: 'center', marginBottom: 8, flexDirection: 'row', justifyContent: 'center'}}>
             <Text
               style={{fontSize: 20, fontWeight: 'bold', color: 'red', maxWidth: 300}}
@@ -292,13 +294,35 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
             </Text>
           </View>
         )}
+        {inCompetitiveSession && (
+          <View style={{alignItems: 'center', marginBottom: 8, flexDirection: 'row', justifyContent: 'center'}}>
+            <Text
+              style={{fontSize: 20, fontWeight: 'bold', color: '#FFD700', maxWidth: 300}}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              🏆 Competitive Timer
+            </Text>
+            <Text style={{fontSize: 20, fontWeight: 'bold', color: '#FFD700', marginLeft: 8}}>
+              - {Math.floor(competitiveTimer.remaining / 60)}:{(competitiveTimer.remaining % 60).toString().padStart(2, '0')}
+            </Text>
+          </View>
+        )}
         <Text style={[styles.title, {color: theme.text}]}>{title}</Text>
 
         <View style={styles.scoreRow}>
-          <Text style={[styles.scoreText, {color: (inTimedSession ? 'red' : theme.text)}]}>{inTimedSession ? 'Timed Session:' : 'Session:'}</Text>
-          <Text style={[styles.scoreValue, {color: (inTimedSession ? 'red' : theme.text)}]}>{inTimedSession ? timedSessionScore : sessionScore}</Text>
-          <Text style={[styles.scoreText, {color: (inTimedSession ? 'red' : theme.text)}]}>{inTimedSession ? 'Personal Best:' : 'Overall:'}</Text>
-          <Text style={[styles.scoreValue, {color: (inTimedSession ? 'red' : theme.text)}]}>{inTimedSession ? activeTimer.bestSessionScore : overallScore}</Text>
+          <Text style={[styles.scoreText, {color: (inTimedSession ? 'red' : inCompetitiveSession ? '#FFD700' : theme.text)}]}>
+            {inCompetitiveSession ? 'Competitive:' : inTimedSession ? 'Timed Session:' : 'Session:'}
+          </Text>
+          <Text style={[styles.scoreValue, {color: (inTimedSession ? 'red' : inCompetitiveSession ? '#FFD700' : theme.text)}]}>
+            {inCompetitiveSession ? competitiveScore : inTimedSession ? timedSessionScore : sessionScore}
+          </Text>
+          <Text style={[styles.scoreText, {color: (inTimedSession ? 'red' : inCompetitiveSession ? '#FFD700' : theme.text)}]}>
+            {inCompetitiveSession ? 'Personal Best:' : inTimedSession ? 'Personal Best:' : 'Overall:'}
+          </Text>
+          <Text style={[styles.scoreValue, {color: (inTimedSession ? 'red' : inCompetitiveSession ? '#FFD700' : theme.text)}]}>
+            {inCompetitiveSession ? competitiveTimer.bestScore : inTimedSession ? activeTimer.bestSessionScore : overallScore}
+          </Text>
         </View>
 
         {item ? (
@@ -369,8 +393,8 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
                 if(showAnswer) {
 
                 }
-                else if(enabledBooks.length === 1) {
-                  const singleBook = enabledBooks[0];
+                else if(allowedBooks.length === 1) {
+                  const singleBook = allowedBooks[0];
                   setSelectedBook(singleBook.bookName);
                   setIsSheetVisible(true);
                 } else {
