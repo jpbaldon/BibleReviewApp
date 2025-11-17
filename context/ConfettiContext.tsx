@@ -12,7 +12,7 @@ const ConfettiContext = createContext<ConfettiContextType>({
 export const useConfetti = () => useContext(ConfettiContext);
 
 export const ConfettiProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [confettiKey, setConfettiKey] = useState(0);
+  const [confettiKey, setConfettiKey] = useState<number>(0);
   const [confettiOptions, setConfettiOptions] = useState<{ count?: number }>({});
 
   const showConfetti = useCallback((options?: { count?: number }) => {

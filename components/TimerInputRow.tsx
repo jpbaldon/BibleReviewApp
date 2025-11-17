@@ -8,9 +8,10 @@ interface TimerInputRowProps {
 }
 
 export const TimerInputRow: React.FC<TimerInputRowProps> = ({ onAdd }) => {
-  const [name, setName] = useState('');
-  const [minutes, setMinutes] = useState('');
-  const [seconds, setSeconds] = useState('');
+
+  const [name, setName] = useState<string>('');
+  const [minutes, setMinutes] = useState<string>('');
+  const [seconds, setSeconds] = useState<string>('');
   const { theme } = useThemeContext();
 
   const handleAdd = () => {

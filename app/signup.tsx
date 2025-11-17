@@ -4,12 +4,12 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 
 export default function SignUpScreen() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
-  const [usernameError, setUsernameError] = useState('');
-  const [checkingUsername, setCheckingUsername] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [username, setUsername] = useState<string>('');
+  const [usernameError, setUsernameError] = useState<string>('');
+  const [checkingUsername, setCheckingUsername] = useState<boolean>(false);
+  const [submitting, setSubmitting] = useState<boolean>(false);
 
   const router = useRouter();
   const { signUp, checkUsernameAvailability } = useAuth();

@@ -14,7 +14,7 @@ const SettingsContext = createContext<SettingsContextType>({
 export const useSettings = () => useContext(SettingsContext);
 
 export const SettingsProvider = ({ userId, children }: { userId?: string | null; children: React.ReactNode }) => {
-  const [holdToTryAnother, setHoldToTryAnotherState] = useState(false);
+  const [holdToTryAnother, setHoldToTryAnotherState] = useState<boolean>(false);
 
   useEffect(() => {
     if (!userId) {

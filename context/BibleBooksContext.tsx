@@ -34,18 +34,20 @@ const BibleBooksContext = createContext<BibleBooksContextType>({
 export const MIN_CHAPTERS_ENABLED_FOR_SCORE = 20;
 
 export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+
   const [bibleBooks, setBibleBooks] = useState<BibleBook[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const dbRef = useRef<SQLite.SQLiteDatabase | null>(null);
-  const { user } = useAuth();
 
   const enabledChapterCount = bibleBooks.reduce((total, book) => {
     if (!book.enabled || !book.chapters) return total;
     return total + book.chapters.filter(ch => ch.rarity !== 'disabled').length;
   }, 0);
 
-  const [scoreEnabledFlag, setScoreEnabledFlag] = useState(enabledChapterCount >= MIN_CHAPTERS_ENABLED_FOR_SCORE);
+  const [scoreEnabledFlag, setScoreEnabledFlag] = useState<boolean>(enabledChapterCount >= MIN_CHAPTERS_ENABLED_FOR_SCORE);
+
+  const { user } = useAuth();
 
   // Initialize database asynchronously
   const openDatabase = useCallback<() => Promise<SQLite.SQLiteDatabase>>(async () => {

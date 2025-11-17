@@ -5,11 +5,13 @@ import { useAuth } from '../context/AuthContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SignInScreen() {
-  const { user, isLoading, signIn, error } = useAuth();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+
+  const [email, setEmail] = useState<string>('');
+  const [password, setPassword] = useState<string>('');
+  const [submitting, setSubmitting] = useState<boolean>(false);
+
   const router = useRouter();
+  const { user, isLoading, signIn, error } = useAuth();
 
   useEffect(() => {
     if (!isLoading && user) {

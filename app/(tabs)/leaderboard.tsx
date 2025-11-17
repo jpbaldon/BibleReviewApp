@@ -8,12 +8,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LeaderboardEntry } from '../../types'
 
 export default function LeaderboardScreen() {
+
+  const [scores, setScores] = useState<LeaderboardEntry[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+
   const { user } = useAuth();
   const { theme } = useThemeContext();
-  const [scores, setScores] = useState<LeaderboardEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
   const server = useScore();
 
   const fetchLeaderboard = async () => {

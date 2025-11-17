@@ -9,12 +9,14 @@ import { CompetitiveLeaderboardEntry } from '../../types';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 export default function CompetitiveLeaderboardScreen() {
+
+  const [scores, setScores] = useState<CompetitiveLeaderboardEntry[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+
   const { user } = useAuth();
   const { theme } = useThemeContext();
-  const [scores, setScores] = useState<CompetitiveLeaderboardEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
   const server = user ? useServices() : null;
 
   const fetchLeaderboard = async () => {

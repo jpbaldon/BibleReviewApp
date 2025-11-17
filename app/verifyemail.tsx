@@ -6,13 +6,13 @@ import { useAuth } from '../context/AuthContext';
 
 export default function VerifyEmailScreen() {
 
+  const [loading, setLoading] = useState<boolean>(false);
+  const [cooldown, setCoolDown] = useState<number>(0);
+
+  const { resendVerificationEmail } = useAuth();
   const router = useRouter();
   const params = useLocalSearchParams();
   const email = params.email as string;
-  const [loading, setLoading] = useState(false);
-  const [cooldown, setCoolDown] = useState(0);
-
-  const { resendVerificationEmail } = useAuth();
 
   const handleResendEmail = async () => {
     if(cooldown > 0) return;

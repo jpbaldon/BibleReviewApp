@@ -6,11 +6,25 @@ import { TimerInputRow } from '../../components/TimerInputRow';
 import { useThemeContext } from '@/context/ThemeContext';
 
 export default function TimerScreen() {
-  const { timers, activeTimer, competitiveTimer, addTimer, removeTimer, startTimer, stopTimer, resetTimer, updateTimer, startCompetitiveTimer, stopCompetitiveTimer } = useTimer();
+
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editMinutes, setEditMinutes] = useState('0');
-  const [editSeconds, setEditSeconds] = useState('0');
+  const [editName, setEditName] = useState<string>('');
+  const [editMinutes, setEditMinutes] = useState<string>('0');
+  const [editSeconds, setEditSeconds] = useState<string>('0');
+
+  const { 
+    timers,
+    activeTimer,
+    competitiveTimer,
+    addTimer,
+    removeTimer,
+    startTimer,
+    stopTimer,
+    resetTimer,
+    updateTimer,
+    startCompetitiveTimer,
+    stopCompetitiveTimer,
+  } = useTimer();
   const { theme } = useThemeContext();
 
   const handleAdd = (name: string, minutes: number, seconds: number) => {

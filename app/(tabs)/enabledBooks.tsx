@@ -16,6 +16,12 @@ const rarities: ('common' | 'uncommon' | 'rare' | 'ultraRare' | 'disabled')[] = 
 ];
 
 export default function EnabledBooksScreen() {
+
+  const [expandedBook, setExpandedBook] = useState<string | null>(null);
+  const [longPressActive, setLongPressActive] = useState<boolean>(false);
+  const [bookGrammar, setBookGrammar] = useState<string>('book');
+  const [chapterGrammar, setChapterGrammar] = useState<string>('chapter');
+
   const {
     bibleBooks,
     toggleBookEnabled,
@@ -26,11 +32,7 @@ export default function EnabledBooksScreen() {
     scoreEnabledFlag,
     setScoreEnabledFlag
   } = useBibleBooks();
-  const [expandedBook, setExpandedBook] = useState<string | null>(null);
-  const [longPressActive, setLongPressActive] = useState(false);
   const { theme } = useThemeContext();
-  const [bookGrammar, setBookGrammar] = useState('book');
-  const [chapterGrammar, setChapterGrammar] = useState('chapter');
   const totalEnabledBooks = bibleBooks.filter(b => b.enabled).length;
 
   useEffect(() => {

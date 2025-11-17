@@ -64,8 +64,8 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
   const [competitiveTimer, setCompetitiveTimer] = useState<CompetitiveTimer>({
     id: 'competitive',
     name: 'Competitive Timer',
-    duration: 900, // 15 minutes
-    remaining: 900,
+    duration: 300, // 15 minutes
+    remaining: 300,
     isActive: false,
     bestScore: 0,
   });

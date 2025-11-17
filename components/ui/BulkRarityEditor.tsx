@@ -13,11 +13,12 @@ export default function BulkRarityEditor({
   book: { bookName: string; chapters: Chapter[] };
   updateChapterRarity: (bookName: string, chapter: number, rarity: Rarity, shouldUpdateBook: boolean) => Promise<void>;
 }) {
-  const [fromChapter, setFromChapter] = useState('1');
-  const [toChapter, setToChapter] = useState(book.chapters.length.toString());
+  const [fromChapter, setFromChapter] = useState<string>('1');
+  const [toChapter, setToChapter] = useState<string>(book.chapters.length.toString());
   const [fromRarities, setFromRarities] = useState<Rarity[]>([]);
-  const [applyAllFrom, setApplyAllFrom] = useState(false);
+  const [applyAllFrom, setApplyAllFrom] = useState<boolean>(false);
   const [toRarity, setToRarity] = useState<Rarity>('common');
+
   const { updateBookEnabledStatus } = useBibleBooks();
   const { theme } = useThemeContext();
 

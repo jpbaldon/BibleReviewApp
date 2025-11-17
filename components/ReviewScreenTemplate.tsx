@@ -57,26 +57,28 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
 }) => {
   const { bibleBooks, scoreEnabledFlag } = useBibleBooks();
   const { activeTimer, timedSessionScore, incrementTimedSessionScore, competitiveTimer, competitiveScore, incrementCompetitiveScore } = useTimer();
+  const { holdToTryAnother } = useSettings();
+  const { theme } = useThemeContext();
+
   const [item, setItem] = useState<ReviewItem | null>(null);
   const [currentChapter, setCurrentChapter] = useState<Chapter | null>(null);
   const [currentBookName, setCurrentBookName] = useState<string | null>(null);
-  const [attempts, setAttempts] = useState(0);
-  const [selectedBook, setSelectedBook] = useState('');
-  const [selectedChapter, setSelectedChapter] = useState('');
-  const [showAnswer, setShowAnswer] = useState(false);
-  const [showSubmit, setShowSubmit] = useState(true);
-  const [feedbackText, setFeedbackText] = useState('');
-  const [feedbackColor, setFeedbackColor] = useState('#000000');
-  const [showFeedback, setShowFeedback] = useState(false);
+  const [attempts, setAttempts] = useState<number>(0);
+  const [selectedBook, setSelectedBook] = useState<string>('');
+  const [selectedChapter, setSelectedChapter] = useState<string>('');
+  const [showAnswer, setShowAnswer] = useState<boolean>(false);
+  const [showSubmit, setShowSubmit] = useState<boolean>(true);
+  const [feedbackText, setFeedbackText] = useState<string>('');
+  const [feedbackColor, setFeedbackColor] = useState<string>('#000000');
+  const [showFeedback, setShowFeedback] = useState<boolean>(false);
+  const [isSheetVisible, setIsSheetVisible] = useState<boolean>(false);
+  const [enabledBooksCount, setEnabledBooksCount] = useState<number>(bibleBooks.filter(book => book.enabled).length);
 
   const screenHeight = Dimensions.get('window').height;
   const verseContainerHeight = screenHeight * 0.50;
   const contentContainerHeight = screenHeight * 0.84;
-  const [isSheetVisible, setIsSheetVisible] = useState(false);
   const { showConfetti } = useConfetti();
   const shakeAnim = useRef(new Animated.Value(0)).current;
-  const { holdToTryAnother } = useSettings();
-  const { theme } = useThemeContext();
 
   const correctPlayer = useAudioPlayer(correctSound);
   const incorrectPlayer = useAudioPlayer(incorrectSound);
@@ -89,7 +91,6 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
     resetSessionScore,
   } = useScore();
 
-  const [enabledBooksCount, setEnabledBooksCount] = useState(bibleBooks.filter(book => book.enabled).length);
   const inTimedSession = activeTimer && activeTimer.isActive;
   const inCompetitiveSession = competitiveTimer && competitiveTimer.isActive;
   const enabledBooks = bibleBooks.filter((book) => book.enabled);
@@ -198,7 +199,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
 
     if (isCorrect) {
       let pointsObtained = 0;
-      if(isScoreEnabled) {
+      if(isScoreEnabled || inCompetitiveSession) {
         switch(attempts) {
           case 0:
             console.log('scoreEnabledFlag:', scoreEnabledFlag);
@@ -219,7 +220,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
       incrementOverallScore(pointsObtained);
       if(activeTimer && activeTimer.isActive)
         incrementTimedSessionScore(pointsObtained);
-      if(competitiveTimer && competitiveTimer.isActive)
+      if(inCompetitiveSession)
         incrementCompetitiveScore(pointsObtained);
 
       if(pointsObtained > 0)
@@ -272,7 +273,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
     chapters: (book.chapters || []).map((chapter) => ({
       label: `Chapter ${chapter.chapter}`,
       value: chapter.chapter.toString(),
-      rarity: chapter.rarity || 'common',
+      rarity: !inCompetitiveSession && chapter.rarity || 'common',  //default to 'common' in competitive session, or if no rarity is explicitly set
     })),
   }));
 
