@@ -59,8 +59,8 @@ export const ThemeProvider = ({ children }: ThemeProviderProps) => {
   };
 
   return (
-    <ThemeContext.Provider value={{ colorScheme, setColorScheme, theme, loadUserTheme }}>
+    <ThemeContext value={{ colorScheme, setColorScheme, theme, loadUserTheme }}>
       {children}
-    </ThemeContext.Provider>
+    </ThemeContext>
   );
 };

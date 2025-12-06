@@ -373,7 +373,7 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <TimerContext.Provider value={{
+    <TimerContext value={{
       timers,
       activeTimer,
       competitiveTimer,
@@ -392,6 +392,6 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
       updateBestSessionScore
     }}>
       {children}
-    </TimerContext.Provider>
+    </TimerContext>
   );
 };

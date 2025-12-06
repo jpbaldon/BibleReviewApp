@@ -23,8 +23,8 @@ export const ServicesProvider = ({ children }: { children: React.ReactNode }) =>
   if (isLoading || (user && !services)) return null;
 
   return (
-    <ServicesContext.Provider value={services}>
+    <ServicesContext value={services}>
       {children}
-    </ServicesContext.Provider>
+    </ServicesContext>
   );
 };

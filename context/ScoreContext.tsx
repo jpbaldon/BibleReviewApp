@@ -129,7 +129,7 @@ export const ScoreProvider: React.FC<ScoreProviderProps> = ({ children }) => {
     }
 
     return (
-        <ScoreContext.Provider 
+        <ScoreContext 
             value={{
                 overallScore,
                 sessionScore,
@@ -141,6 +141,6 @@ export const ScoreProvider: React.FC<ScoreProviderProps> = ({ children }) => {
             }}
         >
             {children}
-        </ScoreContext.Provider>
+        </ScoreContext>
     )
 }

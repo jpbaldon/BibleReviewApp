@@ -21,7 +21,7 @@ export const ConfettiProvider: React.FC<{ children: ReactNode }> = ({ children }
   }, []);
 
   return (
-    <ConfettiContext.Provider value={{ showConfetti }}>
+    <ConfettiContext value={{ showConfetti }}>
       {children}
       {/* Global ConfettiCannon, only rendered when key changes */}
       {confettiKey > 0 && (
@@ -37,6 +37,6 @@ export const ConfettiProvider: React.FC<{ children: ReactNode }> = ({ children }
           />
         </>
       )}
-    </ConfettiContext.Provider>
+    </ConfettiContext>
   );
 };
