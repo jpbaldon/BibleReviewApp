@@ -10,7 +10,7 @@ export default {
     },
     scheme: "biblereviewapp",
     plugins: ["expo-router"],
-    version: "0.6.0-beta",
+    version: "0.7.0-beta",
     android: {
       package: "com.jbaldon.biblereviewapp",
       versionCode: 1,
