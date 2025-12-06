@@ -379,9 +379,9 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
   }), [bibleBooks, error]);
 
   return (
-    <BibleBooksContext.Provider value={contextValue}>
+    <BibleBooksContext value={contextValue}>
       {children}
-    </BibleBooksContext.Provider>
+    </BibleBooksContext>
   );
 };
 

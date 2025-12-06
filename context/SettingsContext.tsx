@@ -48,8 +48,8 @@ export const SettingsProvider = ({ userId, children }: { userId?: string | null;
   };
 
   return (
-    <SettingsContext.Provider value={{ holdToTryAnother, setHoldToTryAnotherSetting }}>
+    <SettingsContext value={{ holdToTryAnother, setHoldToTryAnotherSetting }}>
       {children}
-    </SettingsContext.Provider>
+    </SettingsContext>
   );
 };

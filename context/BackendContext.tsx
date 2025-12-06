@@ -6,9 +6,9 @@ const BackendContext = createContext<BackendService | null>(null);
 
 export const BackendProvider = ({ children }: { children: React.ReactNode }) => {
   return (
-    <BackendContext.Provider value={SupabaseService}>
+    <BackendContext value={SupabaseService}>
       {children}
-    </BackendContext.Provider>
+    </BackendContext>
   );
 };
 
