@@ -81,7 +81,7 @@ After migration, test the feature:
 
 1. Start the app
 2. Navigate to Session Timers
-3. Start the Competitive Timer (15-minute timer at the top)
+3. Start the Competitive Timer (5-minute timer at the top)
 4. Complete some verse reviews
 5. Stop the timer or let it finish
 6. Check the Competitive Leaderboard

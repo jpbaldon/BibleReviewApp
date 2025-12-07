@@ -164,7 +164,7 @@ export default function CompetitiveLeaderboardScreen() {
       
       <View style={styles.subtitle}>
         <Text style={[styles.subtitleText, { color: theme.text }]}>
-          15-Minute Challenge • Best Scores
+          5-Minute Challenge • Best Scores
         </Text>
       </View>
 

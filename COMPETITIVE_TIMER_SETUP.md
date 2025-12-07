@@ -41,20 +41,20 @@ CREATE POLICY "Users can insert their own competitive scores"
 -- Policy: Users cannot update competitive scores (scores are immutable once submitted)
 -- Policy: Users cannot delete competitive scores (scores are permanent)
 
-COMMENT ON TABLE competitive_scores IS 'Stores scores from 15-minute competitive timer sessions';
+COMMENT ON TABLE competitive_scores IS 'Stores scores from 5-minute competitive timer sessions';
 ```
 
 ## Features Implemented
 
 ### 1. **Competitive Timer**
-   - Fixed 15-minute timer that cannot be edited or deleted
+   - Fixed 5-minute timer that cannot be edited or deleted
    - Displayed at the top of the Timers screen with special styling
    - Shows current session score while active
    - Automatically submits score to leaderboard when timer completes
 
 ### 2. **Score Tracking**
    - Separate scoring system for competitive sessions
-   - Scores accumulate during the 15-minute session
+   - Scores accumulate during the 5-minute session
    - All review activities (summaries, verses) contribute to the score
    - Score is automatically submitted to the database when timer finishes
 
@@ -107,7 +107,7 @@ COMMENT ON TABLE competitive_scores IS 'Stores scores from 15-minute competitive
 ## Notes
 
 - Competitive scores are **immutable** once submitted (cannot be edited or deleted)
-- Each completed 15-minute session creates a new entry in the leaderboard
+- Each completed 5-minute session creates a new entry in the leaderboard
 - Users can have multiple entries (one per completed session)
 - Leaderboard shows top 50 scores by default (configurable)
 - Scores are tied to user accounts and displayed with usernames

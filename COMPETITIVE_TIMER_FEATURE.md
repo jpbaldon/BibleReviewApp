@@ -1,7 +1,7 @@
 # Competitive Timer Feature
 
 ## Overview
-The Competitive Timer is a special 15-minute challenge timer that allows users to compete with others on a global leaderboard. Unlike regular session timers, the competitive timer:
+The Competitive Timer is a special 5-minute challenge timer that allows users to compete with others on a global leaderboard. Unlike regular session timers, the competitive timer:
 
 - **Fixed Duration**: Always 15 minutes (900 seconds)
 - **Cannot be Edited or Deleted**: It's a permanent fixture in the app
@@ -69,7 +69,7 @@ New methods added to the ScoreService:
 
 ### Context Updates
 **TimerContext** now manages:
-- `competitiveTimer`: The fixed 15-minute timer state
+- `competitiveTimer`: The fixed 5-minute timer state
 - `competitiveScore`: Current session score
 - `incrementCompetitiveScore()`: Increments score during competitive sessions
 - `startCompetitiveTimer()`: Starts the competitive timer (stops session timers)
@@ -106,7 +106,7 @@ New methods added to the ScoreService:
 
 ### Ending a Session
 The competitive session ends when:
-- The 15-minute timer runs out
+- The 5-minute timer runs out
 - User manually stops the timer
 - User starts a different session timer
 
