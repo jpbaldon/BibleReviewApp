@@ -6464,7 +6464,7 @@ export const ASV = {
 			  "Text": "And when Jacob made an end of charging his sons, he gathered up his feet into the bed, and yielded up the ghost, and was gathered unto his people."
 			}
 		  ],
-		  "Summary": "Jacob gives prophetic blessings to his twelve sons and prepares for his death."
+		  "Summary": "Jacob gives prophetic blessings to his twelve sons and dies."
 		},
 		{
 		  "Chapter": 50,
@@ -6574,7 +6574,7 @@ export const ASV = {
 			  "Text": "So Joseph died, being a hundred and ten years old: and they embalmed him, and he was put in a coffin in Egypt."
 			}
 		  ],
-		  "Summary": "Jacob dies and is buried in Canaan; Joseph reassures his brothers and dies in Egypt."
+		  "Summary": "Jacob is buried in Canaan; Joseph reassures his brothers and dies in Egypt."
 		}
 	  ]
 	},
@@ -148672,7 +148672,7 @@ export const ASV = {
 			  "Text": "the mystery of the seven stars which thou sawest in my right hand, and the seven golden candlesticks. The seven stars are the angels of the seven churches: and the seven candlesticks are seven churches."
 			}
 		  ],
-		  "Summary": "John's vision of the glorified Christ and his commissioning to write."
+		  "Summary": "Prologue, greeting, doxology, introduction, John's vision of Christ."
 		},
 		{
 		  "Chapter": 2,
@@ -148806,7 +148806,7 @@ export const ASV = {
 			  ]
 			}
 		  ],
-		  "Summary": "Letters to the seven churches: messages of commendation and correction."
+		  "Summary": "Letters to angels of Ephesus, Smyrna, Pergamum, and Thyatira."
 		},
 		{
 		  "Chapter": 3,
@@ -148924,7 +148924,7 @@ export const ASV = {
 			  "Text": "He that hath an ear, let him hear what the Spirit saith to the churches."
 			}
 		  ],
-		  "Summary": "Continuation of letters to the seven churches with calls to repentance."
+		  "Summary": "Letters to angels of Sardis, Philadelphia, and Laodicea."
 		},
 		{
 		  "Chapter": 4,
@@ -148974,7 +148974,7 @@ export const ASV = {
 			  "Text": "Worthy art thou, our Lord and our God, to receive the glory and the honor and the power: for thou didst create all things, and because of thy will they were, and were created."
 			}
 		  ],
-		  "Summary": "Vision of God's throne in heaven and worship by heavenly beings."
+		  "Summary": "John raptured; in heaven, God is worshipped as Creator."
 		},
 		{
 		  "Chapter": 5,
@@ -149036,7 +149036,7 @@ export const ASV = {
 			  "Text": "And the four living creatures said, Amen. And the elders fell down and worshipped."
 			}
 		  ],
-		  "Summary": "The Lamb worthy to open the scroll; worship and praise."
+		  "Summary": "The Lamb takes the book with seven seals and is worshipped."
 		},
 		{
 		  "Chapter": 6,
@@ -149110,7 +149110,7 @@ export const ASV = {
 			  "Text": "for the great day of their wrath is come; and who is able to stand?"
 			}
 		  ],
-		  "Summary": "The Lamb opens the seven seals, revealing judgments on the earth."
+		  "Summary": "The Lamb breaks the first six seals."
 		},
 		{
 		  "Chapter": 7,
@@ -149184,7 +149184,7 @@ export const ASV = {
 			  "Text": "for the Lamb that is in the midst of the throne shall be their shepherd, and shall guide them unto fountains of waters of life: and God shall wipe away every tear from their eyes."
 			}
 		  ],
-		  "Summary": "144,000 sealed servants and a great multitude worship before the throne."
+		  "Summary": "144,000 sealed; tribulation saints from every tribe worship God and the Lamb."
 		},
 		{
 		  "Chapter": 8,
@@ -149242,7 +149242,7 @@ export const ASV = {
 			  "Text": "And I saw, and I heard an eagle, flying in mid heaven, saying with a great voice, Woe, woe, woe, for them that dwell on the earth, by reason of the other voices of the trumpet of the three angels, who are yet to sound."
 			}
 		  ],
-		  "Summary": "The seventh seal opens; seven trumpets are prepared; first four trumpet judgments."
+		  "Summary": "The Lamb breaks the seventh seal; first four trumpets."
 		},
 		{
 		  "Chapter": 9,
@@ -149332,7 +149332,7 @@ export const ASV = {
 			  "Text": "and they repented not of their murders, nor of their sorceries, nor of their fornication, nor of their thefts."
 			}
 		  ],
-		  "Summary": "Fifth and sixth trumpet judgments unleash woes on the earth."
+		  "Summary": "Fifth trumpet (first woe), sixth trumpet."
 		},
 		{
 		  "Chapter": 10,
@@ -149382,7 +149382,7 @@ export const ASV = {
 			  "Text": "And they say unto me, Thou must prophesy again over many peoples and nations and tongues and kings."
 			}
 		  ],
-		  "Summary": "A mighty angel with a little scroll; John instructed to prophesy again."
+		  "Summary": "Angel with little book; seven thunders; John eats the book."
 		},
 		{
 		  "Chapter": 11,
@@ -149464,7 +149464,7 @@ export const ASV = {
 			  "Text": "And there was opened the temple of God that is in heaven; and there was seen in his temple the ark of his covenant; and there followed lightnings, and voices, and thunders, and an earthquake, and great hail."
 			}
 		  ],
-		  "Summary": "The two witnesses prophesy, are killed, and resurrected; the seventh trumpet sounds."
+		  "Summary": "John measures the temple; two witnesses; second woe; seventh trumpet."
 		},
 		{
 		  "Chapter": 12,
@@ -149538,7 +149538,7 @@ export const ASV = {
 			  "Text": "And the dragon waxed wroth with the woman, and went away to make war with the rest of her seed, that keep the commandments of God, and hold the testimony of Jesus:"
 			}
 		  ],
-		  "Summary": "The woman, the dragon, and the cosmic battle between good and evil."
+		  "Summary": "Cosmic signs:  woman, child, dragon; dragon thrown to earth, persecutes woman."
 		},
 		{
 		  "Chapter": 13,
@@ -149616,7 +149616,7 @@ export const ASV = {
 			  "Text": "Here is wisdom. He that hath understanding, let him count the number of the beast; for it is the number of a man: and his number is Six hundred and sixty and six."
 			}
 		  ],
-		  "Summary": "The rise of the beast from the sea and the beast from the earth (false prophet)."
+		  "Summary": "Beast from sea; beast from earth; mark of the beast."
 		},
 		{
 		  "Chapter": 14,
@@ -149702,7 +149702,7 @@ export const ASV = {
 			  "Text": "And the winepress was trodden without the city, and there came out blood from the winepress, even unto the bridles of the horses, as far as a thousand and six hundred furlongs."
 			}
 		  ],
-		  "Summary": "The Lamb on Mount Zion, the 144,000, three angelic messages, and the harvest of the earth."
+		  "Summary": "144,000 with the Lamb on Mount Zion; eternal gospel; Babylon’s fall; earth reaped."
 		},
 		{
 		  "Chapter": 15,
@@ -149740,7 +149740,7 @@ export const ASV = {
 			  "Text": "And the temple was filled with smoke from the glory of God, and from his power; and none was able to enter into the temple, till the seven plagues of the seven angels should be finished."
 			}
 		  ],
-		  "Summary": "Seven angels with seven last plagues; preparation for final judgments."
+		  "Summary": "Song of Moses and the Lamb; seven bowls given to seven angels."
 		},
 		{
 		  "Chapter": 16,
@@ -149908,7 +149908,7 @@ export const ASV = {
 			  "Text": "And the woman whom thou sawest is the great city, which reigneth over the kings of the earth."
 			}
 		  ],
-		  "Summary": "The judgment of the great prostitute and the beast."
+		  "Summary": "The great prostitute and the scarlet beast."
 		},
 		{
 		  "Chapter": 18,
@@ -150010,7 +150010,7 @@ export const ASV = {
 			  "Text": "And in her was found the blood of prophets and of saints, and of all that have been slain upon the earth."
 			}
 		  ],
-		  "Summary": "The fall of Babylon, the corrupt world system."
+		  "Summary": "The fall of Babylon."
 		},
 		{
 		  "Chapter": 19,
@@ -150100,7 +150100,7 @@ export const ASV = {
 			  "Text": "and the rest were killed with the sword of him that sat upon the horse, [even the sword] which came forth out of his mouth: and all the birds were filled with their flesh."
 			}
 		  ],
-		  "Summary": "The victorious return of Christ as King and Judge."
+		  "Summary": "Hallelujahs; marriage supper of the Lamb; Christ returns and conquers."
 		},
 		{
 		  "Chapter": 20,
@@ -150166,7 +150166,7 @@ export const ASV = {
 			  "Text": "And if any was not found written in the book of life, he was cast into the lake of fire."
 			}
 		  ],
-		  "Summary": "The millennium, final judgment, and the lake of fire."
+		  "Summary": "Satan bound; the millennium, great white throne judgment, and the lake of fire."
 		},
 		{
 		  "Chapter": 21,
@@ -150280,7 +150280,7 @@ export const ASV = {
 			  "Text": "and there shall in no wise enter into it anything unclean, or he that maketh an abomination and a lie: but only they that are written in the Lamb's book of life."
 			}
 		  ],
-		  "Summary": "A new heaven and new earth; the New Jerusalem descends."
+		  "Summary": "A new heaven and new earth; the New Jerusalem descends, and is described and measured."
 		},
 		{
 		  "Chapter": 22,
@@ -150370,7 +150370,7 @@ export const ASV = {
 			  "Text": "The grace of the Lord Jesus be with the saints. Amen."
 			}
 		  ],
-		  "Summary": "River of life, final exhortations, and the promise of Christ's return."
+		  "Summary": "River and tree of life, final exhortations, and the promise of Christ's return."
 		}
 	  ]
 	}
