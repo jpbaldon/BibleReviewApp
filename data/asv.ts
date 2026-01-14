@@ -149538,7 +149538,7 @@ export const ASV = {
 			  "Text": "And the dragon waxed wroth with the woman, and went away to make war with the rest of her seed, that keep the commandments of God, and hold the testimony of Jesus:"
 			}
 		  ],
-		  "Summary": "Cosmic signs:  woman, child, dragon; dragon thrown to earth, persecutes woman."
+		  "Summary": "Cosmic signs: woman, child, dragon; dragon thrown to earth, persecutes woman."
 		},
 		{
 		  "Chapter": 13,
