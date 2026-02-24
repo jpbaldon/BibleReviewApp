@@ -220,7 +220,7 @@ export const SupabaseService = {
     getCompetitiveScoreFromServer: async (userId: string) => {
       const { data, error } = await supabase
         .from('profiles')
-        .select('competitive_score')
+        .select('competitive_score, comp_score_update')
         .eq('id', userId)
         .single();
 
@@ -228,13 +228,14 @@ export const SupabaseService = {
 
       return {
         competitiveScore: data?.competitive_score ?? 0,
+        compScoreUpdate: data?.comp_score_update ?? null,
       };
     },
     
     updateCompetitiveScoreOnServer: async (userId: string, competitiveScore: number) => {
       const { error } = await supabase
         .from('profiles')
-        .update({ competitive_score: competitiveScore })
+        .update({ competitive_score: competitiveScore, comp_score_update: new Date().toISOString() })
         .eq('id', userId);
 
       if (error) throw error;

@@ -97,30 +97,45 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
         setTimedSessionScore(0);
         setCompetitiveScore(0);
         
-        // Load competitive timer's best score from local storage first
+        // Load competitive timer's best score and update timestamp from local storage first
         let localBest = 0;
+        let localUpdatedAt: string | null = null;
         if (competitiveStored) {
           const parsedCompetitive = JSON.parse(competitiveStored);
           localBest = parsedCompetitive.bestScore || 0;
+          localUpdatedAt = parsedCompetitive.updatedAt ?? null;
         }
         
         // Sync with server
         if (onlinedb) {
           try {
-            const { competitiveScore: serverScore } = await onlinedb.score.getCompetitiveScoreFromServer();
-            const bestScore = Math.max(localBest, serverScore);
+            const { competitiveScore: serverScore, compScoreUpdate: serverUpdatedAt } = await onlinedb.score.getCompetitiveScoreFromServer();
+            
+            // Determine which version is more recent.
+            // Server wins when timestamps are equal or when comparison is ambiguous.
+            let bestScore: number;
+            let localWins = false;
+            if (localUpdatedAt !== null && serverUpdatedAt !== null) {
+              localWins = localUpdatedAt > serverUpdatedAt;
+            } else if (localUpdatedAt !== null && serverUpdatedAt === null) {
+              // Local was explicitly updated, server timestamp missing → local wins
+              localWins = true;
+            }
+            // In all other cases (server has timestamp, or both null) → server wins
+            bestScore = localWins ? localBest : serverScore;
+            
             setCompetitiveTimer(prev => ({
               ...prev,
               bestScore,
               remaining: prev.duration,
               isActive: false,
             }));
-            // Update local storage if server has higher score
-            if (bestScore !== localBest) {
-              await AsyncStorage.setItem(getKey('competitiveTimer'), JSON.stringify({ bestScore }));
+            // Update local storage if server score is being used and differs
+            if (!localWins && bestScore !== localBest) {
+              await AsyncStorage.setItem(getKey('competitiveTimer'), JSON.stringify({ bestScore, updatedAt: serverUpdatedAt }));
             }
-            // Update server if local has higher score
-            if (localBest > serverScore) {
+            // Update server if local score wins
+            if (localWins) {
               await onlinedb.score.updateCompetitiveScoreOnServer(localBest);
             }
           } catch (e) {
@@ -204,7 +219,8 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
               // Update best score and save to AsyncStorage and server
               const newBest = competitiveScore;
               if (user) {
-                AsyncStorage.setItem(getKey('competitiveTimer'), JSON.stringify({ bestScore: newBest }));
+                const updatedAt = new Date().toISOString();
+                AsyncStorage.setItem(getKey('competitiveTimer'), JSON.stringify({ bestScore: newBest, updatedAt }));
                 // Sync with server
                 if (onlinedb) {
                   onlinedb.score.updateCompetitiveScoreOnServer(newBest).catch(err => 
@@ -355,7 +371,8 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
       const newBest = competitiveScore;
       setCompetitiveTimer(prev => ({ ...prev, bestScore: newBest, isActive: false, remaining: prev.duration }));
       if (user) {
-        AsyncStorage.setItem(getKey('competitiveTimer'), JSON.stringify({ bestScore: newBest }));
+        const updatedAt = new Date().toISOString();
+        AsyncStorage.setItem(getKey('competitiveTimer'), JSON.stringify({ bestScore: newBest, updatedAt }));
         // Sync with server
         if (onlinedb) {
           onlinedb.score.updateCompetitiveScoreOnServer(newBest).catch(err => 
