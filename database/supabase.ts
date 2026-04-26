@@ -211,6 +211,7 @@ export const SupabaseService = {
         .from('profiles')
         .select('id, username, overall_score')
         .order('overall_score', { ascending: false })
+        .order('last_score_update', { ascending: true })
         .limit(limit);
 
       if (error) throw error;
@@ -246,6 +247,7 @@ export const SupabaseService = {
         .from('profiles')
         .select('id, username, competitive_score')
         .order('competitive_score', { ascending: false })
+        .order('comp_score_update', { ascending: true })
         .limit(limit);
 
       if (error) throw error;
