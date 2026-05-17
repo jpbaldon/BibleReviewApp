@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo, useRef } from 'react';
 import * as SQLite from 'expo-sqlite';
 import * as FileSystem from 'expo-file-system';
-import { ASV } from '@/data/asv';
+import { TRANSLATIONS } from '@/data/translations';
+import { CHAPTER_SUMMARIES } from '@/data/chapter-summaries';
 import { BibleBook, Rarity } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { useSettings } from './SettingsContext';
 
 interface BibleBooksContextType {
   bibleBooks: BibleBook[];
@@ -39,6 +41,8 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const dbRef = useRef<SQLite.SQLiteDatabase | null>(null);
+  const isInitializingRef = useRef(false);
+  const isDbInitializedRef = useRef(false);
 
   const enabledChapterCount = bibleBooks.reduce((total, book) => {
     if (!book.enabled || !book.chapters) return total;
@@ -48,6 +52,9 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
   const [scoreEnabledFlag, setScoreEnabledFlag] = useState<boolean>(enabledChapterCount >= MIN_CHAPTERS_ENABLED_FOR_SCORE);
 
   const { user } = useAuth();
+  const { translation } = useSettings();
+  const translationRef = useRef(translation);
+  useEffect(() => { translationRef.current = translation; }, [translation]);
 
   // Initialize database asynchronously
   const openDatabase = useCallback<() => Promise<SQLite.SQLiteDatabase>>(async () => {
@@ -80,6 +87,8 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
   }, []);
 
   const initializeDatabase = useCallback(async (localdbInstance: SQLite.SQLiteDatabase | null) => {
+    if (isInitializingRef.current) return;
+    isInitializingRef.current = true;
     setIsLoading(true);
     setError(null);
     if (!localdbInstance) {
@@ -129,7 +138,7 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
       if (!countResult || countResult.count === 0) {
         await localdbInstance.execAsync('BEGIN TRANSACTION');
         try {
-          for (const book of ASV.Bible) {
+          for (const book of TRANSLATIONS[translationRef.current].Bible) {
             const isGenesis = book.Book === "Genesis";
             await localdbInstance.runAsync(
               'INSERT OR IGNORE INTO BibleBooks (Book, Enabled) VALUES (?, ?);',
@@ -157,8 +166,9 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
         rarityMap[bookName][chapter] = rarity;
       });
 
+      const translationData = TRANSLATIONS[translationRef.current];
       const enrichedBooks = loadedBooks.map(book => {
-        const asvBook = ASV.Bible.find(b => b.Book === book.bookName);
+        const asvBook = translationData.Bible.find(b => b.Book === book.bookName);
         const chapterWithRarity = asvBook?.Chapters.map(ch => {
           const match = rarityResults.find(r => r.bookName === book.bookName && r.chapter === ch.Chapter);
           return {
@@ -168,7 +178,7 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
               text: v.Text,
               duplicateLocations: v.duplicateLocations ?? [],
             })),
-            summary: ch.Summary,
+            summary: ch.Summary ?? CHAPTER_SUMMARIES[book.bookName]?.[ch.Chapter] ?? null,
             rarity: match?.rarity ?? 'common',
           };
         }) ?? [];
@@ -179,17 +189,49 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
       });
 
       setBibleBooks(enrichedBooks);
+      isDbInitializedRef.current = true;
 
     } catch (err) {
       console.error('Database initialization failed:', err);
       setError('Database error. Using default books.');
-      setBibleBooks(ASV.Bible.map(book => ({ bookName: book.Book, enabled: false })));
+      setBibleBooks(TRANSLATIONS[translationRef.current].Bible.map(book => ({ bookName: book.Book, enabled: false })));
     } finally {
       setIsLoading(false);
+      isInitializingRef.current = false;
     }
   }, [loadBooksFromDB]);
 
 
+
+  const reEnrichBooks = useCallback(async (db: SQLite.SQLiteDatabase) => {
+    try {
+      const loadedBooks = await loadBooksFromDB(db);
+      const rarityResults = await db.getAllAsync<{bookName: string, chapter: number, rarity: Rarity}>(
+        'SELECT Book as bookName, Chapter as chapter, Rarity as rarity FROM ChapterRarities'
+      );
+      const translationData = TRANSLATIONS[translationRef.current];
+      const enrichedBooks = loadedBooks.map(book => {
+        const tBook = translationData.Bible.find(b => b.Book === book.bookName);
+        const chapters = tBook?.Chapters.map(ch => {
+          const match = rarityResults.find(r => r.bookName === book.bookName && r.chapter === ch.Chapter);
+          return {
+            chapter: ch.Chapter,
+            verses: ch.Verses.map(v => ({
+              verseNumber: v.VerseNumber,
+              text: v.Text,
+              duplicateLocations: v.duplicateLocations ?? [],
+            })),
+            summary: ch.Summary ?? CHAPTER_SUMMARIES[book.bookName]?.[ch.Chapter] ?? null,
+            rarity: match?.rarity ?? 'common',
+          };
+        }) ?? [];
+        return { ...book, chapters };
+      });
+      setBibleBooks(enrichedBooks);
+    } catch (err) {
+      console.error('Failed to re-enrich books:', err);
+    }
+  }, [loadBooksFromDB]);
 
   useEffect(() => {
     let mounted = true;
@@ -216,6 +258,12 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
       mounted = false;
     };
   }, [openDatabase, initializeDatabase, user?.id]);
+
+  useEffect(() => {
+    if (!isDbInitializedRef.current) return;
+    if (!dbRef.current) return;
+    reEnrichBooks(dbRef.current);
+  }, [translation, reEnrichBooks]);
 
   const refreshBooks = useCallback(async () => {
     if (!dbRef.current) return;
@@ -261,7 +309,7 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     if (!dbRef.current) return;
 
     try {
-      const asvBook = ASV.Bible.find(b => b.Book === bookName);
+      const asvBook = TRANSLATIONS[translationRef.current].Bible.find(b => b.Book === bookName);
       if(!asvBook) return;
 
       const totalChapters = asvBook.Chapters.map(ch => ch.Chapter);

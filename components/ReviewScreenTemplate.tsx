@@ -6,7 +6,6 @@ import { useBibleBooks } from '../context/BibleBooksContext';
 import { useScore } from '../context/ScoreContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAudioPlayer } from 'expo-audio';
-import { ASV } from '@/data/asv';
 import { SimpleBottomSheet } from './SimpleBottomSheet'; // Adjust path if needed
 import { useConfetti } from '../context/ConfettiContext';
 import { Chapter, DuplicateLocation } from '../types';
