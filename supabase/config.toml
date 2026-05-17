@@ -1,4 +1,7 @@
 
+[db]
+major_version = 15
+
 [functions.delete-user]
 enabled = true
 verify_jwt = true

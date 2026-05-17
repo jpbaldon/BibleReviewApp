@@ -8,12 +8,18 @@ import { useAuth } from '../../context/AuthContext';
 import { Switch, View } from 'react-native';
 import { useThemeContext } from '@/context/ThemeContext';
 import { useSettings } from '../../context/SettingsContext';
+import type { TranslationKey } from '../../data/translations';
+
+const TRANSLATIONS: { key: TranslationKey; label: string }[] = [
+  { key: 'BSB', label: 'BSB' },
+  { key: 'ASV', label: 'ASV' },
+];
 
 export default function Settings() {
   const router = useRouter();
   const { signOut, deleteAccount } = useAuth();
   const { colorScheme, setColorScheme, theme } = useThemeContext();
-  const { holdToTryAnother, setHoldToTryAnotherSetting } = useSettings();
+  const { holdToTryAnother, setHoldToTryAnotherSetting, translation, setTranslationSetting } = useSettings();
 
   const handleSwitchAccount = async (router: any) => {
     await signOut();
@@ -69,6 +75,30 @@ export default function Settings() {
             thumbColor="#777777"
             trackColor={{ false: '#999999', true: '#98FF98' }}
           />
+        </View>
+      </ThemedView>
+
+      <View style={{ height: 1, backgroundColor: theme.horizontalDivider }}></View>
+
+      <ThemedView style={{ marginTop: 10, marginBottom: 4 }}>
+        <View style={{ paddingHorizontal: 20, backgroundColor: theme.background }}>
+          <Text style={{ color: theme.text, fontSize: 16, marginBottom: 8 }}>Bible Translation</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {TRANSLATIONS.map(({ key, label }) => (
+              <TouchableOpacity
+                key={key}
+                onPress={() => setTranslationSetting(key)}
+                style={{
+                  flex: 1,
+                  paddingVertical: 8,
+                  borderRadius: 8,
+                  alignItems: 'center',
+                  backgroundColor: translation === key ? '#98FF98' : theme.neutralButton,
+                }}>
+                <Text style={{ fontWeight: 'bold', color: translation === key ? '#000' : '#fff' }}>{label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
       </ThemedView>
 

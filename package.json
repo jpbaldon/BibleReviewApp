@@ -6,9 +6,16 @@
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
+    "preview:android": "eas build --platform android --profile preview",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "db:new": "node scripts/new-migration.js",
+    "db:push": "supabase db push",
+    "db:pull": "supabase db pull",
+    "db:diff": "supabase db diff",
+    "db:status": "supabase migration list",
+    "db:repair": "supabase migration repair --status applied"
   },
   "dependencies": {
     "@expo/metro-config": "~54.0.2",
