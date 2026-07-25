@@ -1,14 +1,13 @@
-import { Image, StyleSheet } from 'react-native';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { TouchableOpacity, Text, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Image, StyleSheet, ScrollView, Switch, View, TouchableOpacity, Text, Alert } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
-import { Switch, View } from 'react-native';
 import { useThemeContext } from '@/context/ThemeContext';
 import { useSettings } from '../../context/SettingsContext';
 import type { TranslationKey } from '../../data/translations';
+import { Screen } from '@/components/ui/Screen';
+import { AppText } from '@/components/ui/AppText';
+import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 
 const TRANSLATIONS: { key: TranslationKey; label: string }[] = [
   { key: 'BSB', label: 'BSB' },
@@ -16,141 +15,191 @@ const TRANSLATIONS: { key: TranslationKey; label: string }[] = [
 ];
 
 export default function Settings() {
-  const router = useRouter();
   const { signOut, deleteAccount } = useAuth();
   const { colorScheme, setColorScheme, theme } = useThemeContext();
-  const { holdToTryAnother, setHoldToTryAnotherSetting, translation, setTranslationSetting } = useSettings();
+  const insets = useSafeAreaInsets();
+  const {
+    holdToTryAnother,
+    setHoldToTryAnotherSetting,
+    soundEnabled,
+    setSoundEnabledSetting,
+    translation,
+    setTranslationSetting,
+  } = useSettings();
 
-  const handleSwitchAccount = async (router: any) => {
+  const handleSwitchAccount = async () => {
     await signOut();
-    
-    //router.replace('/signin');
   };
 
   const handleDeleteAccount = async () => {
     Alert.alert(
-      "Delete Account",
-      "Are you sure you want to delete your account? This action cannot be undone.",
+      'Delete Account',
+      'Are you sure you want to delete your account? This action cannot be undone.',
       [
-        { text: "Cancel", style: "cancel"},
-        { text: "Delete", style: "destructive", onPress: () => deleteAccount()}
-      ]
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => deleteAccount() },
+      ],
     );
   };
 
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={ theme.logoBackground }
-      headerImage={
+    <Screen edges={['left', 'right', 'bottom']}>
+      <View
+        style={[
+          styles.hero,
+          {
+            backgroundColor: theme.logoBackground,
+            paddingTop: insets.top,
+          },
+        ]}
+      >
         <Image
           source={require('@/assets/images/biblelogo.png')}
           style={styles.bibleLogo}
           resizeMode="contain"
         />
-      }>
-      <ThemedView style={[styles.titleContainer, {backgroundColor: theme.background}]}>
-        <ThemedText type="title" style={{color: theme.text}}>Account</ThemedText>
-      </ThemedView>
+      </View>
+      <ScrollView contentContainerStyle={styles.content}>
+        <AppText variant="title" style={styles.title}>
+          Account
+        </AppText>
 
-      <ThemedView style={{ marginTop: 10, marginBottom: 4 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, backgroundColor: theme.background }}>
-          <Text style={{ color: theme.text, fontSize: 16 }}>Dark Mode</Text>
-          <Switch
-            value={colorScheme === 'dark'}
-            onValueChange={(value) => setColorScheme(value ? 'dark' : 'light')}
-            thumbColor="#777777"
-            trackColor={{ false: '#999999', true: '#98FF98' }}
-          />
-        </View>
-      </ThemedView>
-
-      <View style={{ height: 1, backgroundColor: theme.horizontalDivider }}></View>
-
-      <ThemedView style={{ marginTop: 0 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, backgroundColor: theme.background, marginTop: 0 }}>
-          <Text style={{ color: theme.text, fontSize: 16 }}>Hold to Try Another</Text>
-          <Switch
-            value={holdToTryAnother}
-            onValueChange={setHoldToTryAnotherSetting}
-            thumbColor="#777777"
-            trackColor={{ false: '#999999', true: '#98FF98' }}
-          />
-        </View>
-      </ThemedView>
-
-      <View style={{ height: 1, backgroundColor: theme.horizontalDivider }}></View>
-
-      <ThemedView style={{ marginTop: 10, marginBottom: 4 }}>
-        <View style={{ paddingHorizontal: 20, backgroundColor: theme.background }}>
-          <Text style={{ color: theme.text, fontSize: 16, marginBottom: 8 }}>Bible Translation</Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {TRANSLATIONS.map(({ key, label }) => (
-              <TouchableOpacity
-                key={key}
-                onPress={() => setTranslationSetting(key)}
-                style={{
-                  flex: 1,
-                  paddingVertical: 8,
-                  borderRadius: 8,
-                  alignItems: 'center',
-                  backgroundColor: translation === key ? '#98FF98' : theme.neutralButton,
-                }}>
-                <Text style={{ fontWeight: 'bold', color: translation === key ? '#000' : '#fff' }}>{label}</Text>
-              </TouchableOpacity>
-            ))}
+        <Card style={styles.card}>
+          <View style={styles.row}>
+            <AppText>Dark Mode</AppText>
+            <Switch
+              value={colorScheme === 'dark'}
+              onValueChange={(value) => setColorScheme(value ? 'dark' : 'light')}
+              thumbColor={colorScheme === 'dark' ? '#FAFAF9' : '#FFFFFF'}
+              trackColor={{ false: theme.textDisabled, true: theme.accent }}
+              ios_backgroundColor={theme.textDisabled}
+            />
           </View>
-        </View>
-      </ThemedView>
 
-      <ThemedView style={{ marginTop: 20, backgroundColor: theme.background }}>
-        <TouchableOpacity
-          onPress={() => handleSwitchAccount(router)}
-          style={{
-            backgroundColor: theme.neutralButton,
-            paddingVertical: 12,
-            paddingHorizontal: 20,
-            borderRadius: 8,
-            alignItems: 'center',
-          }}>
-          <Text style={{ color: '#fff', fontWeight: 'bold' }}>Switch Account</Text>
-        </TouchableOpacity>
-      </ThemedView>
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
 
-      <ThemedView style={{ marginTop: 20, backgroundColor: theme.background }}>
-        <TouchableOpacity
-          onPress={() => handleDeleteAccount()}
-          style={{
-            backgroundColor: '#ff0000',
-            paddingVertical: 12,
-            paddingHorizontal: 20,
-            borderRadius: 8,
-            alignItems: 'center',
-          }}>
-          <Text style={{ color: '#fff', fontWeight: 'bold' }}>Delete My Account</Text>
-        </TouchableOpacity>
-      </ThemedView>
-    </ParallaxScrollView>
+          <View style={styles.row}>
+            <AppText>Hold to Try Another</AppText>
+            <Switch
+              value={holdToTryAnother}
+              onValueChange={setHoldToTryAnotherSetting}
+              thumbColor={colorScheme === 'dark' ? '#FAFAF9' : '#FFFFFF'}
+              trackColor={{ false: theme.textDisabled, true: theme.accent }}
+              ios_backgroundColor={theme.textDisabled}
+            />
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
+
+          <View style={styles.row}>
+            <AppText>App Sounds</AppText>
+            <Switch
+              value={soundEnabled}
+              onValueChange={setSoundEnabledSetting}
+              thumbColor={colorScheme === 'dark' ? '#FAFAF9' : '#FFFFFF'}
+              trackColor={{ false: theme.textDisabled, true: theme.accent }}
+              ios_backgroundColor={theme.textDisabled}
+            />
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
+
+          <AppText style={styles.sectionLabel}>Bible Translation</AppText>
+          <View style={styles.translationRow}>
+            {TRANSLATIONS.map(({ key, label }) => {
+              const selected = translation === key;
+              return (
+                <TouchableOpacity
+                  key={key}
+                  onPress={() => setTranslationSetting(key)}
+                  style={[
+                    styles.translationChip,
+                    {
+                      backgroundColor: selected ? theme.accent : theme.surface,
+                      borderColor: selected ? theme.accent : theme.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={{
+                      fontWeight: '700',
+                      color: selected ? '#FFFFFF' : theme.text,
+                    }}
+                  >
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </Card>
+
+        <Button
+          label="Switch Account"
+          variant="primary"
+          onPress={handleSwitchAccount}
+          fullWidth
+          style={styles.action}
+        />
+        <Button
+          label="Delete My Account"
+          variant="danger"
+          onPress={handleDeleteAccount}
+          fullWidth
+          style={styles.action}
+        />
+      </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
+  hero: {
+    minHeight: 140,
     alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
   },
   bibleLogo: {
-    height: 178,
-    width: 420,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+    height: 120,
+    width: 260,
   },
-  press: {
-    color: 'white',
-  }
+  content: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  title: {
+    marginBottom: 16,
+  },
+  card: {
+    marginBottom: 16,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    marginVertical: 8,
+  },
+  sectionLabel: {
+    marginBottom: 10,
+    marginTop: 4,
+  },
+  translationRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  translationChip: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  action: {
+    marginTop: 8,
+  },
 });

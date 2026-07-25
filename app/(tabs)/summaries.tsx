@@ -3,6 +3,7 @@ import { View, Text, ActivityIndicator } from 'react-native';
 import { ReviewScreenTemplate, ReviewItem } from '@/components/ReviewScreenTemplate';
 import { useBibleBooks } from '../../context/BibleBooksContext';
 import { useWeightedChapters, selectWeightedChapter } from '@/utils/randomChapter';
+import { isChapterGuessCorrect } from '@/utils/reviewCorrectness';
 import { useThemeContext } from '../../context/ThemeContext';
 
 export default function Summaries() {
@@ -15,9 +16,9 @@ export default function Summaries() {
   // If no enabled books with chapters, show loading or info
   if (weightedChapters.length === 0) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#121212' }}>
-        <ActivityIndicator size="large" color="#00e676" />
-        <Text style={{ marginTop: 10, color: '#ccc' }}>Waiting for books to be enabled...</Text>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
+        <ActivityIndicator size="large" color={theme.accent} />
+        <Text style={{ marginTop: 10, color: theme.textMuted }}>Waiting for books to be enabled...</Text>
       </View>
     );
   }
@@ -56,7 +57,7 @@ export default function Summaries() {
   };
 
   const checkCorrectness = (book: string, chapter: string, item: ReviewItem) =>
-    book === item.book && parseInt(chapter, 10) === item.chapter;
+    isChapterGuessCorrect(book, chapter, item);
 
   const renderQuestion = (item: ReviewItem, showAnswer: boolean) => {
     const isOriginalChapter = item.book === item.originalBook && item.chapter === item.originalChapter;

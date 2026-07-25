@@ -1,31 +1,31 @@
-import { Image, StyleSheet, TouchableOpacity, Text, View } from 'react-native';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import { Image, StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
 import { useThemeContext } from '../../context/ThemeContext';
 import Icon from 'react-native-vector-icons/Ionicons';
-
+import { Screen } from '@/components/ui/Screen';
+import { AppText } from '@/components/ui/AppText';
+import { Card } from '@/components/ui/Card';
+import { ListRow } from '@/components/ui/ListRow';
 
 type LinkItem = {
   id: string;
   title: string;
-  route: string; // Define the type for route as a string
+  route: string;
 };
 
 export default function HomeScreen() {
-
   const { theme } = useThemeContext();
-
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
 
   const links: LinkItem[] = [
     { id: '1', title: 'About', route: 'about' },
     { id: '2', title: 'Account', route: 'account' },
     { id: '3', title: 'Enabled Books', route: 'enabledBooks' },
-    { id: '4', title: 'Leader Board', route: 'leaderboard'},
-    { id: '5', title: '🏆 Competitive Leaderboard', route: 'competitiveLeaderboard'},
+    { id: '4', title: 'Leader Board', route: 'leaderboard' },
+    { id: '5', title: 'Competitive Leaderboard', route: 'competitiveLeaderboard' },
     { id: '6', title: 'Session Timers', route: 'timers' },
   ];
 
@@ -34,60 +34,79 @@ export default function HomeScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme.background }}>
-    <ParallaxScrollView
-      headerBackgroundColor={ theme.logoBackground }
-      headerImage={
+    <Screen edges={['left', 'right', 'bottom']} style={styles.screen}>
+      <View
+        style={[
+          styles.hero,
+          {
+            backgroundColor: theme.logoBackground,
+            paddingTop: insets.top,
+          },
+        ]}
+      >
         <Image
           source={require('@/assets/images/biblelogo.png')}
           style={styles.bibleLogo}
           resizeMode="contain"
         />
-      }
-      >
-        <ThemedView style={[styles.titleContainer, {backgroundColor: theme.background}]}>
-          <ThemedText type="title" style={{color: theme.text}}>Bible Review</ThemedText>
-        </ThemedView>
-        <View style={{ padding: 10, backgroundColor: theme.background, flex: 1 }}>
-          <View style={{ height: 1 }}></View>
-          {links.map((item) => (
-            <TouchableOpacity key={item.id} onPress={() => handlePress(item.route)}>
-              <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
-                <Text style={{ color: theme.text, marginVertical: 10, fontSize: 18 }}>{item.title}</Text>
-                <Icon
-                  name="chevron-forward"
-                  size={30}
-                  color={theme.text}
-                  style={{marginLeft: 8}}
-                />
-              </View> 
-              <View style={{ height: 1, backgroundColor: theme.horizontalDivider }}></View>
-            </TouchableOpacity>
+      </View>
+
+      <View style={styles.body}>
+        <AppText variant="title" style={styles.title}>
+          Bible Review
+        </AppText>
+        <AppText variant="muted" style={styles.subtitle}>
+          Test your knowledge of Scripture
+        </AppText>
+
+        <Card padded={false} style={styles.listCard}>
+          {links.map((item, index) => (
+            <ListRow
+              key={item.id}
+              title={item.title}
+              onPress={() => handlePress(item.route)}
+              showDivider={index < links.length - 1}
+              style={styles.listRow}
+              right={
+                <Icon name="chevron-forward" size={22} color={theme.textMuted} />
+              }
+            />
           ))}
-        </View>
-    </ParallaxScrollView>
-    </View>
+        </Card>
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  screen: {
+    paddingBottom: 16,
   },
-  titleContainer: {
-    flexDirection: 'row',
+  hero: {
+    minHeight: 180,
     alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
   },
   bibleLogo: {
-    height: 178,
-    width: 420,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+    height: 160,
+    width: 320,
+  },
+  body: {
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    flex: 1,
+  },
+  title: {
+    marginBottom: 4,
+  },
+  subtitle: {
+    marginBottom: 16,
+  },
+  listCard: {
+    overflow: 'hidden',
+  },
+  listRow: {
+    paddingHorizontal: 14,
   },
 });

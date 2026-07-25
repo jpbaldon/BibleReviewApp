@@ -8,7 +8,6 @@ interface TimerInputRowProps {
 }
 
 export const TimerInputRow: React.FC<TimerInputRowProps> = ({ onAdd }) => {
-
   const [name, setName] = useState<string>('');
   const [minutes, setMinutes] = useState<string>('');
   const [seconds, setSeconds] = useState<string>('');
@@ -28,33 +27,54 @@ export const TimerInputRow: React.FC<TimerInputRowProps> = ({ onAdd }) => {
   return (
     <View style={styles.inputRow}>
       <TextInput
-        style={{...styles.input, color: theme.text}}
+        style={[
+          styles.input,
+          {
+            color: theme.text,
+            borderColor: theme.border,
+            backgroundColor: theme.surface,
+          },
+        ]}
         placeholder="Timer Name"
-        placeholderTextColor="#888"
+        placeholderTextColor={theme.textDisabled}
         value={name}
         onChangeText={setName}
       />
       <TextInput
-        style={{...styles.input, color: theme.text}}
+        style={[
+          styles.input,
+          {
+            color: theme.text,
+            borderColor: theme.border,
+            backgroundColor: theme.surface,
+          },
+        ]}
         placeholder="Min"
-        placeholderTextColor="#888"
+        placeholderTextColor={theme.textDisabled}
         value={minutes}
         onChangeText={setMinutes}
         keyboardType="numeric"
         maxLength={2}
       />
-      <Text style={{fontSize: 18, marginHorizontal: 2}}>:</Text>
+      <Text style={{ fontSize: 18, marginHorizontal: 2, color: theme.text }}>:</Text>
       <TextInput
-        style={{...styles.input, color: theme.text}}
+        style={[
+          styles.input,
+          {
+            color: theme.text,
+            borderColor: theme.border,
+            backgroundColor: theme.surface,
+          },
+        ]}
         placeholder="Sec"
-        placeholderTextColor="#888"
+        placeholderTextColor={theme.textDisabled}
         value={seconds}
         onChangeText={setSeconds}
         keyboardType="numeric"
         maxLength={2}
       />
       <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
-        <Icon name="add-circle" size={32} color="#4CAF50" />
+        <Icon name="add-circle" size={32} color={theme.success} />
       </TouchableOpacity>
     </View>
   );
@@ -62,6 +82,14 @@ export const TimerInputRow: React.FC<TimerInputRowProps> = ({ onAdd }) => {
 
 const styles = StyleSheet.create({
   inputRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 6, padding: 8, marginRight: 4, minWidth: 40, maxWidth: 100, textAlign: 'center' },
+  input: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 8,
+    marginRight: 4,
+    minWidth: 40,
+    maxWidth: 100,
+    textAlign: 'center',
+  },
   addButton: { padding: 4 },
 });

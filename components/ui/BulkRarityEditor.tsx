@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, Alert } from 'react-native';
+import { View, Text, TextInput, Pressable, Alert, StyleSheet } from 'react-native';
 import { Rarity, Chapter } from '../../types';
-import { useBibleBooks } from '../../context/BibleBooksContext'
+import { useBibleBooks } from '../../context/BibleBooksContext';
 import { useThemeContext } from '../../context/ThemeContext';
 
 const rarities: Rarity[] = ['common', 'uncommon', 'rare', 'ultraRare', 'disabled'];
@@ -11,7 +11,12 @@ export default function BulkRarityEditor({
   updateChapterRarity,
 }: {
   book: { bookName: string; chapters: Chapter[] };
-  updateChapterRarity: (bookName: string, chapter: number, rarity: Rarity, shouldUpdateBook: boolean) => Promise<void>;
+  updateChapterRarity: (
+    bookName: string,
+    chapter: number,
+    rarity: Rarity,
+    shouldUpdateBook: boolean,
+  ) => Promise<void>;
 }) {
   const [fromChapter, setFromChapter] = useState<string>('1');
   const [toChapter, setToChapter] = useState<string>(book.chapters.length.toString());
@@ -33,42 +38,40 @@ export default function BulkRarityEditor({
   };
 
   const bulkAdjustRarities = async (direction: 'increase' | 'decrease') => {
-    const from = parseInt(fromChapter); 
+    const from = parseInt(fromChapter);
     const to = parseInt(toChapter);
 
     if (isNaN(from) || isNaN(to) || from > to) {
-        Alert.alert('Invalid Range', 'Please enter a valid chapter number range.');
-        return;
+      Alert.alert('Invalid Range', 'Please enter a valid chapter number range.');
+      return;
     }
 
     const chaptersToUpdate = book.chapters.filter(
-        ch => ch.chapter >= from && ch.chapter <= to
+      (ch) => ch.chapter >= from && ch.chapter <= to,
     );
 
     if (chaptersToUpdate.length === 0) {
-        Alert.alert('No Chapters Matched', 'No chapters matched the selected range.');
-        return;
+      Alert.alert('No Chapters Matched', 'No chapters matched the selected range.');
+      return;
     }
 
     try {
-        await Promise.all(
-        chaptersToUpdate.map(ch => {
-            const current = (ch.rarity || 'common') as Rarity;
-            const newRarity =
+      await Promise.all(
+        chaptersToUpdate.map((ch) => {
+          const current = (ch.rarity || 'common') as Rarity;
+          const newRarity =
             direction === 'increase' ? getNextRarity(current) : getPreviousRarity(current);
 
-            if (newRarity === current) return Promise.resolve(); // no change
+          if (newRarity === current) return Promise.resolve();
 
-            return updateChapterRarity(book.bookName, ch.chapter, newRarity, false);
-        })
-        );
+          return updateChapterRarity(book.bookName, ch.chapter, newRarity, false);
+        }),
+      );
 
-        await updateBookEnabledStatus(book.bookName);
-
-        //Alert.alert('Success', `Rarities ${direction}d for ${chaptersToUpdate.length} chapters.`);
+      await updateBookEnabledStatus(book.bookName);
     } catch (err: any) {
-        console.error(err);
-        Alert.alert('Error', 'Failed to adjust chapter rarities.');
+      console.error(err);
+      Alert.alert('Error', 'Failed to adjust chapter rarities.');
     }
   };
 
@@ -83,14 +86,19 @@ export default function BulkRarityEditor({
 
     const selectedFrom = applyAllFrom ? rarities : fromRarities;
     if (!applyAllFrom && selectedFrom.length === 0) {
-      Alert.alert('No From Rarities', 'Please select at least one "from" rarity or choose "apply to all".');
+      Alert.alert(
+        'No From Rarities',
+        'Please select at least one "from" rarity or choose "apply to all".',
+      );
       return;
     }
 
-    const chaptersToUpdate = book.chapters?.filter(ch =>
-      ch.chapter >= from &&
-      ch.chapter <= to &&
-      (applyAllFrom || selectedFrom.includes((ch.rarity || 'common') as typeof rarities[number]))
+    const chaptersToUpdate = book.chapters?.filter(
+      (ch) =>
+        ch.chapter >= from &&
+        ch.chapter <= to &&
+        (applyAllFrom ||
+          selectedFrom.includes((ch.rarity || 'common') as (typeof rarities)[number])),
     );
 
     if (chaptersToUpdate.length === 0) {
@@ -100,40 +108,66 @@ export default function BulkRarityEditor({
 
     try {
       await Promise.all(
-        chaptersToUpdate.map(ch =>
-          updateChapterRarity(book.bookName, ch.chapter, toRarity, false)
-        )
+        chaptersToUpdate.map((ch) =>
+          updateChapterRarity(book.bookName, ch.chapter, toRarity, false),
+        ),
       );
 
       await updateBookEnabledStatus(book.bookName);
-
-      //Alert.alert('Success', `Updated ${chaptersToUpdate.length} chapters.`);
     } catch (err: any) {
       console.error(err);
       Alert.alert('Error', 'Failed to update chapter rarities.');
     }
   };
 
-  return (
-    <View style={{ backgroundColor: theme.secondary, padding: 12, marginBottom: 12, marginTop: 2, borderRadius: 12 }}>
-      <Text style={{ color: theme.text, fontWeight: 'bold', marginBottom: 8 }}>Bulk Rarity Update</Text>
+  const chipBg = (selected: boolean) => (selected ? theme.accent : theme.background);
+  const chipFg = (selected: boolean) => (selected ? theme.onAccent : theme.text);
 
-      {/* Chapter range inputs */}
+  return (
+    <View
+      style={{
+        backgroundColor: theme.surface,
+        padding: 12,
+        marginBottom: 12,
+        marginTop: 2,
+        borderRadius: 12,
+        borderWidth: StyleSheet.hairlineWidth,
+        borderColor: theme.border,
+      }}
+    >
+      <Text style={{ color: theme.text, fontWeight: '700', marginBottom: 8 }}>
+        Bulk Rarity Update
+      </Text>
+
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
         <Text style={{ color: theme.text, marginRight: 8 }}>Chapters</Text>
         <TextInput
-          style={[inputStyle, {color: theme.text}]}
+          style={[
+            inputStyle,
+            {
+              color: theme.text,
+              borderColor: theme.border,
+              backgroundColor: theme.background,
+            },
+          ]}
           placeholder="From"
-          placeholderTextColor="#888"
+          placeholderTextColor={theme.textDisabled}
           keyboardType="number-pad"
           value={fromChapter}
           onChangeText={setFromChapter}
         />
         <Text style={{ color: theme.text, marginHorizontal: 8 }}>to</Text>
         <TextInput
-          style={[inputStyle, {color: theme.text}]}
+          style={[
+            inputStyle,
+            {
+              color: theme.text,
+              borderColor: theme.border,
+              backgroundColor: theme.background,
+            },
+          ]}
           placeholder="To"
-          placeholderTextColor="#888"
+          placeholderTextColor={theme.textDisabled}
           keyboardType="number-pad"
           value={toChapter}
           onChangeText={setToChapter}
@@ -142,113 +176,130 @@ export default function BulkRarityEditor({
 
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
         <Pressable
-            onPress={() => bulkAdjustRarities('decrease')}
-            style={{
-            backgroundColor: '#ff5252',
+          onPress={() => bulkAdjustRarities('decrease')}
+          style={{
+            backgroundColor: theme.accent,
             padding: 8,
-            borderRadius: 6,
+            borderRadius: 8,
             flex: 1,
             marginRight: 6,
             alignItems: 'center',
-            }}
+          }}
         >
-            <Text style={{ color: '#fff', fontWeight: 'bold' }}>Make All Less Rare</Text>
+          <Text style={{ color: theme.onAccent, fontWeight: '700' }}>Make All Less Rare</Text>
         </Pressable>
 
         <Pressable
-            onPress={() => bulkAdjustRarities('increase')}
-            style={{
-            backgroundColor: '#ff5252',
+          onPress={() => bulkAdjustRarities('increase')}
+          style={{
+            backgroundColor: theme.accent,
             padding: 8,
-            borderRadius: 6,
+            borderRadius: 8,
             flex: 1,
             marginLeft: 6,
             alignItems: 'center',
-            }}
+          }}
         >
-            <Text style={{ color: '#fff', fontWeight: 'bold' }}>Make All More Rare</Text>
+          <Text style={{ color: theme.onAccent, fontWeight: '700' }}>Make All More Rare</Text>
         </Pressable>
       </View>
 
-      {/* From rarity selection */}
-      <Text style={{ color: '#ccc', marginBottom: 4 }}>From rarities:</Text>
-      {/* Apply all toggle */}
+      <Text style={{ color: theme.textMuted, marginBottom: 4 }}>From rarities:</Text>
       <Pressable
         onPress={() => setApplyAllFrom(!applyAllFrom)}
         style={{
-            backgroundColor: applyAllFrom ? '#00e676' : '#222',
-            padding: 6,
-            borderRadius: 4,
-            alignSelf: 'flex-start',
-            marginBottom: 10,
+          backgroundColor: chipBg(applyAllFrom),
+          padding: 6,
+          borderRadius: 6,
+          alignSelf: 'flex-start',
+          marginBottom: 10,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: theme.border,
         }}
-        >
-        <Text style={{ color: applyAllFrom ? '#000' : '#fff', fontSize: 12 }}>
+      >
+        <Text style={{ color: chipFg(applyAllFrom), fontSize: 12 }}>
           {applyAllFrom ? '✔ Apply to all rarities' : 'Apply to all rarities'}
         </Text>
       </Pressable>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 6 }}>
-        {rarities.map(r => {
-            const isSelected = fromRarities.includes(r);
-            return (
+
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 6 }}>
+        {rarities.map((r) => {
+          const isSelected = fromRarities.includes(r);
+          return (
             <Pressable
-                key={r}
-                onPress={() =>
-                setFromRarities(prev =>
-                    isSelected ? prev.filter(val => val !== r) : [...prev, r]
+              key={r}
+              onPress={() =>
+                setFromRarities((prev) =>
+                  isSelected ? prev.filter((val) => val !== r) : [...prev, r],
                 )
-                }
-                disabled={applyAllFrom}
-                style={{
+              }
+              disabled={applyAllFrom}
+              style={{
                 paddingHorizontal: 6,
                 paddingVertical: 6,
-                backgroundColor: isSelected ? '#00e676' : '#222',
+                backgroundColor: chipBg(isSelected),
                 margin: 4,
-                borderRadius: 4,
+                borderRadius: 6,
                 opacity: applyAllFrom ? 0.5 : 1,
-                }}
+                borderWidth: StyleSheet.hairlineWidth,
+                borderColor: theme.border,
+              }}
             >
-                <Text style={{ color: '#fff', fontSize: 12, textTransform: 'capitalize' }}>
+              <Text
+                style={{
+                  color: chipFg(isSelected),
+                  fontSize: 12,
+                  textTransform: 'capitalize',
+                }}
+              >
                 {r.toLowerCase() === 'ultrarare' ? 'Ultra-Rare' : r}
-                </Text>
+              </Text>
             </Pressable>
-            );
+          );
         })}
-        </View>
+      </View>
 
-        {/* To rarity buttons */}
-      <Text style={{ color: '#ccc', marginRight: 6 }}>To:</Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 6 }}>{rarities.map(r => (
-        <Pressable
-          key={r}
-          onPress={() => setToRarity(r)}
-          style={{
-            paddingHorizontal: 6,
-            paddingVertical: 6,
-            backgroundColor: toRarity === r ? '#00e676' : '#222',
-            margin: 4,
-            borderRadius: 4,
-            opacity: 1,
-          }}
-        >
-          <Text style={{ color: '#fff', fontSize: 12, textTransform: 'capitalize' }}
-            numberOfLines={1}
-            adjustsFontSizeToFit={false}>{r.toLowerCase() === 'ultrarare' ? 'Ultra-Rare' : r}</Text>
-        </Pressable>
-      ))}</View>
+      <Text style={{ color: theme.textMuted, marginRight: 6 }}>To:</Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 6 }}>
+        {rarities.map((r) => (
+          <Pressable
+            key={r}
+            onPress={() => setToRarity(r)}
+            style={{
+              paddingHorizontal: 6,
+              paddingVertical: 6,
+              backgroundColor: chipBg(toRarity === r),
+              margin: 4,
+              borderRadius: 6,
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: theme.border,
+            }}
+          >
+            <Text
+              style={{
+                color: chipFg(toRarity === r),
+                fontSize: 12,
+                textTransform: 'capitalize',
+              }}
+              numberOfLines={1}
+            >
+              {r.toLowerCase() === 'ultrarare' ? 'Ultra-Rare' : r}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
 
-      {/* Update button */}
       <Pressable
         onPress={handleBulkRarityUpdate}
         style={{
           marginTop: 16,
-          backgroundColor: '#00e676',
+          backgroundColor: theme.accent,
           padding: 10,
-          borderRadius: 6,
+          borderRadius: 8,
           alignItems: 'center',
         }}
       >
-        <Text style={{ color: '#000', fontWeight: 'bold' }}>Update Selected Rarities</Text>
+        <Text style={{ color: theme.onAccent, fontWeight: '700' }}>Update Selected Rarities</Text>
       </Pressable>
     </View>
   );
@@ -256,10 +307,9 @@ export default function BulkRarityEditor({
 
 const inputStyle = {
   flex: 1,
-  borderColor: '#666',
   borderWidth: 1,
   padding: 6,
-  color: '#fff',
   marginRight: 4,
   minWidth: 60,
+  borderRadius: 8,
 };

@@ -1,144 +1,129 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+import { useThemeContext } from '../context/ThemeContext';
+import { Screen } from '@/components/ui/Screen';
+import { AppText } from '@/components/ui/AppText';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
 
 export default function VerifyEmailScreen() {
-
   const [loading, setLoading] = useState<boolean>(false);
   const [cooldown, setCoolDown] = useState<number>(0);
 
   const { resendVerificationEmail } = useAuth();
+  const { theme } = useThemeContext();
   const router = useRouter();
   const params = useLocalSearchParams();
   const email = params.email as string;
 
   const handleResendEmail = async () => {
-    if(cooldown > 0) return;
+    if (cooldown > 0) return;
 
     setLoading(true);
     try {
-        await resendVerificationEmail(email);
+      await resendVerificationEmail(email);
 
-        Alert.alert('Success', 'Verification email resent successfully!');
-        setCoolDown(60);
+      Alert.alert('Success', 'Verification email resent successfully!');
+      setCoolDown(60);
 
-        const interval = setInterval(() => {
-            setCoolDown(prev => {
-                if(prev <= 1) clearInterval(interval);
-                return prev - 1;
-            });
-        }, 1000);
+      const interval = setInterval(() => {
+        setCoolDown(prev => {
+          if (prev <= 1) clearInterval(interval);
+          return prev - 1;
+        });
+      }, 1000);
     } catch (error) {
-        Alert.alert('Error', error instanceof Error ? error.message : 'Failed to resend verification email');
+      Alert.alert(
+        'Error',
+        error instanceof Error ? error.message : 'Failed to resend verification email',
+      );
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <View style={styles.container}>
-      <MaterialIcons name="mark-email-read" size={72} color="#4CAF50" style={styles.icon} />
-      
-      <Text style={styles.title}>Verify Your Email</Text>
-      
-      <Text style={styles.message}>We've sent a verification link to</Text>
-      <Text style={[styles.message, styles.email]}>{email}</Text>
-      <Text style={styles.message}>Please check your inbox and click the link to verify your account.</Text>
-      
-      <Text style={styles.note}>
-        If you don't see the email, check your spam folder or click the resend button below.
-      </Text>
-      
-      <TouchableOpacity style={styles.button} onPress={() => router.replace('/signin')}>
-        <Text style={styles.buttonText}>Go to Sign In</Text>
-      </TouchableOpacity>
+    <Screen style={styles.container} padded>
+      <Card style={styles.card}>
+        <MaterialIcons
+          name="mark-email-read"
+          size={72}
+          color={theme.accent}
+          style={styles.icon}
+        />
 
-      <TouchableOpacity 
-        style={[
-          styles.secondaryButton,
-          cooldown > 0 && styles.disabledButton
-        ]} 
-        onPress={handleResendEmail}
-        disabled={loading || cooldown > 0}
-      >
+        <AppText variant="title" style={styles.title}>
+          Verify Your Email
+        </AppText>
+
+        <AppText variant="muted" style={styles.message}>
+          We've sent a verification link to
+        </AppText>
+        <AppText variant="bodyBold" style={styles.email}>
+          {email}
+        </AppText>
+        <AppText variant="muted" style={styles.message}>
+          Please check your inbox and click the link to verify your account.
+        </AppText>
+
+        <AppText variant="caption" style={styles.note}>
+          If you don't see the email, check your spam folder or click the resend button below.
+        </AppText>
+
+        <Button
+          label="Go to Sign In"
+          onPress={() => router.replace('/signin')}
+          fullWidth
+        />
+
         {loading ? (
-          <ActivityIndicator color="#4CAF50" />
+          <ActivityIndicator color={theme.accent} style={styles.loader} />
         ) : (
-          <Text style={styles.secondaryButtonText}>
-            {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend Verification Email'}
-          </Text>
+          <Button
+            label={cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend Verification Email'}
+            variant="secondary"
+            onPress={handleResendEmail}
+            disabled={loading || cooldown > 0}
+            fullWidth
+          />
         )}
-      </TouchableOpacity>
-      
-    </View>
+      </Card>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     justifyContent: 'center',
-    padding: 30,
-    backgroundColor: '#f5f5f5',
+  },
+  card: {
+    paddingVertical: 12,
   },
   icon: {
     alignSelf: 'center',
-    marginBottom: 30,
+    marginBottom: 24,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: 20,
-    color: '#333',
+    marginBottom: 16,
   },
   message: {
-    fontSize: 16,
     textAlign: 'center',
-    marginBottom: 20,
-    color: '#555',
-    lineHeight: 24,
+    marginBottom: 12,
   },
   note: {
-    fontSize: 14,
     textAlign: 'center',
-    marginBottom: 30,
-    color: '#777',
+    marginBottom: 24,
     fontStyle: 'italic',
   },
-  button: {
-    backgroundColor: '#4CAF50',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  buttonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  secondaryButton: {
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#4CAF50',
-  },
-  disabledButton: {
-    opacity: 0.6,
-    borderColor: '#cccccc',
-  },
-  secondaryButtonText: {
-    color: '#4CAF50',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
   email: {
-  fontWeight: 'bold',
-  color: '#333',
-  textAlign: 'center',
-},
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  loader: {
+    marginVertical: 12,
+  },
 });

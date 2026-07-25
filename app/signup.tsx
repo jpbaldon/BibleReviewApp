@@ -1,7 +1,23 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import {
+  View,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
+import { useThemeContext } from '../context/ThemeContext';
+import { Screen } from '@/components/ui/Screen';
+import { AppText } from '@/components/ui/AppText';
+import { TextField } from '@/components/ui/TextField';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
 
 export default function SignUpScreen() {
   const [email, setEmail] = useState<string>('');
@@ -13,6 +29,7 @@ export default function SignUpScreen() {
 
   const router = useRouter();
   const { signUp, checkUsernameAvailability } = useAuth();
+  const { theme } = useThemeContext();
 
   const validateUsername = (text: string) => {
     if (text.length > 0 && text.length < 3) return 'Username must be at least 3 characters';
@@ -52,7 +69,6 @@ export default function SignUpScreen() {
 
     setSubmitting(true);
     try {
-      // Final username availability check
       const available = await checkUsernameAvailability(username.trim().toLowerCase());
       if (!available) {
         Alert.alert('Error', 'Username is no longer available');
@@ -60,12 +76,7 @@ export default function SignUpScreen() {
       }
 
       await signUp(email, password, username.trim().toLowerCase());
-
       Alert.alert('Success', 'Account created successfully!');
-    
-      //router.replace({
-      //  pathname: '/verifyemail',
-      //  params: { email: email }});
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Signup failed';
       Alert.alert('Error', errorMessage);
@@ -74,75 +85,82 @@ export default function SignUpScreen() {
     }
   };
 
-  return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <View style={styles.container}>
-          <Text style={styles.title}>Create Account</Text>
-          
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor="#000000"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-          />
-          
-          <TextInput
-            style={styles.input}
-            placeholder="Password (min 6 chars)"
-            placeholderTextColor="#000000"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-          />
-          
-          <TextInput
-            style={[styles.input, usernameError ? styles.inputError : null]}
-            placeholder="Username (required)"
-            placeholderTextColor="#000000"
-            value={username}
-            onChangeText={handleUsernameChange}
-            autoCapitalize="none"
-          />
-          
-          {checkingUsername ? (
-            <ActivityIndicator size="small" color="#4CAF50" />
-          ) : usernameError ? (
-            <Text style={styles.errorText}>{usernameError}</Text>
-          ) : username.length >= 3 && !usernameError ? (
-            <Text style={styles.successText}>Username available!</Text>
-          ) : null}
-          
-          <TouchableOpacity 
-            style={[
-              styles.button, 
-              (!!usernameError || !username || submitting) ? styles.buttonDisabled : null
-            ]} 
-            onPress={handleSignUp}
-            disabled={!!usernameError || !username || submitting}
-          >
-            {submitting ? (
-              <ActivityIndicator color="green" />
-            ) : (
-              <Text style={styles.buttonText}>Create Account</Text>
-            )}
-          </TouchableOpacity>
+  const canSubmit = !usernameError && !!username && !submitting;
 
-          <TouchableOpacity onPress={() => router.push('/signin')}>
-                          <Text style={styles.linkText}>
-                          Already have an account? <Text style={styles.linkHighlight}>Sign in</Text>
-                          </Text>
-                          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
-    </TouchableWithoutFeedback>
+  return (
+    <Screen>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView
+          style={styles.container}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <Card style={styles.card}>
+            <AppText variant="title" style={styles.title}>
+              Create Account
+            </AppText>
+
+            <TextField
+              label="Email"
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+
+            <TextField
+              label="Password"
+              placeholder="Password (min 6 chars)"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+            />
+
+            <TextField
+              label="Username"
+              placeholder="Username (required)"
+              value={username}
+              onChangeText={handleUsernameChange}
+              autoCapitalize="none"
+              style={usernameError ? { borderColor: theme.danger } : undefined}
+            />
+
+            {checkingUsername ? (
+              <ActivityIndicator size="small" color={theme.accent} />
+            ) : usernameError ? (
+              <AppText color={theme.danger} style={styles.statusText}>
+                {usernameError}
+              </AppText>
+            ) : username.length >= 3 && !usernameError ? (
+              <AppText color={theme.success} style={styles.statusText}>
+                Username available!
+              </AppText>
+            ) : null}
+
+            {submitting ? (
+              <ActivityIndicator color={theme.accent} style={styles.loader} />
+            ) : (
+              <Button
+                label="Create Account"
+                onPress={handleSignUp}
+                disabled={!canSubmit}
+                fullWidth
+              />
+            )}
+
+            <TouchableOpacity onPress={() => router.push('/signin')}>
+              <AppText variant="muted" style={styles.linkText}>
+                Already have an account?{' '}
+                <AppText variant="link" style={styles.linkHighlight}>
+                  Sign in
+                </AppText>
+              </AppText>
+            </TouchableOpacity>
+          </Card>
+        </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
+    </Screen>
   );
 }
 
@@ -151,58 +169,25 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     padding: 20,
-    backgroundColor: '#f5f5f5',
+  },
+  card: {
+    paddingVertical: 8,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 30,
+    marginBottom: 20,
     textAlign: 'center',
-    color: '#333',
   },
-  input: {
-    height: 50,
-    borderColor: '#ddd',
-    borderWidth: 1,
-    marginBottom: 10,
-    padding: 15,
-    borderRadius: 8,
-    backgroundColor: '#fff',
-  },
-  inputError: {
-    borderColor: '#ff4444',
-  },
-  button: {
-    backgroundColor: '#4CAF50',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  buttonDisabled: {
-    backgroundColor: '#cccccc',
-  },
-  buttonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  errorText: {
-    color: '#ff4444',
+  statusText: {
     marginBottom: 10,
   },
-  successText: {
-    color: '#4CAF50',
-    marginBottom: 10,
+  loader: {
+    marginVertical: 16,
   },
   linkText: {
     textAlign: 'center',
-    color: '#555',
-    marginTop: 15,
+    marginTop: 16,
   },
-  
   linkHighlight: {
-    color: '#4CAF50',
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
 });

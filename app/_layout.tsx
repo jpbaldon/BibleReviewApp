@@ -4,7 +4,7 @@ import { ConfettiProvider } from '../context/ConfettiContext';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { StyleSheet, View, ActivityIndicator, Platform, StatusBar } from 'react-native';
+import { StatusBar } from 'react-native';
 import { DarkTheme, DefaultTheme, ThemeProvider as NavThemeProvider } from '@react-navigation/native';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { ScoreProvider } from '../context/ScoreContext';
@@ -13,9 +13,12 @@ import { ThemeProvider, useThemeContext } from '../context/ThemeContext';
 import { useSegments, useRouter } from 'expo-router';
 import { ServicesProvider } from '../context/ServicesContext';
 import { BackendProvider } from '../context/BackendContext';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeLoader } from '../context/ThemeLoader';
 import { SettingsProvider } from '../context/SettingsContext';
+import { AppLoadingScreen } from '../components/AppLoadingScreen';
+
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 export default function Layout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -23,23 +26,21 @@ export default function Layout() {
   });
 
   useEffect(() => {
-    SplashScreen.preventAutoHideAsync();
-  }, []);
-
-  useEffect(() => {
     if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
+      SplashScreen.hideAsync().catch(() => {});
     }
   }, [fontsLoaded, fontError]);
 
-  if (!fontsLoaded && !fontError) return null;
+  if (!fontsLoaded && !fontError) {
+    return <AppLoadingScreen message="Preparing…" />;
+  }
 
   return (
     <SafeAreaProvider>
       <BackendProvider>
         <AuthProvider>
           <ConfettiProvider>
-              <InnerApp />
+            <InnerApp />
           </ConfettiProvider>
         </AuthProvider>
       </BackendProvider>
@@ -50,7 +51,9 @@ export default function Layout() {
 function InnerApp() {
   const { isLoading, user } = useAuth();
 
-  if (isLoading) return null;
+  if (isLoading) {
+    return <AppLoadingScreen message="Signing you in…" />;
+  }
 
   return (
     <SafeAreaProvider>
@@ -84,7 +87,7 @@ function LayoutContent() {
 
   useEffect(() => {
     if (isLoading) return;
-  
+
     const inAuthGroup = ['signin', 'signup', 'verifyemail'].includes(segments[0]);
 
     if (!user && !inAuthGroup) {
@@ -94,13 +97,8 @@ function LayoutContent() {
     }
   }, [isLoading, user, segments]);
 
-  // Show a loading spinner until the loading is complete
   if (isLoading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#0000ff" />
-      </View>
-    );
+    return <AppLoadingScreen />;
   }
 
   return (
@@ -115,21 +113,14 @@ function LayoutContent() {
         }}
       >
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="signin" options={{ title: "Sign In" }} />
-        <Stack.Screen name="signup" options={{ title: "Sign Up" }} />
-        <Stack.Screen name="verifyemail" options={{ title: "Verify Email" }} />
+        <Stack.Screen name="signin" options={{ title: 'Sign In' }} />
+        <Stack.Screen name="signup" options={{ title: 'Sign Up' }} />
+        <Stack.Screen name="verifyemail" options={{ title: 'Verify Email' }} />
       </Stack>
-      <StatusBar barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'}
-      backgroundColor={theme.background} />
+      <StatusBar
+        barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'}
+        backgroundColor={theme.background}
+      />
     </NavThemeProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-  },
-});

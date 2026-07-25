@@ -60,6 +60,23 @@ When you create an account in our app, we collect the following information:
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
+### Unit tests
+
+Tests are **colocated** next to the module they cover:
+
+```
+utils/randomChapter.ts
+utils/randomChapter.test.ts
+
+components/ui/Button.tsx
+components/ui/Button.test.tsx
+```
+
+- Prefer `*.test.ts` / `*.test.tsx` (not `*-test.tsx`).
+- Optional: a local `__tests__/` folder is fine for crowded directories.
+- Prefer testing pure `utils/` and extracted helpers first; screen/route tests last.
+- Run with `npm test` (Jest + `jest-expo`). Shared mocks live in `jest.setup.ts`.
+
 ### Get started
 
 1. Install dependencies

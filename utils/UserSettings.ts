@@ -10,6 +10,15 @@ export const getHoldToTryAnother = async (userId: string): Promise<boolean> => {
   return value ? JSON.parse(value) : false; // Default to false
 };
 
+export const setSoundEnabled = async (userId: string, value: boolean) => {
+  await AsyncStorage.setItem(`soundEnabled-${userId}`, JSON.stringify(value));
+};
+
+export const getSoundEnabled = async (userId: string): Promise<boolean> => {
+  const value = await AsyncStorage.getItem(`soundEnabled-${userId}`);
+  return value ? JSON.parse(value) : true; // Default to on
+};
+
 export const setTranslation = async (userId: string, value: TranslationKey) => {
   await AsyncStorage.setItem(`translation-${userId}`, value);
 };

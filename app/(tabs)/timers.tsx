@@ -4,23 +4,23 @@ import { useTimer } from '../../context/TimerContext';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { TimerInputRow } from '../../components/TimerInputRow';
 import { useThemeContext } from '@/context/ThemeContext';
+import { Screen } from '@/components/ui/Screen';
+import { AppText } from '@/components/ui/AppText';
+import { Card } from '@/components/ui/Card';
 
 export default function TimerScreen() {
-
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState<string>('');
   const [editMinutes, setEditMinutes] = useState<string>('0');
   const [editSeconds, setEditSeconds] = useState<string>('0');
 
-  const { 
+  const {
     timers,
-    activeTimer,
     competitiveTimer,
     addTimer,
     removeTimer,
     startTimer,
     stopTimer,
-    resetTimer,
     updateTimer,
     startCompetitiveTimer,
     stopCompetitiveTimer,
@@ -35,72 +35,123 @@ export default function TimerScreen() {
   };
 
   return (
-    <View style={{...styles.container, backgroundColor: theme.background}}>
-      {/* Competitive Timer Section */}
-      <View style={{...styles.competitiveSection, borderBottomColor: theme.horizontalDivider}}>
-        <Text style={{...styles.competitiveTitle, color: theme.text}}>🏆 Competitive Timer</Text>
-        <View style={{...styles.competitiveTimerItem, backgroundColor: theme.background, borderColor: competitiveTimer.isActive ? '#FFD700' : theme.horizontalDivider}}>
+    <Screen style={styles.container} safe={false}>
+      <View style={[styles.competitiveSection, { borderBottomColor: theme.border }]}>
+        <AppText variant="subtitle" style={styles.competitiveTitle}>
+          Competitive Timer
+        </AppText>
+        <Card
+          style={[
+            styles.competitiveTimerItem,
+            {
+              borderColor: competitiveTimer.isActive ? theme.competitive : theme.border,
+            },
+          ]}
+        >
           <View style={styles.itemTopRow}>
-            <Text style={{...styles.timerName, color: theme.text, fontWeight: 'bold'}}>
+            <Text style={[styles.timerName, { color: theme.text }]}>
               {competitiveTimer.name}
             </Text>
-            <Text style={{...styles.timerTime, color: competitiveTimer.isActive ? '#FFD700' : theme.text, fontWeight: 'bold', fontSize: 18}}>
-              {`${Math.floor(competitiveTimer.remaining / 60)}:${(competitiveTimer.remaining % 60).toString().padStart(2, '0')}`}
+            <Text
+              style={[
+                styles.timerTime,
+                {
+                  color: competitiveTimer.isActive ? theme.competitive : theme.text,
+                  fontWeight: '700',
+                  fontSize: 18,
+                },
+              ]}
+            >
+              {`${Math.floor(competitiveTimer.remaining / 60)}:${(competitiveTimer.remaining % 60)
+                .toString()
+                .padStart(2, '0')}`}
             </Text>
-            <TouchableOpacity 
-              onPress={() => startCompetitiveTimer()} 
+            <TouchableOpacity
+              onPress={() => startCompetitiveTimer()}
               disabled={competitiveTimer.isActive}
             >
-              <Icon name="play" size={28} color={competitiveTimer.isActive ? '#aaa' : '#FFD700'} />
+              <Icon
+                name="play"
+                size={28}
+                color={competitiveTimer.isActive ? theme.textDisabled : theme.competitive}
+              />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => stopCompetitiveTimer()}>
-              <Icon name="refresh" size={28} color="#607D8B" />
+              <Icon name="refresh" size={28} color={theme.textMuted} />
             </TouchableOpacity>
           </View>
           {competitiveTimer.bestScore > 0 && (
             <View style={styles.itemBottomRow}>
               <Text style={{ color: theme.text, fontSize: 13 }}>
-                🏅 Personal Best: <Text style={{ fontWeight: 'bold', color: '#FFD700' }}>{competitiveTimer.bestScore}</Text>
+                Personal Best:{' '}
+                <Text style={{ fontWeight: '700', color: theme.competitive }}>
+                  {competitiveTimer.bestScore}
+                </Text>
               </Text>
             </View>
           )}
-        </View>
+        </Card>
       </View>
 
-      {/* Session Timers Section */}
-      <Text style={{...styles.sectionTitle, color: theme.text}}>Session Timers</Text>
+      <AppText variant="subtitle" style={styles.sectionTitle}>
+        Session Timers
+      </AppText>
       <TimerInputRow onAdd={handleAdd} />
       <FlatList
         data={timers}
-        keyExtractor={item => item.id}
+        keyExtractor={(item) => item.id}
         renderItem={({ item }) => {
           return (
-            <View style={{...styles.timerItem, borderBottomColor: theme.horizontalDivider }}>
+            <View style={[styles.timerItem, { borderBottomColor: theme.border }]}>
               {editingId === item.id ? (
-                <View style={ styles.itemTopRow }>
+                <View style={styles.itemTopRow}>
                   <TextInput
-                    style={[styles.input, { color: theme.text, minWidth: 60 }]}
+                    style={[
+                      styles.input,
+                      {
+                        color: theme.text,
+                        borderColor: theme.border,
+                        backgroundColor: theme.surface,
+                        minWidth: 60,
+                      },
+                    ]}
                     value={editName}
                     onChangeText={setEditName}
                     placeholder="Name"
-                    placeholderTextColor="#888"
+                    placeholderTextColor={theme.textDisabled}
                   />
                   <TextInput
-                    style={[styles.input, { color: theme.text, width: 40 }]}
+                    style={[
+                      styles.input,
+                      {
+                        color: theme.text,
+                        borderColor: theme.border,
+                        backgroundColor: theme.surface,
+                        width: 40,
+                      },
+                    ]}
                     value={editMinutes}
                     onChangeText={setEditMinutes}
                     keyboardType="numeric"
                     placeholder="min"
-                    placeholderTextColor="#888"
+                    placeholderTextColor={theme.textDisabled}
                   />
                   <Text style={{ color: theme.text }}>:</Text>
                   <TextInput
-                    style={[styles.input, { color: theme.text, width: 40 }]}
+                    style={[
+                      styles.input,
+                      {
+                        color: theme.text,
+                        borderColor: theme.border,
+                        backgroundColor: theme.surface,
+                        width: 40,
+                      },
+                    ]}
                     value={editSeconds}
                     onChangeText={setEditSeconds}
                     keyboardType="numeric"
                     placeholder="sec"
-                    placeholderTextColor="#888"
+                    placeholderTextColor={theme.textDisabled}
                   />
                   <TouchableOpacity
                     onPress={() => {
@@ -113,26 +164,32 @@ export default function TimerScreen() {
                       }
                     }}
                   >
-                    <Icon name="checkmark" size={28} color="#4CAF50" />
+                    <Icon name="checkmark" size={28} color={theme.success} />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => setEditingId(null)}>
-                    <Icon name="close" size={28} color="#F44336" />
+                    <Icon name="close" size={28} color={theme.danger} />
                   </TouchableOpacity>
                 </View>
               ) : (
-                <View style={ styles.itemTopRow }>
-                  <Text style={{...styles.timerName, color: theme.text}}>{item.name}</Text>
-                  <Text style={{...styles.timerTime, color: theme.text}}>
-                    {`${Math.floor(item.remaining / 60)}:${(item.remaining % 60).toString().padStart(2, '0')}`}
+                <View style={styles.itemTopRow}>
+                  <Text style={[styles.timerName, { color: theme.text }]}>{item.name}</Text>
+                  <Text style={[styles.timerTime, { color: theme.text }]}>
+                    {`${Math.floor(item.remaining / 60)}:${(item.remaining % 60)
+                      .toString()
+                      .padStart(2, '0')}`}
                   </Text>
                   <TouchableOpacity onPress={() => startTimer(item.id)} disabled={item.isActive}>
-                    <Icon name="play" size={28} color={item.isActive ? '#aaa' : '#2196F3'} />
+                    <Icon
+                      name="play"
+                      size={28}
+                      color={item.isActive ? theme.textDisabled : theme.accent}
+                    />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => stopTimer()}>
-                    <Icon name="refresh" size={28} color="#607D8B" />
+                    <Icon name="refresh" size={28} color={theme.textMuted} />
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => removeTimer(item.id)}>
-                    <Icon name="trash" size={28} color="#F44336" />
+                    <Icon name="trash" size={28} color={theme.danger} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => {
@@ -142,14 +199,15 @@ export default function TimerScreen() {
                       setEditSeconds((item.duration % 60).toString().padStart(2, '0'));
                     }}
                   >
-                    <Icon name="pencil" size={24} color="#607D8B" />
+                    <Icon name="pencil" size={24} color={theme.textMuted} />
                   </TouchableOpacity>
                 </View>
               )}
               {(item.bestSessionScore ?? 0) > 0 && (
-                <View style={ styles.itemBottomRow }>
+                <View style={styles.itemBottomRow}>
                   <Text style={{ color: theme.text, fontSize: 13 }}>
-                    Highest session score: <Text style={{ fontWeight: 'bold' }}>{item.bestSessionScore}</Text>
+                    Highest session score:{' '}
+                    <Text style={{ fontWeight: '700' }}>{item.bestSessionScore}</Text>
                   </Text>
                 </View>
               )}
@@ -157,47 +215,52 @@ export default function TimerScreen() {
           );
         }}
       />
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
-  header: { fontSize: 24, fontWeight: 'bold', marginBottom: 16, textAlign: 'center' },
-  competitiveSection: { 
-    marginBottom: 20, 
-    paddingBottom: 16, 
-    borderBottomWidth: 2,
+  container: { padding: 16 },
+  competitiveSection: {
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
   },
-  competitiveTitle: { 
-    fontSize: 20, 
-    fontWeight: 'bold', 
-    marginBottom: 12, 
-    textAlign: 'center' 
+  competitiveTitle: {
+    marginBottom: 12,
+    textAlign: 'center',
   },
-  competitiveTimerItem: { 
-    flexDirection: 'column', 
-    padding: 12, 
-    borderRadius: 10, 
+  competitiveTimerItem: {
     borderWidth: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
-  sectionTitle: { 
-    fontSize: 18, 
-    fontWeight: 'bold', 
+  sectionTitle: {
     marginTop: 8,
-    marginBottom: 12 
+    marginBottom: 12,
   },
-  inputRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 6, padding: 8, marginRight: 8, minWidth: 80 },
-  addButton: { padding: 4 },
-  itemTopRow: { flexDirection: 'row', alignItems: 'flex-start', paddingBottom: 2, paddingTop: 4 },
-  itemBottomRow: { flexDirection: 'row', alignItems: 'flex-end', paddingBottom: 4 },
-  timerItem: { flexDirection: 'column', padding: 8, borderBottomWidth: 1 },
-  timerName: { flex: 1, fontSize: 16, fontWeight: 'bold' },
+  input: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 8,
+    marginRight: 8,
+  },
+  itemTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingBottom: 2,
+    paddingTop: 4,
+    gap: 6,
+  },
+  itemBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    paddingBottom: 4,
+    marginTop: 6,
+  },
+  timerItem: {
+    flexDirection: 'column',
+    padding: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  timerName: { flex: 1, fontSize: 16, fontWeight: '700' },
   timerTime: { width: 60, fontSize: 16, textAlign: 'center' },
 });
