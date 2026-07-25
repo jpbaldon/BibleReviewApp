@@ -1,18 +1,20 @@
 import { useTimer } from '../context/TimerContext';
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Animated } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBibleBooks } from '../context/BibleBooksContext';
 import { useScore } from '../context/ScoreContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAudioPlayer } from 'expo-audio';
-import { SimpleBottomSheet } from './SimpleBottomSheet'; // Adjust path if needed
+import { SimpleBottomSheet } from './SimpleBottomSheet';
 import { useConfetti } from '../context/ConfettiContext';
 import { Chapter, DuplicateLocation } from '../types';
 import { useThemeContext } from '../context/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
 import { LongPressButton } from '../components/ui/LongPressButton';
 import { MIN_CHAPTERS_ENABLED_FOR_SCORE } from '../context/BibleBooksContext';
+import { Screen } from './ui/Screen';
+import { Button } from './ui/Button';
+import { Card } from './ui/Card';
 import Icon from 'react-native-vector-icons/Ionicons';
 
 interface ContextVerse {
@@ -68,7 +70,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   const [showAnswer, setShowAnswer] = useState<boolean>(false);
   const [showSubmit, setShowSubmit] = useState<boolean>(true);
   const [feedbackText, setFeedbackText] = useState<string>('');
-  const [feedbackColor, setFeedbackColor] = useState<string>('#000000');
+  const [feedbackColor, setFeedbackColor] = useState<string>(theme.text);
   const [showFeedback, setShowFeedback] = useState<boolean>(false);
   const [isSheetVisible, setIsSheetVisible] = useState<boolean>(false);
   const [enabledBooksCount, setEnabledBooksCount] = useState<number>(bibleBooks.filter(book => book.enabled).length);
@@ -105,12 +107,12 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
     return totalEnabledChapters >= MIN_CHAPTERS_ENABLED_FOR_SCORE;
   }, [bibleBooks]);
 
-  useEffect(() => {  //a new prompt is loaded any time biblebooks (which includes chapter rarities) is changed
+  useEffect(() => {
     const currentEnabledCount = bibleBooks.filter(book => book.enabled).length;
-    if(!inCompetitiveSession) {
-        setEnabledBooksCount(currentEnabledCount);
+    if (!inCompetitiveSession) {
+      setEnabledBooksCount(currentEnabledCount);
     }
-    if(!inCompetitiveSession) {
+    if (!inCompetitiveSession) {
       loadNewItem();
     }
   }, [bibleBooks, inCompetitiveSession]);
@@ -145,7 +147,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   const loadChapter = (bookName: string, chapterNumber: number, duplicateLocations?: DuplicateLocation[], originalBook?: string, originalChapter?: number, originalVerseNumber?: number, originalDuplicateLocations?: DuplicateLocation[]) => {
     const book = bibleBooks.find(b => b.bookName === bookName);
     const chapter = book?.chapters?.find(c => c.chapter === chapterNumber);
-    if(!chapter) return;
+    if (!chapter) return;
 
     setItem(prevItem => ({
       book: bookName,
@@ -165,8 +167,9 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   };
 
   const goToNextChapter = () => {
-    if(!currentBookName || !currentChapter) return;
-    loadChapter(currentBookName, 
+    if (!currentBookName || !currentChapter) return;
+    loadChapter(
+      currentBookName,
       currentChapter.chapter + 1,
       undefined,
       item?.originalBook,
@@ -177,12 +180,11 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   };
 
   const isNextChapterDisabled = () => {
-    if(!currentBookName || !currentChapter) return true;
+    if (!currentBookName || !currentChapter) return true;
 
     const book = bibleBooks.find(b => b.bookName === currentBookName);
-
     const nextChapterNumber = currentChapter.chapter + 1;
-    const nextChapter = book?.chapters?.find(c => c.chapter === nextChapterNumber)
+    const nextChapter = book?.chapters?.find(c => c.chapter === nextChapterNumber);
 
     return !nextChapter;
   };
@@ -198,8 +200,8 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
 
     if (isCorrect) {
       let pointsObtained = 0;
-      if(isScoreEnabled || inCompetitiveSession) {
-        switch(attempts) {
+      if (isScoreEnabled || inCompetitiveSession) {
+        switch (attempts) {
           case 0:
             console.log('scoreEnabledFlag:', scoreEnabledFlag);
             pointsObtained = points;
@@ -217,12 +219,12 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
       }
       incrementSessionScore(pointsObtained);
       incrementOverallScore(pointsObtained);
-      if(activeTimer && activeTimer.isActive)
+      if (activeTimer && activeTimer.isActive)
         incrementTimedSessionScore(pointsObtained);
-      if(inCompetitiveSession)
+      if (inCompetitiveSession)
         incrementCompetitiveScore(pointsObtained);
 
-      if(pointsObtained > 0)
+      if (pointsObtained > 0)
         setFeedbackText(`Correct! (${pointsObtained} pts)`);
       else
         setFeedbackText(`Correct!`);
@@ -232,7 +234,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
       setFeedbackText('Try again!');
     }
 
-    setFeedbackColor(isCorrect ? '#00ff00' : '#ff0000');
+    setFeedbackColor(isCorrect ? theme.success : theme.danger);
     setShowAnswer(isCorrect);
     setShowSubmit(!isCorrect);
 
@@ -272,128 +274,163 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
     chapters: (book.chapters || []).map((chapter) => ({
       label: `Chapter ${chapter.chapter}`,
       value: chapter.chapter.toString(),
-      rarity: !inCompetitiveSession && chapter.rarity || 'common',  //default to 'common' in competitive session, or if no rarity is explicitly set
+      rarity: !inCompetitiveSession && chapter.rarity || 'common',
     })),
   }));
 
+  const scoreValueColor = inCompetitiveSession
+    ? theme.competitive
+    : inTimedSession
+      ? theme.danger
+      : theme.accent;
+
   return (
-    <SafeAreaView style={[styles.container, {backgroundColor: theme.background}]}> 
-      <Animated.View style={[{ flex: 1, transform: [{translateX: shakeAnim}] }]}> 
-      <View style={[styles.contentContainer, { height: contentContainerHeight }]}> 
-        {inTimedSession && (
-          <View style={{alignItems: 'center', marginBottom: 8, flexDirection: 'row', justifyContent: 'center'}}>
-            <Text
-              style={{fontSize: 20, fontWeight: 'bold', color: 'red', maxWidth: 300}}
-              numberOfLines={1}
-              ellipsizeMode="tail"
+    <Screen style={styles.container}>
+      <Animated.View style={[{ flex: 1, transform: [{ translateX: shakeAnim }] }]}>
+        <View style={[styles.contentContainer, { height: contentContainerHeight }]}>
+          {inTimedSession && (
+            <View style={styles.sessionBanner}>
+              <Text
+                style={[styles.sessionBannerText, { color: theme.danger }]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                Timer: {activeTimer.name}
+              </Text>
+              <Text style={[styles.sessionBannerText, { color: theme.danger, marginLeft: 8 }]}>
+                - {Math.floor(activeTimer.remaining / 60)}:
+                {(activeTimer.remaining % 60).toString().padStart(2, '0')}
+              </Text>
+            </View>
+          )}
+          {inCompetitiveSession && (
+            <View style={styles.sessionBanner}>
+              <Text
+                style={[styles.sessionBannerText, { color: theme.competitive }]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                Competitive Timer
+              </Text>
+              <Text style={[styles.sessionBannerText, { color: theme.competitive, marginLeft: 8 }]}>
+                - {Math.floor(competitiveTimer.remaining / 60)}:
+                {(competitiveTimer.remaining % 60).toString().padStart(2, '0')}
+              </Text>
+            </View>
+          )}
+          <Text style={[styles.title, { color: theme.text }]}>{title}</Text>
+
+          <View style={styles.scoreRow}>
+            <View style={styles.scoreGroup}>
+              <Text style={[styles.scoreLabel, { color: theme.textMuted }]}>
+                {inCompetitiveSession ? 'Competitive:' : inTimedSession ? 'Timed Session:' : 'Session:'}
+              </Text>
+              <Text style={[styles.scoreValue, { color: scoreValueColor }]}>
+                {inCompetitiveSession ? competitiveScore : inTimedSession ? timedSessionScore : sessionScore}
+              </Text>
+            </View>
+            <View style={[styles.scoreDivider, { backgroundColor: theme.textMuted }]} />
+            <View style={styles.scoreGroup}>
+              <Text style={[styles.scoreLabel, { color: theme.textMuted }]}>
+                {inCompetitiveSession || inTimedSession ? 'Personal Best:' : 'Overall:'}
+              </Text>
+              <Text style={[styles.scoreValue, { color: scoreValueColor }]}>
+                {inCompetitiveSession
+                  ? competitiveTimer.bestScore
+                  : inTimedSession
+                    ? activeTimer.bestSessionScore
+                    : overallScore}
+              </Text>
+            </View>
+          </View>
+
+          {item ? (
+            <Card
+              variant="scripture"
+              style={[styles.verseContainer, { height: verseContainerHeight }]}
             >
-              Timer: {activeTimer.name}
-            </Text>
-            <Text style={{fontSize: 20, fontWeight: 'bold', color: 'red', marginLeft: 8}}>
-              - {Math.floor(activeTimer.remaining / 60)}:{(activeTimer.remaining % 60).toString().padStart(2, '0')}
-            </Text>
-          </View>
-        )}
-        {inCompetitiveSession && (
-          <View style={{alignItems: 'center', marginBottom: 8, flexDirection: 'row', justifyContent: 'center'}}>
-            <Text
-              style={{fontSize: 20, fontWeight: 'bold', color: '#FFD700', maxWidth: 300}}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              🏆 Competitive Timer
-            </Text>
-            <Text style={{fontSize: 20, fontWeight: 'bold', color: '#FFD700', marginLeft: 8}}>
-              - {Math.floor(competitiveTimer.remaining / 60)}:{(competitiveTimer.remaining % 60).toString().padStart(2, '0')}
-            </Text>
-          </View>
-        )}
-        <Text style={[styles.title, {color: theme.text}]}>{title}</Text>
+              <ScrollView contentContainerStyle={{ paddingHorizontal: 4 }}>
+                {renderQuestion(item, showAnswer)}
+              </ScrollView>
+              {showAnswer && currentBookName && currentChapter && (
+                <View style={styles.navRow}>
+                  <TouchableOpacity
+                    onPress={currentChapter.chapter === 1 ? undefined : goToPreviousChapter}
+                    disabled={currentChapter.chapter === 1}
+                  >
+                    <View style={styles.navLink}>
+                      <Icon
+                        name="chevron-back"
+                        size={18}
+                        color={
+                          currentChapter.chapter === 1 ? theme.textDisabled : theme.accent
+                        }
+                        style={{ marginRight: 2 }}
+                      />
+                      <Text
+                        style={{
+                          fontSize: 16,
+                          color:
+                            currentChapter.chapter === 1 ? theme.textDisabled : theme.accent,
+                          textDecorationLine:
+                            currentChapter.chapter === 1 ? 'none' : 'underline',
+                        }}
+                      >
+                        Prev
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={goToNextChapter}
+                    disabled={isNextChapterDisabled()}
+                  >
+                    <View style={styles.navLink}>
+                      <Text
+                        style={{
+                          fontSize: 16,
+                          color: isNextChapterDisabled()
+                            ? theme.textMuted
+                            : theme.accent,
+                          textDecorationLine: isNextChapterDisabled()
+                            ? 'none'
+                            : 'underline',
+                        }}
+                      >
+                        Next
+                      </Text>
+                      <Icon
+                        name="chevron-forward"
+                        size={18}
+                        color={
+                          isNextChapterDisabled() ? theme.textDisabled : theme.accent
+                        }
+                        style={{ marginLeft: 2 }}
+                      />
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </Card>
+          ) : (
+            <Text style={[styles.loadingText, { color: theme.textMuted }]}>Loading...</Text>
+          )}
 
-        <View style={styles.scoreRow}>
-          <Text style={[styles.scoreText, {color: (inTimedSession ? 'red' : inCompetitiveSession ? '#FFD700' : theme.text)}]}>
-            {inCompetitiveSession ? 'Competitive:' : inTimedSession ? 'Timed Session:' : 'Session:'}
-          </Text>
-          <Text style={[styles.scoreValue, {color: (inTimedSession ? 'red' : inCompetitiveSession ? '#FFD700' : theme.text)}]}>
-            {inCompetitiveSession ? competitiveScore : inTimedSession ? timedSessionScore : sessionScore}
-          </Text>
-          <Text style={[styles.scoreText, {color: (inTimedSession ? 'red' : inCompetitiveSession ? '#FFD700' : theme.text)}]}>
-            {inCompetitiveSession ? 'Personal Best:' : inTimedSession ? 'Personal Best:' : 'Overall:'}
-          </Text>
-          <Text style={[styles.scoreValue, {color: (inTimedSession ? 'red' : inCompetitiveSession ? '#FFD700' : theme.text)}]}>
-            {inCompetitiveSession ? competitiveTimer.bestScore : inTimedSession ? activeTimer.bestSessionScore : overallScore}
-          </Text>
-        </View>
-
-        {item ? (
-          <View style={[styles.verseContainer, { height: verseContainerHeight, backgroundColor: theme.secondary, shadowColor: theme.text }]}>
-            <ScrollView contentContainerStyle={{paddingHorizontal: 8}}>{renderQuestion(item, showAnswer)}</ScrollView>
-            {showAnswer && currentBookName && currentChapter && (
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 10}}>
-                <TouchableOpacity
-                  onPress={currentChapter.chapter === 1 ? () => {} : goToPreviousChapter} // Disable the onPress function when disabled
-                  disabled={currentChapter.chapter === 1} // Disable the entire TouchableOpacity when the condition is true
-                >
-                  <View style={{ flexDirection: 'row', 
-                        alignItems: 'center',
-                         }}>
-                    <Icon
-                      name="chevron-back"
-                      size={18}
-                      style={[
-                        currentChapter.chapter === 1 ? [styles.disabledLinkText, { color: theme.disabledLinkText }] : [styles.linkText, { color: theme.linkText }],
-                        { marginRight: 2 },
-                      ]}
-                    />
-                    <Text
-                      style={[
-                        currentChapter.chapter === 1 ? [styles.disabledLinkText, { color: theme.disabledLinkText }] : [styles.linkText, { color: theme.linkText, textDecorationLine: 'underline' }],
-                      ]}
-                    >
-                      Prev
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={goToNextChapter} // Disable the onPress function when disabled
-                  disabled={isNextChapterDisabled()} // Disable the entire TouchableOpacity when the condition is true
-                >
-                  <View style={{ flexDirection: 'row', 
-                        alignItems: 'center',
-                         }}>
-                    <Text
-                      style={[
-                        isNextChapterDisabled() ? [styles.disabledLinkText, { color: theme.disabledLinkText }] : [styles.linkText, { color: theme.linkText, textDecorationLine: 'underline' }],
-                      ]}
-                    >
-                      Next
-                    </Text>
-                    <Icon
-                      name="chevron-forward"
-                      size={18}
-                      style={[
-                        isNextChapterDisabled() ? [styles.disabledLinkText, { color: theme.disabledLinkText }] : [styles.linkText, { color: theme.linkText }],
-                        { marginRight: 2 },
-                      ]}
-                    />
-                  </View>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        ) : (
-          <Text style={styles.loadingText}>Loading...</Text>
-        )}
-
-        <View style={styles.inputContainer}>
-            <TouchableOpacity 
-              style={[styles.dropdown, {backgroundColor: !showAnswer ? theme.secondary : '#A0A0A0', borderColor: theme.text, shadowColor: theme.text}]}
-              disabled={showAnswer} 
+          <View style={styles.inputContainer}>
+            <TouchableOpacity
+              style={[
+                styles.dropdown,
+                {
+                  backgroundColor: !showAnswer ? theme.surface : theme.border,
+                  borderColor: theme.border,
+                  shadowColor: theme.text,
+                },
+              ]}
+              disabled={showAnswer}
               onPress={() => {
-                if(showAnswer) {
-
+                if (showAnswer) {
+                  return;
                 }
-                else if(allowedBooks.length === 1) {
+                if (allowedBooks.length === 1) {
                   const singleBook = allowedBooks[0];
                   setSelectedBook(singleBook.bookName);
                   setIsSheetVisible(true);
@@ -402,155 +439,194 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
                 }
               }}
             >
-                <Text style={[styles.selectedTextStyle, {color: !showAnswer ? theme.text : theme.disabledButtonText}]}>
-                    {selectedBook && selectedChapter ? `${selectedBook} - Chapter ${selectedChapter}` : 'Select Book & Chapter'}
+              <View style={styles.dropdownLeft}>
+                <Icon
+                  name="book-outline"
+                  size={20}
+                  color={!showAnswer ? theme.accent : theme.textDisabled}
+                  style={styles.dropdownIcon}
+                />
+                <Text
+                  style={[
+                    styles.selectedTextStyle,
+                    { color: !showAnswer ? theme.text : theme.textDisabled },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {selectedBook && selectedChapter
+                    ? `${selectedBook} - Chapter ${selectedChapter}`
+                    : 'Select Book & Chapter'}
                 </Text>
-                <Icon name="chevron-down-outline" size={20} color={!showAnswer ? theme.text : theme.disabledButtonText} />
+              </View>
+              <Icon
+                name="chevron-down"
+                size={18}
+                color={!showAnswer ? theme.textMuted : theme.textDisabled}
+              />
             </TouchableOpacity>
 
             <SimpleBottomSheet
-            visible={isSheetVisible}
-            onClose={() => setIsSheetVisible(false)}
-            data={booksWithChapters}
-            onSelect={(book, chapter) => {
+              visible={isSheetVisible}
+              onClose={() => setIsSheetVisible(false)}
+              data={booksWithChapters}
+              onSelect={(book, chapter) => {
                 setSelectedBook(book);
                 setSelectedChapter(chapter);
-            }}
-            title="Select Book"
-            submenuTitle="Select Chapter"
-            selectedBook={selectedBook}
-            selectedChapter={selectedChapter}
+              }}
+              title="Select Book"
+              submenuTitle="Select Chapter"
+              selectedBook={selectedBook}
+              selectedChapter={selectedChapter}
             />
-        </View>
-
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity style={[styles.submitButton, (!selectedChapter || showAnswer) && styles.buttonDisabled, {shadowColor: theme.text, borderColor: theme.text}]} onPress={checkGuess} disabled={!selectedChapter || showAnswer}>
-            <Text style={[styles.submitButtonText, (!selectedChapter || showAnswer) && {color: theme.disabledButtonText}]}>Submit Guess</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.forfeitButton, showAnswer && styles.buttonDisabled, {shadowColor: theme.text, borderColor: theme.text}]} onPress={forfeit} disabled={showAnswer}>
-            <Text style={[styles.forfeitButtonText, showAnswer && {color: theme.disabledButtonText}]}>Give Up</Text>
-          </TouchableOpacity>
-        </View>
-
-        {showFeedback && (
-          <View style={[styles.feedbackOverlay]}>
-            <Text style={[styles.feedbackText, { color: feedbackColor }]}>
-              {feedbackText}
-            </Text>
           </View>
-        )}
 
-        <View style={styles.bottomButtonContainer}>
-          {holdToTryAnother ? (
-            <LongPressButton onLongPress={loadNewItem} label="Try Another" />
-          ) : (
-            <TouchableOpacity onPress={loadNewItem} style={[styles.tryAnotherButton, {backgroundColor: theme.neutralButton, shadowColor: theme.text, borderColor: theme.text}]}>
-              <Text style={styles.tryAnotherButtonText}>Try Another</Text>
-            </TouchableOpacity>
-          ) }
+          <View style={styles.buttonContainer}>
+            <Button
+              label="Submit Guess"
+              variant="success"
+              icon="checkmark"
+              onPress={checkGuess}
+              disabled={!selectedChapter || showAnswer}
+              style={styles.flexButton}
+            />
+            <Button
+              label="Give Up"
+              variant="danger"
+              icon="close"
+              onPress={forfeit}
+              disabled={showAnswer}
+              style={styles.flexButton}
+            />
+          </View>
+
+          {showFeedback && (
+            <View style={[styles.feedbackOverlay, { backgroundColor: theme.background + 'EE' }]}>
+              <Text style={[styles.feedbackText, { color: feedbackColor }]}>
+                {feedbackText}
+              </Text>
+            </View>
+          )}
+
+          <View style={styles.bottomButtonContainer}>
+            {holdToTryAnother ? (
+              <LongPressButton onLongPress={loadNewItem} label="Try Another" />
+            ) : (
+              <Button
+                label="Try Another"
+                variant="primary"
+                icon="refresh"
+                onPress={loadNewItem}
+                fullWidth
+              />
+            )}
+          </View>
         </View>
-        
-      </View>
       </Animated.View>
-    </SafeAreaView>
+    </Screen>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 10, backgroundColor: '#1a1a1a' },
+  container: { padding: 10 },
   contentContainer: { flex: 1, padding: 0, marginBottom: 0 },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: '700',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  sessionBanner: {
+    alignItems: 'center',
+    marginBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  sessionBannerText: {
+    fontSize: 18,
+    fontWeight: '700',
+    maxWidth: 280,
   },
   scoreRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    paddingHorizontal: 4,
+    gap: 16,
   },
-  scoreText: { fontSize: 16 },
-  scoreValue: { fontSize: 16, fontWeight: 'bold' },
+  scoreGroup: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 6,
+  },
+  scoreLabel: { fontSize: 15 },
+  scoreValue: { fontSize: 16, fontWeight: '700' },
+  scoreDivider: {
+    width: 1.5,
+    height: 18,
+    alignSelf: 'center',
+    borderRadius: 1,
+    opacity: 0.7,
+  },
   verseContainer: {
-    padding: 8,
-    borderRadius: 8,
-    marginBottom: 10,
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
+    marginBottom: 12,
+  },
+  navRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10,
+  },
+  navLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   inputContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   dropdown: {
     flex: 1,
-    marginHorizontal: 5,
+    marginHorizontal: 2,
     borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 12,
     justifyContent: 'space-between',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 14,
     elevation: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
   },
-  selectedTextStyle: { fontSize: 16 },
-  submitButton: {
+  dropdownLeft: {
     flex: 1,
-    backgroundColor: '#4CAF50',
-    paddingVertical: 14,
-    borderRadius: 8,
+    flexDirection: 'row',
     alignItems: 'center',
-    elevation: 2,
-    borderWidth: 1,
+    paddingRight: 8,
   },
-  submitButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  forfeitButton: {
-    flex: 1,
-    backgroundColor: '#FF0000',
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginLeft: 10,
-    elevation: 2,
-    borderWidth: 1,
+  dropdownIcon: {
+    marginRight: 10,
   },
-  forfeitButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  tryAnotherButton: {
-    marginTop: 4,
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    elevation: 2,
-    borderWidth: 1,
-  },
-  tryAnotherButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  selectedTextStyle: { fontSize: 16, flexShrink: 1 },
   feedbackOverlay: {
     position: 'absolute',
     top: '40%',
     alignSelf: 'center',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    borderRadius: 8,
-    zIndex: 1000, // ensures it's on top
-    backgroundColor: 'rgba(0, 0, 0, 0.75)', // optional dim background
+    borderRadius: 12,
+    zIndex: 1000,
     elevation: 0,
   },
-
   feedbackText: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: '700',
     textAlign: 'center',
-    padding: 20,
-    borderRadius: 10,
+    padding: 16,
   },
-  loadingText: { textAlign: 'center', color: '#aaa', marginTop: 20 },
+  loadingText: { textAlign: 'center', marginTop: 20 },
   bottomButtonContainer: { marginTop: 'auto', marginBottom: 0 },
   buttonContainer: {
     flexDirection: 'row',
@@ -558,15 +634,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     gap: 10,
   },
-  linkText: {
-    fontSize: 18,
-    cursor: 'pointer',
-  },
-  disabledLinkText: {
-    fontSize: 18,
-    cursor: 'pointer',
-  },
-  buttonDisabled: {
-    backgroundColor: '#A0A0A0',
+  flexButton: {
+    flex: 1,
   },
 });

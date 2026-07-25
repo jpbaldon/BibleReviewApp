@@ -4,12 +4,12 @@ import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-nativ
 import { useAuth } from '@/context/AuthContext';
 import { useServices } from '@/context/ServicesContext';
 import { useThemeContext } from '@/context/ThemeContext';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { CompetitiveLeaderboardEntry } from '../../types';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { Screen } from '@/components/ui/Screen';
+import { AppText } from '@/components/ui/AppText';
 
 export default function CompetitiveLeaderboardScreen() {
-
   const [scores, setScores] = useState<CompetitiveLeaderboardEntry[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,21 +45,20 @@ export default function CompetitiveLeaderboardScreen() {
   useFocusEffect(
     useCallback(() => {
       if (server) fetchLeaderboard();
-    }, [server])
+    }, [server]),
   );
 
   const getMedalColor = (rank: number) => {
     switch (rank) {
-      case 1: return '#FFD700'; // Gold
-      case 2: return '#C0C0C0'; // Silver
-      case 3: return '#CD7F32'; // Bronze
-      default: return theme.text;
+      case 1:
+        return theme.competitive;
+      case 2:
+        return theme.textMuted;
+      case 3:
+        return theme.warning;
+      default:
+        return theme.text;
     }
-  };
-
-  const getMedalIcon = (rank: number) => {
-    if (rank <= 3) return 'medal';
-    return 'trophy';
   };
 
   const renderItem = ({ item }: { item: CompetitiveLeaderboardEntry }) => {
@@ -67,38 +66,38 @@ export default function CompetitiveLeaderboardScreen() {
     const isTopThree = item.rank && item.rank <= 3;
 
     if (item.competitive_score === 0) return null;
-    
+
     return (
-      <View 
+      <View
         style={[
-          styles.row, 
-          { borderBottomColor: theme.horizontalDivider },
+          styles.row,
+          { borderBottomColor: theme.border },
           isTopThree ? styles.topThreeRow : null,
-          isCurrentUser ? { backgroundColor: theme.background + '20' } : null
+          isCurrentUser ? { backgroundColor: theme.accentMuted } : null,
         ]}
       >
         <View style={[styles.rankContainer, { width: 60 }]}>
-          <Icon 
-            name={getMedalIcon(item.rank || 0)} 
-            size={24} 
-            color={getMedalColor(item.rank || 0)} 
+          <Icon
+            name={isTopThree ? 'medal' : 'trophy'}
+            size={24}
+            color={getMedalColor(item.rank || 0)}
           />
-          <Text 
+          <Text
             style={[
-              styles.rank, 
+              styles.rank,
               { color: getMedalColor(item.rank || 0) },
-              isTopThree ? styles.topThreeRank : null
+              isTopThree ? styles.topThreeRank : null,
             ]}
           >
             {item.rank}
           </Text>
         </View>
-        <Text 
+        <Text
           style={[
             styles.username,
             { flex: 1, paddingLeft: 10, color: theme.text },
-            isCurrentUser ? { color: theme.highlightedText, fontWeight: 'bold' } : null,
-            isTopThree ? styles.topThreeName : null
+            isCurrentUser ? { color: theme.warning, fontWeight: '700' } : null,
+            isTopThree ? styles.topThreeName : null,
           ]}
           numberOfLines={1}
           ellipsizeMode="tail"
@@ -106,18 +105,15 @@ export default function CompetitiveLeaderboardScreen() {
           {item.username || 'Anonymous'}
         </Text>
         <View style={styles.scoreContainer}>
-          <Text 
+          <Text
             style={[
-              styles.score, 
+              styles.score,
               { color: getMedalColor(item.rank || 0) },
-              isTopThree ? styles.topThreeScore : null
+              isTopThree ? styles.topThreeScore : null,
             ]}
           >
             {item.competitive_score}
           </Text>
-          {/* {isTopThree && (
-            <Icon name="star" size={16} color={getMedalColor(item.rank || 0)} style={styles.starIcon} />
-          )} */}
         </View>
       </View>
     );
@@ -125,53 +121,54 @@ export default function CompetitiveLeaderboardScreen() {
 
   if (!user) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }]}>
-          <Text style={{ color: theme.text, fontSize: 18, textAlign: 'center' }}>
-            Please sign in to view the Competitive Leaderboard.
-          </Text>
-        </View>
-      </SafeAreaView>
+      <Screen style={styles.centered}>
+        <AppText style={styles.centerText}>
+          Please sign in to view the Competitive Leaderboard.
+        </AppText>
+      </Screen>
     );
   }
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={[styles.container, { backgroundColor: theme.background }]}>
-          <ActivityIndicator size="large" color="#FFD700" />
-        </View>
-      </SafeAreaView>
+      <Screen style={styles.centered}>
+        <ActivityIndicator size="large" color={theme.competitive} />
+      </Screen>
     );
   }
   if (error) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={[styles.container, { backgroundColor: theme.background }]}>
-          <Text style={{ color: theme.text }}>Error: {error}</Text>
-        </View>
-      </SafeAreaView>
+      <Screen style={styles.centered}>
+        <AppText>Error: {error}</AppText>
+      </Screen>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      {/* Header */}
+    <Screen style={styles.container} safe={false}>
       <View style={styles.header}>
-        <Icon name="trophy" size={32} color="#FFD700" />
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Competitive Leaderboard</Text>
-        <Icon name="trophy" size={32} color="#FFD700" />
+        <Icon name="trophy" size={28} color={theme.competitive} />
+        <Text style={[styles.headerTitle, { color: theme.text }]}>
+          Competitive Leaderboard
+        </Text>
+        <Icon name="trophy" size={28} color={theme.competitive} />
       </View>
-      
+
       <View style={styles.subtitle}>
-        <Text style={[styles.subtitleText, { color: theme.text }]}>
-          5-Minute Challenge • Best Scores
+        <Text style={[styles.subtitleText, { color: theme.textMuted }]}>
+          5-Minute Challenge · Best Scores
         </Text>
       </View>
 
-      <View style={[styles.headerRow, { borderBottomColor: theme.horizontalDivider }]}>
-        <Text style={[styles.headerText, { width: 60, textAlign: 'center', color: theme.text }]}>Rank</Text>
-        <Text style={[styles.headerText, { flex: 1, paddingLeft: 10, color: theme.text }]}>Player</Text>
-        <Text style={[styles.headerText, { width: 80, textAlign: 'right', color: theme.text }]}>Score</Text>
+      <View style={[styles.headerRow, { borderBottomColor: theme.border }]}>
+        <Text style={[styles.headerText, { width: 60, textAlign: 'center', color: theme.textMuted }]}>
+          Rank
+        </Text>
+        <Text style={[styles.headerText, { flex: 1, paddingLeft: 10, color: theme.textMuted }]}>
+          Player
+        </Text>
+        <Text style={[styles.headerText, { width: 80, textAlign: 'right', color: theme.textMuted }]}>
+          Score
+        </Text>
       </View>
 
       <FlatList
@@ -182,14 +179,22 @@ export default function CompetitiveLeaderboardScreen() {
         onRefresh={fetchLeaderboard}
         refreshing={refreshing}
       />
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     padding: 10,
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  centerText: {
+    textAlign: 'center',
+    fontSize: 18,
   },
   header: {
     flexDirection: 'row',
@@ -199,8 +204,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '700',
   },
   subtitle: {
     alignItems: 'center',
@@ -208,7 +213,6 @@ const styles = StyleSheet.create({
   },
   subtitleText: {
     fontSize: 14,
-    opacity: 0.7,
     fontStyle: 'italic',
   },
   headerRow: {
@@ -218,15 +222,16 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   headerText: {
-    fontWeight: 'bold',
-    fontSize: 16,
+    fontWeight: '700',
+    fontSize: 14,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 8,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderRadius: 8,
   },
   topThreeRow: {
     paddingVertical: 16,
@@ -238,12 +243,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   rank: {
-    fontWeight: 'bold',
+    fontWeight: '700',
     fontSize: 14,
   },
   topThreeRank: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
   username: {
     fontSize: 15,
@@ -259,16 +264,13 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   score: {
-    fontWeight: 'bold',
+    fontWeight: '700',
     fontSize: 16,
     textAlign: 'right',
   },
   topThreeScore: {
     fontSize: 20,
-    fontWeight: 'bold',
-  },
-  starIcon: {
-    marginLeft: 4,
+    fontWeight: '700',
   },
   listContent: {
     paddingBottom: 20,

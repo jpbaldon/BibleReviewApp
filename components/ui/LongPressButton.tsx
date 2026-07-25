@@ -7,6 +7,7 @@ import {
   Animated,
   Easing,
 } from 'react-native';
+import { useThemeContext } from '@/context/ThemeContext';
 
 interface LongPressButtonProps {
   onLongPress: () => void;
@@ -19,6 +20,7 @@ export const LongPressButton: React.FC<LongPressButtonProps> = ({
   duration = 1200,
   label = 'Try Another',
 }) => {
+  const { theme } = useThemeContext();
   const progress = useRef(new Animated.Value(0)).current;
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const animationRef = useRef<Animated.CompositeAnimation | null>(null);
@@ -65,16 +67,26 @@ export const LongPressButton: React.FC<LongPressButtonProps> = ({
       onPressOut={cancelHold}
       style={styles.wrapper}
     >
-      <View style={styles.button}>
+      <View
+        style={[
+          styles.button,
+          {
+            backgroundColor: theme.accent,
+            borderBottomColor: theme.accentPressed,
+            shadowColor: theme.accentShadow,
+          },
+        ]}
+      >
         <Animated.View
           style={[
             styles.progressFill,
             {
               width: fillWidth,
+              backgroundColor: theme.accentPressed,
             },
           ]}
         />
-        <Text style={styles.label}>{label}</Text>
+        <Text style={[styles.label, { color: '#FFFFFF' }]}>{label}</Text>
       </View>
     </Pressable>
   );
@@ -86,22 +98,23 @@ const styles = StyleSheet.create({
   },
   button: {
     height: 48,
-    backgroundColor: '#007AFF',
-    borderRadius: 8,
+    borderRadius: 14,
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-    elevation: 2,
+    borderBottomWidth: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.32,
+    shadowRadius: 6,
+    elevation: 5,
   },
   progressFill: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#6699FF',
     zIndex: 0,
   },
   label: {
-    color: '#fff',
-    fontWeight: 'bold',
+    fontWeight: '700',
     fontSize: 16,
     zIndex: 1,
   },

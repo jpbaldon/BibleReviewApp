@@ -98,7 +98,7 @@ function LayoutContent() {
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator size="large" color="#0000ff" />
+        <ActivityIndicator size="large" color={theme.accent} />
       </View>
     );
   }

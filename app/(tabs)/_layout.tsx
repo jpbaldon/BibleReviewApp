@@ -12,7 +12,8 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: theme.tint,
+        tabBarActiveTintColor: theme.tabIconSelected,
+        tabBarInactiveTintColor: theme.tabIconDefault,
         headerShown: false,
         headerTitleAlign: 'center',
         tabBarButton: HapticTab,
@@ -21,7 +22,10 @@ export default function TabLayout() {
           ios: {
             position: 'absolute',
           },
-          default: {},
+          default: {
+            backgroundColor: theme.tabBarBackground,
+            borderTopColor: theme.border,
+          },
         }),
       }}>
       <Tabs.Screen
@@ -74,7 +78,7 @@ export default function TabLayout() {
           headerStyle: {
             backgroundColor: theme.background,
           },
-          headerTintColor: theme.text, // White text
+          headerTintColor: theme.text,
         }}
       />
       <Tabs.Screen
@@ -86,7 +90,7 @@ export default function TabLayout() {
           headerStyle: {
             backgroundColor: theme.background,
           },
-          headerTintColor: theme.text, // White text
+          headerTintColor: theme.text,
         }}
       />
       <Tabs.Screen
@@ -110,7 +114,7 @@ export default function TabLayout() {
           headerStyle: {
             backgroundColor: theme.background,
           },
-          headerTintColor: theme.text, // White text
+          headerTintColor: theme.text,
         }}
       />
     </Tabs>

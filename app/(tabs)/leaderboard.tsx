@@ -4,11 +4,12 @@ import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-nativ
 import { useAuth } from '@/context/AuthContext';
 import { useScore } from '../../context/ScoreContext';
 import { useThemeContext } from '@/context/ThemeContext';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LeaderboardEntry } from '../../types'
+import { LeaderboardEntry } from '../../types';
+import { Screen } from '@/components/ui/Screen';
+import { AppText } from '@/components/ui/AppText';
+import { Badge } from '@/components/ui/Badge';
 
 export default function LeaderboardScreen() {
-
   const [scores, setScores] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +23,7 @@ export default function LeaderboardScreen() {
     try {
       setRefreshing(true);
       setError(null);
-      
+
       const data = await server.fetchLeaderboardFromServer();
 
       const rankedData = data.map((item, index) => ({
@@ -32,7 +33,6 @@ export default function LeaderboardScreen() {
 
       setScores(rankedData);
     } catch (err) {
-      // Proper type checking for errors
       if (err instanceof Error) {
         setError(err.message);
       } else {
@@ -44,109 +44,159 @@ export default function LeaderboardScreen() {
     }
   };
 
-
   useFocusEffect(
     useCallback(() => {
       fetchLeaderboard();
-    }, [])
+    }, []),
   );
 
+  const medalTone = (rank?: number) => {
+    if (rank === 1) return 'warning' as const;
+    if (rank === 2) return 'neutral' as const;
+    if (rank === 3) return 'accent' as const;
+    return null;
+  };
+
   const renderItem = ({ item }: { item: LeaderboardEntry }) => {
-    console.log(item);
+    const isCurrentUser = user?.id === item.id;
+    const tone = medalTone(item.rank);
+
     return (
-    <View style={[styles.row, {borderBottomColor: theme.horizontalDivider}]}>
-        <Text style={[styles.rank, { width: 60, textAlign: 'center', color: theme.text }]}>
-        {item.rank}
-        </Text>
-        <Text 
+      <View
         style={[
-            { flex: 1, paddingLeft: 10, color: theme.text },
-            user?.id === item.id && { color: theme.highlightedText, fontWeight: 'bold' }
+          styles.row,
+          {
+            borderBottomColor: theme.border,
+            backgroundColor: isCurrentUser ? theme.accentMuted : 'transparent',
+          },
         ]}
-        numberOfLines={1}
-        ellipsizeMode="tail"
+      >
+        <View style={styles.rankCell}>
+          {tone ? (
+            <Badge label={`#${item.rank}`} tone={tone} />
+          ) : (
+            <Text style={[styles.rank, { color: theme.text }]}>{item.rank}</Text>
+          )}
+        </View>
+        <Text
+          style={[
+            styles.name,
+            { color: isCurrentUser ? theme.warning : theme.text },
+            isCurrentUser && styles.bold,
+          ]}
+          numberOfLines={1}
+          ellipsizeMode="tail"
         >
-        {item.username || 'Anonymous'}
+          {item.username || 'Anonymous'}
         </Text>
-        <Text style={[styles.score, { width: 80, textAlign: 'right' }]}>
-        {item.overall_score}
+        <Text style={[styles.score, { color: theme.success }]}>
+          {item.overall_score}
         </Text>
-    </View>);
+      </View>
+    );
   };
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={[styles.container, { backgroundColor: theme.background }]}>
-          <ActivityIndicator size="large" color={theme.text} />
-        </View>
-      </SafeAreaView>
+      <Screen style={styles.centered}>
+        <ActivityIndicator size="large" color={theme.accent} />
+      </Screen>
     );
   }
 
   if (error) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={[styles.container, { backgroundColor: theme.background }]}>
-          <Text style={{ color: theme.text }}>Error: {error}</Text>
-        </View>
-      </SafeAreaView>
+      <Screen style={styles.centered}>
+        <AppText>Error: {error}</AppText>
+      </Screen>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-        
-        <View style={[styles.headerRow, { borderBottomColor: theme.horizontalDivider }]}>
-          <Text style={[styles.headerText, { width: 60, textAlign: 'center', color: theme.text }]}>Rank</Text>
-          <Text style={[styles.headerText, { flex: 1, paddingLeft: 10, color: theme.text }]}>User</Text>
-          <Text style={[styles.headerText, { width: 80, textAlign: 'right', color: theme.text }]}>Score</Text>
-        </View>
+    <Screen style={styles.container} safe={false}>
+      <View style={[styles.headerRow, { borderBottomColor: theme.border }]}>
+        <Text style={[styles.headerText, styles.rankHeader, { color: theme.textMuted }]}>
+          Rank
+        </Text>
+        <Text style={[styles.headerText, styles.nameHeader, { color: theme.textMuted }]}>
+          User
+        </Text>
+        <Text style={[styles.headerText, styles.scoreHeader, { color: theme.textMuted }]}>
+          Score
+        </Text>
+      </View>
 
-        <FlatList
-          data={scores}
-          renderItem={renderItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          onRefresh={fetchLeaderboard}
-          refreshing={refreshing}
-        />
-    </View>
+      <FlatList
+        data={scores}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
+        onRefresh={fetchLeaderboard}
+        refreshing={refreshing}
+      />
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     padding: 10,
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerRow: {
     flexDirection: 'row',
-    paddingVertical: 5,
+    paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
     marginBottom: 0,
   },
   headerText: {
-    fontWeight: 'bold',
-    fontSize: 16,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+  rankHeader: {
+    width: 72,
+    textAlign: 'center',
+  },
+  nameHeader: {
+    flex: 1,
+    paddingLeft: 10,
+  },
+  scoreHeader: {
+    width: 80,
+    textAlign: 'right',
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 8,
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderRadius: 8,
+  },
+  rankCell: {
+    width: 72,
+    alignItems: 'center',
   },
   rank: {
-    fontWeight: 'bold',
+    fontWeight: '700',
+  },
+  name: {
+    flex: 1,
+    paddingLeft: 10,
+    fontSize: 16,
+  },
+  bold: {
+    fontWeight: '700',
   },
   score: {
-    fontWeight: 'bold',
-    color: '#4CAF50',
+    width: 80,
+    textAlign: 'right',
+    fontWeight: '700',
   },
   listContent: {
     paddingBottom: 20,
   },
-  
 });

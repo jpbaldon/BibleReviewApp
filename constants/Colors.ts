@@ -1,46 +1,123 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * Palette from the review-screen mockup:
+ * cool light canvas, navy text, blue accent, green submit, coral give-up.
  */
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+export type ThemeColors = {
+  background: string;
+  surface: string;
+  scripture: string;
+  text: string;
+  textMuted: string;
+  textDisabled: string;
+  border: string;
+  accent: string;
+  accentMuted: string;
+  onAccent: string;
+  accentPressed: string;
+  accentShadow: string;
+  success: string;
+  successPressed: string;
+  successShadow: string;
+  danger: string;
+  dangerPressed: string;
+  dangerShadow: string;
+  warning: string;
+  competitive: string;
+  tabBarBackground: string;
+  logoBackground: string;
+  icon: string;
+  tabIconDefault: string;
+  tabIconSelected: string;
+  // Compatibility aliases
+  fadedText: string;
+  linkText: string;
+  disabledLinkText: string;
+  disabledButtonText: string;
+  highlightedText: string;
+  horizontalDivider: string;
+  tint: string;
+  neutralButton: string;
+  secondary: string;
+};
+
+const light: ThemeColors = {
+  background: '#F5F7FA',
+  surface: '#FFFFFF',
+  scripture: '#EEF4FB',
+  text: '#1A2B48',
+  textMuted: '#6B7C93',
+  textDisabled: '#9AA8BC',
+  border: '#E2E8F0',
+  accent: '#3B82F6',
+  accentMuted: '#DBEAFE',
+  onAccent: '#FFFFFF',
+  accentPressed: '#2563EB',
+  accentShadow: 'rgba(59, 130, 246, 0.28)',
+  success: '#4DAF7C',
+  successPressed: '#3D9A6A',
+  successShadow: 'rgba(77, 175, 124, 0.28)',
+  danger: '#EF5350',
+  dangerPressed: '#E53935',
+  dangerShadow: 'rgba(239, 83, 80, 0.28)',
+  warning: '#F59E0B',
+  competitive: '#F59E0B',
+  tabBarBackground: '#FFFFFF',
+  logoBackground: '#DBEAFE',
+  icon: '#6B7C93',
+  tabIconDefault: '#9AA8BC',
+  tabIconSelected: '#3B82F6',
+  // Aliases
+  fadedText: '#6B7C93',
+  linkText: '#3B82F6',
+  disabledLinkText: '#9AA8BC',
+  disabledButtonText: '#9AA8BC',
+  highlightedText: '#F59E0B',
+  horizontalDivider: '#E2E8F0',
+  tint: '#3B82F6',
+  neutralButton: '#3B82F6',
+  secondary: '#FFFFFF',
+};
+
+const dark: ThemeColors = {
+  background: '#0F172A',
+  surface: '#1E293B',
+  scripture: '#1E293B',
+  text: '#F8FAFC',
+  textMuted: '#94A3B8',
+  textDisabled: '#64748B',
+  border: '#334155',
+  accent: '#60A5FA',
+  accentMuted: '#1E3A5F',
+  onAccent: '#0F172A',
+  accentPressed: '#3B82F6',
+  accentShadow: 'rgba(96, 165, 250, 0.25)',
+  success: '#4ADE80',
+  successPressed: '#22C55E',
+  successShadow: 'rgba(74, 222, 128, 0.25)',
+  danger: '#F87171',
+  dangerPressed: '#EF4444',
+  dangerShadow: 'rgba(248, 113, 113, 0.25)',
+  warning: '#FBBF24',
+  competitive: '#FBBF24',
+  tabBarBackground: '#1E293B',
+  logoBackground: '#1E3A5F',
+  icon: '#94A3B8',
+  tabIconDefault: '#64748B',
+  tabIconSelected: '#60A5FA',
+  // Aliases
+  fadedText: '#94A3B8',
+  linkText: '#60A5FA',
+  disabledLinkText: '#64748B',
+  disabledButtonText: '#64748B',
+  highlightedText: '#FBBF24',
+  horizontalDivider: '#334155',
+  tint: '#60A5FA',
+  neutralButton: '#60A5FA',
+  secondary: '#1E293B',
+};
 
 export const Colors = {
-  light: {
-    text: '#000000',
-    linkText: '#0000ff',
-    disabledLinkText: '#888888',
-    disabledButtonText: '#666666',
-    highlightedText: '#ff8c00',
-    fadedText: '#333333',
-    logoBackground: '#A1CEDC',
-    background: '#ffffff',
-    secondary: '#d1d1d1',
-    tint: tintColorLight,
-    icon: '#9BA1A6',
-    tabBarBackground: '#f1f1f1',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorLight,
-    horizontalDivider: '#7FB6C6',
-    neutralButton: '#2196F3',
-  },
-  dark: {
-    text: '#ECEDEE',
-    linkText: '#2196F3',
-    disabledLinkText: '#888888',
-    disabledButtonText: '#666666',
-    highlightedText: 'yellow',
-    fadedText: '#dddddd',
-    logoBackground: '#1D3D47',
-    background: '#000000',
-    secondary: '#2e2e2e',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabBarBackground: '#111111',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
-    horizontalDivider: 'papayawhip',
-    neutralButton: '#2196F3',
-  },
+  light,
+  dark,
 };

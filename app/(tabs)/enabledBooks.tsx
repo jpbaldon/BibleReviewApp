@@ -127,22 +127,24 @@ export default function EnabledBooksScreen() {
     renderChapter: (bookName: string, chapter: Chapter) => JSX.Element;
   }) => {
     return (
-      <View style={[styles.bookContainer, {backgroundColor: theme.background + '#000000ff'}]}>
+      <View style={[styles.bookContainer, { backgroundColor: theme.background }]}>
         <Pressable
           onPress={onPress}
           onLongPress={onLongPress}
           delayLongPress={300}
           style={[
             styles.bookItem,
-            {backgroundColor: theme.secondary},
+            { backgroundColor: theme.surface, borderColor: theme.border },
             item.enabled ? styles.enabled : styles.disabled,
           ]}
         >
-          <Text style={[styles.bookText, {color: theme.text}]}>{item.bookName}</Text>
+          <Text style={[styles.bookText, { color: theme.text }]}>{item.bookName}</Text>
           <View
             style={[
               styles.statusIndicator,
-              item.enabled ? styles.enabledIndicator : styles.disabledIndicator,
+              item.enabled
+                ? { backgroundColor: theme.success }
+                : { backgroundColor: theme.textDisabled },
             ]}
           />
         </Pressable>
@@ -179,17 +181,17 @@ export default function EnabledBooksScreen() {
 
   if (isLoading) {
     return (
-      <SafeAreaView style={[styles.container, {backgroundColor: theme.background}]}>
-        <ActivityIndicator size="large" color="#00e676" />
-        <Text style={styles.loadingText}>Loading books...</Text>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.accent} />
+        <Text style={[styles.loadingText, { color: theme.textMuted }]}>Loading books...</Text>
       </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.header, {borderBottomColor: theme.horizontalDivider}]}>
-        <Text style={[styles.subHeaderText, {color: theme.text}]}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.header, { borderBottomColor: theme.border }]}>
+        <Text style={[styles.subHeaderText, { color: theme.text }]}>
           {totalEnabledBooks} {bookGrammar} enabled — {enabledChapterCount} {chapterGrammar} enabled
         </Text>
       </View>
@@ -234,10 +236,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   enabled: {
-    borderLeftColor: '#00e676',
+    borderLeftColor: '#15803D',
   },
   disabled: {
-    borderLeftColor: '#ff1744',
+    borderLeftColor: '#DC2626',
   },
   pressed: {
     opacity: 0.85,
@@ -249,24 +251,22 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#555',
   },
   enabledIndicator: {
-    backgroundColor: '#00e676',
+    backgroundColor: '#15803D',
   },
   disabledIndicator: {
-    backgroundColor: '#ff1744',
+    backgroundColor: '#DC2626',
   },
   loadingText: {
     marginTop: 16,
     textAlign: 'center',
-    color: '#ccc',
   },
   chapterList: {
     marginTop: 6,
     marginLeft: 12,
     borderLeftWidth: 2,
-    borderLeftColor: '#444',
+    borderLeftColor: '#E7E5E4',
     paddingLeft: 10,
   },
   chapterItem: {
@@ -287,25 +287,25 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   rarityText: {
-    color: '#fff',
+    color: '#FAFAF9',
     fontSize: 12,
     textTransform: 'capitalize',
     paddingBottom: 1,
   },
   rarity_common: {
-    backgroundColor: '#4caf50',
+    backgroundColor: '#4CAF50',
   },
   rarity_uncommon: {
-    backgroundColor: '#2196f3',
+    backgroundColor: '#2196F3',
   },
   rarity_rare: {
-    backgroundColor: '#9c27b0',
+    backgroundColor: '#9C27B0',
   },
   rarity_disabled: {
-    backgroundColor: '#9e9e9e',
+    backgroundColor: '#9E9E9E',
   },
   rarity_ultraRare: {
-    backgroundColor: '#ff9800',
+    backgroundColor: '#FF9800',
   },
   bookContainer: {
     marginBottom: 10,

@@ -1,24 +1,37 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import {
+  View,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useThemeContext } from '../context/ThemeContext';
+import { Screen } from '@/components/ui/Screen';
+import { AppText } from '@/components/ui/AppText';
+import { TextField } from '@/components/ui/TextField';
+import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
 
 export default function SignInScreen() {
-
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
 
   const router = useRouter();
-  const { user, isLoading, signIn, error } = useAuth();
+  const { user, isLoading, signIn } = useAuth();
+  const { theme } = useThemeContext();
 
   useEffect(() => {
     if (!isLoading && user) {
-      // If user is already logged in, redirect to home page
       router.replace('/(tabs)');
-    } 
-
+    }
   }, [user, isLoading]);
 
   const handleSignIn = async () => {
@@ -40,57 +53,58 @@ export default function SignInScreen() {
 
   if (isLoading || user) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#4CAF50" />
-      </View>
+      <Screen style={styles.centered}>
+        <ActivityIndicator size="large" color={theme.accent} />
+      </Screen>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View>
-          <Text style={styles.title}>Welcome Back</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            placeholderTextColor="#000000"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            placeholderTextColor="#000000"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-          />
-          {submitting ? (
-            <ActivityIndicator size="large" color="#4CAF50" style={styles.loader} />
-          ) : (
-            <View>
-                <TouchableOpacity style={styles.button} onPress={handleSignIn}>
-                <Text style={styles.buttonText}>Sign In</Text>
-                </TouchableOpacity>
-
+    <Screen>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView
+          style={styles.container}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        >
+          <Card style={styles.card}>
+            <AppText variant="title" style={styles.title}>
+              Welcome Back
+            </AppText>
+            <TextField
+              label="Email"
+              placeholder="Email"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            <TextField
+              label="Password"
+              placeholder="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+            />
+            {submitting ? (
+              <ActivityIndicator size="large" color={theme.accent} style={styles.loader} />
+            ) : (
+              <View>
+                <Button label="Sign In" onPress={handleSignIn} fullWidth />
                 <TouchableOpacity onPress={() => router.push('/signup')}>
-                <Text style={styles.linkText}>
-                Don't have an account? <Text style={styles.linkHighlight}>Sign up</Text>
-                </Text>
+                  <AppText variant="muted" style={styles.linkText}>
+                    Don't have an account?{' '}
+                    <AppText variant="link" style={styles.linkHighlight}>
+                      Sign up
+                    </AppText>
+                  </AppText>
                 </TouchableOpacity>
-            </View>
-          )}
-        </View>
-      </KeyboardAvoidingView>
-    </TouchableWithoutFeedback>
-    </SafeAreaView>
+              </View>
+            )}
+          </Card>
+        </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
+    </Screen>
   );
 }
 
@@ -99,48 +113,26 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     padding: 20,
-    backgroundColor: '#f5f5f5',
+  },
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  card: {
+    paddingVertical: 8,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 30,
+    marginBottom: 20,
     textAlign: 'center',
-    color: '#333',
-  },
-  input: {
-    height: 50,
-    borderColor: '#ddd',
-    borderWidth: 1,
-    marginBottom: 15,
-    padding: 15,
-    borderRadius: 8,
-    backgroundColor: '#fff',
-  },
-  button: {
-    backgroundColor: '#4CAF50',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginVertical: 10,
-  },
-  buttonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 16,
   },
   loader: {
     marginVertical: 20,
   },
-
   linkText: {
     textAlign: 'center',
-    color: '#555',
-    marginTop: 15,
+    marginTop: 16,
   },
-  
   linkHighlight: {
-    color: '#4CAF50',
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
 });

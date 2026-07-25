@@ -120,10 +120,10 @@ export const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({
         <View style={styles.backdrop} />
       </TouchableWithoutFeedback>
 
-      <Animated.View style={[styles.sheetContainer, {backgroundColor: theme.secondary, transform: [{ translateY }] }]}> 
+      <Animated.View style={[styles.sheetContainer, { backgroundColor: theme.surface, transform: [{ translateY }] }]}>
         {!currentBook ? (
           <>
-            <Text style={[styles.title, {color: theme.text}]}>{title}</Text>
+            <Text style={[styles.title, { color: theme.text }]}>{title}</Text>
             <FlatList
               data={data}
               keyExtractor={item => item.value}
@@ -132,10 +132,10 @@ export const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({
               showsVerticalScrollIndicator={true}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={{...styles.gridItem, backgroundColor: theme.background}}
+                  style={[styles.gridItem, { backgroundColor: theme.background, borderColor: theme.border }]}
                   onPress={() => handleBookSelect(item)}
                 >
-                  <Text style={[styles.bookText, {color: theme.text}]}>{abbreviate(item.label)}</Text>
+                  <Text style={[styles.bookText, { color: theme.text }]}>{abbreviate(item.label)}</Text>
                 </TouchableOpacity>
               )}
             />
@@ -144,12 +144,12 @@ export const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({
           <>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
               <TouchableOpacity style={styles.backButton} onPress={() => setCurrentBook(null)}>
-                <Icon name="arrow-back" size={30} />
+                <Icon name="arrow-back" size={30} color={theme.text} />
               </TouchableOpacity>
-                <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }}>
-                  <Text style={[styles.title, {color: theme.text}]}>{currentBook.label}</Text>
-                </View>
-                <View style={{ width: 40 }} />
+              <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }}>
+                <Text style={[styles.title, { color: theme.text }]}>{currentBook.label}</Text>
+              </View>
+              <View style={{ width: 40 }} />
             </View>
             <FlatList
               data={currentBook.chapters}
@@ -158,21 +158,25 @@ export const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({
               contentContainerStyle={styles.gridContainer}
               showsVerticalScrollIndicator={true}
               renderItem={({ item }) => {
-                // If chapter is disabled, make it unselectable and faded
                 const isDisabled = item.rarity === 'disabled';
                 return (
                   <TouchableOpacity
-                    style={{
-                      ...styles.gridItem,
-                      backgroundColor: theme.background,
-                      opacity: isDisabled ? 0.4 : 1,
-                    }}
+                    style={[
+                      styles.gridItem,
+                      {
+                        backgroundColor: theme.background,
+                        borderColor: theme.border,
+                        opacity: isDisabled ? 0.4 : 1,
+                      },
+                    ]}
                     onPress={() => {
                       if (!isDisabled) handleSelectChapter(currentBook.value, item.value);
                     }}
                     disabled={isDisabled}
                   >
-                    <Text style={[styles.chapterText, {color: theme.fadedText}]}>{item.label.replace('Chapter ', '')}</Text>
+                    <Text style={[styles.chapterText, { color: theme.textMuted }]}>
+                      {item.label.replace('Chapter ', '')}
+                    </Text>
                   </TouchableOpacity>
                 );
               }}
@@ -198,6 +202,8 @@ const styles = StyleSheet.create({
     maxWidth: 62,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   backButton: {
     alignSelf: 'flex-start',
@@ -235,9 +241,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: 1,
   },
-  selectedBookItem: {
-    //backgroundColor: '#4CAF50',
-  },
+  selectedBookItem: {},
   bookText: {
     fontSize: 16,
   },
@@ -249,15 +253,12 @@ const styles = StyleSheet.create({
     paddingLeft: 30,
     borderBottomWidth: 1,
   },
-  selectedChapterItem: {
-    backgroundColor: '#66bb6a',
-  },
+  selectedChapterItem: {},
   chapterText: {
     fontSize: 15,
   },
   selectedChapterText: {
     fontWeight: 'bold',
-    color: '#fff',
   },
 });
 

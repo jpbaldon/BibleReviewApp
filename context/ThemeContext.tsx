@@ -1,14 +1,14 @@
-import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useContext, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Appearance } from 'react-native';
-import { Colors } from '../constants/Colors';
+import { Colors, type ThemeColors } from '../constants/Colors';
 
 type ColorScheme = 'light' | 'dark';
 
 type ThemeContextType = {
   colorScheme: ColorScheme;
   setColorScheme: (scheme: 'light' | 'dark') => void;
-  theme: typeof Colors.light | typeof Colors.dark;
+  theme: ThemeColors;
   loadUserTheme: (userId: string) => Promise<void>;
 };
 
@@ -28,21 +28,23 @@ type ThemeProviderProps = {
 
 export const ThemeProvider = ({ children }: ThemeProviderProps) => {
   const systemColorScheme = Appearance.getColorScheme();
-  const [colorScheme, setColorSchemeState] = useState<ColorScheme>(systemColorScheme === 'dark' ? 'dark' : 'light');
+  const [colorScheme, setColorSchemeState] = useState<ColorScheme>(
+    systemColorScheme === 'dark' ? 'dark' : 'light',
+  );
 
   const theme = colorScheme === 'dark' ? Colors.dark : Colors.light;
 
   const setColorScheme = async (scheme: ColorScheme) => {
     try {
       const userId = await AsyncStorage.getItem('currentUserId');
-      if(userId) {
+      if (userId) {
         await AsyncStorage.setItem(`theme-${userId}`, scheme);
       }
     } catch (e) {
       console.error('Failed to save theme:', e);
     }
     setColorSchemeState(scheme);
-  }
+  };
 
   const loadUserTheme = async (userId: string) => {
     try {

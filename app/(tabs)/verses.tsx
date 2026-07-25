@@ -17,9 +17,9 @@ export default function Verses() {
     // If no enabled books with chapters, show loading or info
     if (weightedChapters.length === 0) {
       return (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#121212' }}>
-          <ActivityIndicator size="large" color="#00e676" />
-          <Text style={{ marginTop: 10, color: '#ccc' }}>Waiting for books to be enabled...</Text>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
+          <ActivityIndicator size="large" color={theme.accent} />
+          <Text style={{ marginTop: 10, color: theme.textMuted }}>Waiting for books to be enabled...</Text>
         </View>
       );
     }
