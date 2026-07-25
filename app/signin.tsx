@@ -18,6 +18,7 @@ import { AppText } from '@/components/ui/AppText';
 import { TextField } from '@/components/ui/TextField';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { AppLoadingScreen } from '@/components/AppLoadingScreen';
 
 export default function SignInScreen() {
   const [email, setEmail] = useState<string>('');
@@ -52,11 +53,7 @@ export default function SignInScreen() {
   };
 
   if (isLoading || user) {
-    return (
-      <Screen style={styles.centered}>
-        <ActivityIndicator size="large" color={theme.accent} />
-      </Screen>
-    );
+    return <AppLoadingScreen message="Opening your study…" />;
   }
 
   return (

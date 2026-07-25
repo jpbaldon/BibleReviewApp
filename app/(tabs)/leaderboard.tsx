@@ -9,6 +9,22 @@ import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
 import { Badge } from '@/components/ui/Badge';
 
+/** TEMP: set to false after taking the demo screenshot. */
+const USE_DEMO_LEADERBOARD = false;
+
+const DEMO_LEADERBOARD: LeaderboardEntry[] = [
+  { id: 'demo-1', username: 'RuthieReads', overall_score: 1840 },
+  { id: 'demo-2', username: 'PsalmWalker', overall_score: 1625 },
+  { id: 'demo-3', username: 'EzraNotes', overall_score: 1490 },
+  { id: 'demo-4', username: 'Jordan', overall_score: 1310 },
+  { id: 'demo-5', username: 'NaomiStudy', overall_score: 1185 },
+  { id: 'demo-6', username: 'CalebQuest', overall_score: 1040 },
+  { id: 'demo-7', username: 'MiriamM', overall_score: 920 },
+  { id: 'demo-8', username: 'SilasPath', overall_score: 875 },
+  { id: 'demo-9', username: 'HannahJoy', overall_score: 740 },
+  { id: 'demo-10', username: 'TimothyT', overall_score: 615 },
+];
+
 export default function LeaderboardScreen() {
   const [scores, setScores] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -24,7 +40,14 @@ export default function LeaderboardScreen() {
       setRefreshing(true);
       setError(null);
 
-      const data = await server.fetchLeaderboardFromServer();
+      const data = USE_DEMO_LEADERBOARD
+        ? DEMO_LEADERBOARD.map((entry, index) =>
+            // Highlight the signed-in user as rank 4 for the demo shot
+            index === 3 && user?.id
+              ? { ...entry, id: user.id, username: entry.username }
+              : entry,
+          )
+        : await server.fetchLeaderboardFromServer();
 
       const rankedData = data.map((item, index) => ({
         ...item,
