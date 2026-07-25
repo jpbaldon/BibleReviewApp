@@ -80,7 +80,7 @@ const light: ThemeColors = {
 };
 
 const dark: ThemeColors = {
-  background: '#0F172A',
+  background: '#000000',
   surface: '#1E293B',
   scripture: '#1E293B',
   text: '#F8FAFC',
@@ -89,7 +89,7 @@ const dark: ThemeColors = {
   border: '#334155',
   accent: '#60A5FA',
   accentMuted: '#1E3A5F',
-  onAccent: '#0F172A',
+  onAccent: '#000000',
   accentPressed: '#3B82F6',
   accentShadow: 'rgba(96, 165, 250, 0.25)',
   success: '#4ADE80',
