@@ -2,6 +2,16 @@
 
 This is a mobile app designed to test your knowledge of where different events and verses can be find throughout the Bible.
 
+<img width="270" height="600" alt="Screenshot_20260725-101926" src="https://github.com/user-attachments/assets/0baf7dc0-b694-4940-a135-c0a82fa624ec" />
+<img width="270" height="600" alt="Screenshot_20260725-101635" src="https://github.com/user-attachments/assets/592c67c2-902a-401b-b96b-8c3f92f41141" />
+<img width="270" height="600" alt="Screenshot_20260725-102220" src="https://github.com/user-attachments/assets/d9646c7e-1831-4628-95ab-7a171ddc669c" />
+<img width="270" height="600" alt="Screenshot_20260725-102713" src="https://github.com/user-attachments/assets/6d617cab-eacc-46c3-a0e3-6de9e2b2e3d2" />
+
+<img width="270" height="600" alt="Screenshot_20260725-102444" src="https://github.com/user-attachments/assets/e50d0e59-2c42-488c-bd0d-82aaa7b53cf5" />
+<img width="270" height="600" alt="Screenshot_20260725-102523" src="https://github.com/user-attachments/assets/abd896dc-a2a7-4f12-8c4f-2c7e73606d50" />
+<img width="270" height="600" alt="Screenshot_20260725-103110" src="https://github.com/user-attachments/assets/03b0090d-545a-4930-90e1-e8109c5311f4" />
+<img width="270" height="600" alt="Screenshot_20260725-103537" src="https://github.com/user-attachments/assets/d1cc51ee-898d-444c-8d58-18df0a1eb314" />
+
 ## Getting Started
 
 This is currently an Android only app, but future support for iPhone is expected.
