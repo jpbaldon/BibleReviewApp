@@ -11,11 +11,12 @@ import { Chapter, DuplicateLocation } from '../types';
 import { useThemeContext } from '../context/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
 import { LongPressButton } from '../components/ui/LongPressButton';
-import { MIN_CHAPTERS_ENABLED_FOR_SCORE } from '../context/BibleBooksContext';
+import { isScoreEnabledForBooks } from '../utils/scoreGate';
 import { Screen } from './ui/Screen';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import Icon from 'react-native-vector-icons/Ionicons';
+import { pointsForAttempt } from '../utils/scoring';
 
 interface ContextVerse {
   verseNumber: number;
@@ -58,7 +59,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
 }) => {
   const { bibleBooks, scoreEnabledFlag } = useBibleBooks();
   const { activeTimer, timedSessionScore, incrementTimedSessionScore, competitiveTimer, competitiveScore, incrementCompetitiveScore } = useTimer();
-  const { holdToTryAnother } = useSettings();
+  const { holdToTryAnother, soundEnabled } = useSettings();
   const { theme } = useThemeContext();
 
   const [item, setItem] = useState<ReviewItem | null>(null);
@@ -97,15 +98,10 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   const enabledBooks = bibleBooks.filter((book) => book.enabled);
   const allowedBooks = inCompetitiveSession ? bibleBooks : enabledBooks;
 
-  const isScoreEnabled = useMemo(() => {
-    const totalEnabledChapters = bibleBooks.reduce((sum, b) => {
-      const chapterCount = b.enabled
-        ? (b.chapters?.filter((ch) => ch.rarity !== 'disabled').length ?? 0)
-        : 0;
-      return sum + chapterCount;
-    }, 0);
-    return totalEnabledChapters >= MIN_CHAPTERS_ENABLED_FOR_SCORE;
-  }, [bibleBooks]);
+  const isScoreEnabled = useMemo(
+    () => isScoreEnabledForBooks(bibleBooks),
+    [bibleBooks],
+  );
 
   useEffect(() => {
     const currentEnabledCount = bibleBooks.filter(book => book.enabled).length;
@@ -118,6 +114,8 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   }, [bibleBooks, inCompetitiveSession]);
 
   const playFeedbackSound = (isCorrect: boolean) => {
+    if (!soundEnabled) return;
+
     if (isCorrect) {
       correctPlayer.seekTo(0);
       correctPlayer.play();
@@ -201,20 +199,9 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
     if (isCorrect) {
       let pointsObtained = 0;
       if (isScoreEnabled || inCompetitiveSession) {
-        switch (attempts) {
-          case 0:
-            console.log('scoreEnabledFlag:', scoreEnabledFlag);
-            pointsObtained = points;
-            showConfetti();
-            break;
-          case 1:
-            pointsObtained = points * 0.4;
-            break;
-          case 2:
-            pointsObtained = points * 0.2;
-            break;
-          default:
-            break;
+        pointsObtained = pointsForAttempt(points, attempts);
+        if (attempts === 0 && pointsObtained > 0) {
+          showConfetti();
         }
       }
       incrementSessionScore(pointsObtained);

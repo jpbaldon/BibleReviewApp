@@ -21,6 +21,8 @@ export default function Settings() {
   const {
     holdToTryAnother,
     setHoldToTryAnotherSetting,
+    soundEnabled,
+    setSoundEnabledSetting,
     translation,
     setTranslationSetting,
   } = useSettings();
@@ -81,6 +83,19 @@ export default function Settings() {
             <Switch
               value={holdToTryAnother}
               onValueChange={setHoldToTryAnotherSetting}
+              thumbColor={colorScheme === 'dark' ? '#FAFAF9' : '#FFFFFF'}
+              trackColor={{ false: theme.textDisabled, true: theme.accent }}
+              ios_backgroundColor={theme.textDisabled}
+            />
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
+
+          <View style={styles.row}>
+            <AppText>App Sounds</AppText>
+            <Switch
+              value={soundEnabled}
+              onValueChange={setSoundEnabledSetting}
               thumbColor={colorScheme === 'dark' ? '#FAFAF9' : '#FFFFFF'}
               trackColor={{ false: theme.textDisabled, true: theme.accent }}
               ios_backgroundColor={theme.textDisabled}

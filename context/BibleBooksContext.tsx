@@ -6,6 +6,12 @@ import { CHAPTER_SUMMARIES } from '@/data/chapter-summaries';
 import { BibleBook, Rarity } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from './SettingsContext';
+import {
+  MIN_CHAPTERS_ENABLED_FOR_SCORE,
+  countEnabledChaptersForScore,
+} from '../utils/scoreGate';
+
+export { MIN_CHAPTERS_ENABLED_FOR_SCORE } from '../utils/scoreGate';
 
 interface BibleBooksContextType {
   bibleBooks: BibleBook[];
@@ -33,8 +39,6 @@ const BibleBooksContext = createContext<BibleBooksContextType>({
   setScoreEnabledFlag: () => {},
 });
 
-export const MIN_CHAPTERS_ENABLED_FOR_SCORE = 20;
-
 export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
 
   const [bibleBooks, setBibleBooks] = useState<BibleBook[]>([]);
@@ -44,10 +48,7 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
   const isInitializingRef = useRef(false);
   const isDbInitializedRef = useRef(false);
 
-  const enabledChapterCount = bibleBooks.reduce((total, book) => {
-    if (!book.enabled || !book.chapters) return total;
-    return total + book.chapters.filter(ch => ch.rarity !== 'disabled').length;
-  }, 0);
+  const enabledChapterCount = countEnabledChaptersForScore(bibleBooks);
 
   const [scoreEnabledFlag, setScoreEnabledFlag] = useState<boolean>(enabledChapterCount >= MIN_CHAPTERS_ENABLED_FOR_SCORE);
 

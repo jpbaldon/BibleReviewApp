@@ -3,6 +3,7 @@ import { View, Text, ActivityIndicator } from 'react-native';
 import { ReviewScreenTemplate, ReviewItem } from '@/components/ReviewScreenTemplate';
 import { useBibleBooks } from '../../context/BibleBooksContext';
 import { useWeightedChapters, selectWeightedChapter } from '@/utils/randomChapter';
+import { isChapterGuessCorrect } from '@/utils/reviewCorrectness';
 import { useThemeContext } from '../../context/ThemeContext';
 
 export default function Summaries() {
@@ -56,7 +57,7 @@ export default function Summaries() {
   };
 
   const checkCorrectness = (book: string, chapter: string, item: ReviewItem) =>
-    book === item.book && parseInt(chapter, 10) === item.chapter;
+    isChapterGuessCorrect(book, chapter, item);
 
   const renderQuestion = (item: ReviewItem, showAnswer: boolean) => {
     const isOriginalChapter = item.book === item.originalBook && item.chapter === item.originalChapter;

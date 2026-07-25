@@ -3,8 +3,8 @@ import { View, Text, ActivityIndicator } from 'react-native';
 import { ReviewScreenTemplate } from '../../components/ReviewScreenTemplate';
 import { useBibleBooks } from '../../context/BibleBooksContext';
 import { useWeightedChapters, selectWeightedChapter } from '@/utils/randomChapter';
+import { isVerseGuessCorrect } from '@/utils/reviewCorrectness';
 import { useThemeContext } from '../../context/ThemeContext';
-import { DuplicateLocation } from '../../types';
 
 export default function Verses() {
     const { bibleBooks } = useBibleBooks();
@@ -51,23 +51,8 @@ export default function Verses() {
     };
   };
 
-  const checkCorrectness = (book: string, chapter: string, item: any) => {
-    const inputBook = book.trim();
-    const inputChapter = parseInt(chapter, 10);
-
-    console.log(item);
-
-    if(inputBook === item.book && inputChapter === item.chapter)
-      return true;
-
-    if(item.duplicateLocations && Array.isArray(item.duplicateLocations)) {
-      return item.duplicateLocations.some((loc: DuplicateLocation) => 
-        loc.Book === inputBook && loc.Chapter === inputChapter
-      );
-    }
-
-    return false;
-  }
+  const checkCorrectness = (book: string, chapter: string, item: any) =>
+    isVerseGuessCorrect(book, chapter, item);
 
   const renderQuestion = (item: any, showAnswer: boolean) => {
     if (showAnswer) {
