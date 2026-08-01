@@ -3,7 +3,7 @@ require('dotenv').config();
 export default {
   expo: {
     name: 'Bible Review',
-    slug: 'BibleReviewApp',
+    slug: 'biblereviewapp',
     scheme: 'biblereviewapp',
     version: '0.10.0-beta',
     orientation: 'portrait',
@@ -36,6 +36,8 @@ export default {
     },
     plugins: [
       'expo-router',
+      'expo-font',
+      'expo-web-browser',
       [
         'expo-splash-screen',
         {
