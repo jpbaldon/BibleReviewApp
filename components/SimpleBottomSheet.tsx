@@ -38,6 +38,14 @@ interface SimpleBottomSheetProps {
 }
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const GRID_COLUMNS = 5;
+const SHEET_HORIZONTAL_PADDING = 16;
+const GRID_ITEM_MARGIN = 5;
+const GRID_ITEM_WIDTH =
+  Math.floor(
+    (SCREEN_WIDTH - SHEET_HORIZONTAL_PADDING * 2) / GRID_COLUMNS,
+  ) - GRID_ITEM_MARGIN * 2;
 
 export const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({
   visible,
@@ -127,7 +135,7 @@ export const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({
             <FlatList
               data={data}
               keyExtractor={item => item.value}
-              numColumns={5}
+              numColumns={GRID_COLUMNS}
               contentContainerStyle={styles.gridContainer}
               showsVerticalScrollIndicator={true}
               renderItem={({ item }) => (
@@ -135,7 +143,14 @@ export const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({
                   style={[styles.gridItem, { backgroundColor: theme.background, borderColor: theme.border }]}
                   onPress={() => handleBookSelect(item)}
                 >
-                  <Text style={[styles.bookText, { color: theme.text }]}>{abbreviate(item.label)}</Text>
+                  <Text
+                    style={[styles.bookText, { color: theme.text }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.75}
+                  >
+                    {abbreviate(item.label)}
+                  </Text>
                 </TouchableOpacity>
               )}
             />
@@ -154,7 +169,7 @@ export const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({
             <FlatList
               data={currentBook.chapters}
               keyExtractor={item => item.value}
-              numColumns={5}
+              numColumns={GRID_COLUMNS}
               contentContainerStyle={styles.gridContainer}
               showsVerticalScrollIndicator={true}
               renderItem={({ item }) => {
@@ -174,7 +189,10 @@ export const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({
                     }}
                     disabled={isDisabled}
                   >
-                    <Text style={[styles.chapterText, { color: theme.textMuted }]}>
+                    <Text
+                      style={[styles.chapterText, { color: theme.textMuted }]}
+                      numberOfLines={1}
+                    >
                       {item.label.replace('Chapter ', '')}
                     </Text>
                   </TouchableOpacity>
@@ -196,10 +214,9 @@ const styles = StyleSheet.create({
   },
   gridItem: {
     paddingVertical: 14,
-    paddingHorizontal: 10,
-    margin: 6,
-    minWidth: 62,
-    maxWidth: 62,
+    paddingHorizontal: 4,
+    margin: GRID_ITEM_MARGIN,
+    width: GRID_ITEM_WIDTH,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 10,
@@ -228,7 +245,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     paddingVertical: 20,
-    paddingHorizontal: 20,
+    paddingHorizontal: SHEET_HORIZONTAL_PADDING,
     maxHeight: SCREEN_HEIGHT * 0.6,
   },
   title: {
@@ -243,7 +260,9 @@ const styles = StyleSheet.create({
   },
   selectedBookItem: {},
   bookText: {
-    fontSize: 16,
+    fontSize: 15,
+    textAlign: 'center',
+    width: '100%',
   },
   selectedBookText: {
     fontWeight: 'bold',
@@ -256,6 +275,7 @@ const styles = StyleSheet.create({
   selectedChapterItem: {},
   chapterText: {
     fontSize: 15,
+    textAlign: 'center',
   },
   selectedChapterText: {
     fontWeight: 'bold',

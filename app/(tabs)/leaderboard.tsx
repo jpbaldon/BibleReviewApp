@@ -74,9 +74,9 @@ export default function LeaderboardScreen() {
   );
 
   const medalTone = (rank?: number) => {
-    if (rank === 1) return 'warning' as const;
-    if (rank === 2) return 'neutral' as const;
-    if (rank === 3) return 'accent' as const;
+    if (rank === 1) return 'gold' as const;
+    if (rank === 2) return 'silver' as const;
+    if (rank === 3) return 'bronze' as const;
     return null;
   };
 

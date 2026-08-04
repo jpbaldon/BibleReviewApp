@@ -51,11 +51,11 @@ export default function CompetitiveLeaderboardScreen() {
   const getMedalColor = (rank: number) => {
     switch (rank) {
       case 1:
-        return theme.competitive;
+        return theme.medalGold;
       case 2:
-        return theme.textMuted;
+        return theme.medalSilver;
       case 3:
-        return theme.warning;
+        return theme.medalBronze;
       default:
         return theme.text;
     }

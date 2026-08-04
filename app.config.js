@@ -9,8 +9,10 @@ export default {
     orientation: 'portrait',
     userInterfaceStyle: 'automatic',
     icon: './assets/images/icon.png',
+    // Square splash asset — Android 12+ shows this inside a circle, so the
+    // whole book must fit within that circular safe zone (not a wide crop).
     splash: {
-      image: './assets/images/biblelogo.png',
+      image: './assets/images/splash.png',
       resizeMode: 'contain',
       backgroundColor: '#000000',
     },
@@ -22,14 +24,15 @@ export default {
         backgroundColor: '#000000',
       },
       splash: {
-        image: './assets/images/biblelogo.png',
+        image: './assets/images/splash.png',
         resizeMode: 'contain',
         backgroundColor: '#000000',
+        imageWidth: 200,
       },
     },
     ios: {
       splash: {
-        image: './assets/images/biblelogo.png',
+        image: './assets/images/splash.png',
         resizeMode: 'contain',
         backgroundColor: '#000000',
       },
@@ -41,9 +44,10 @@ export default {
       [
         'expo-splash-screen',
         {
-          image: './assets/images/biblelogo.png',
+          image: './assets/images/splash.png',
           backgroundColor: '#000000',
           resizeMode: 'contain',
+          imageWidth: 200,
         },
       ],
     ],

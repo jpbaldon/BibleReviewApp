@@ -24,6 +24,9 @@ export type ThemeColors = {
   dangerShadow: string;
   warning: string;
   competitive: string;
+  medalGold: string;
+  medalSilver: string;
+  medalBronze: string;
   tabBarBackground: string;
   logoBackground: string;
   icon: string;
@@ -62,6 +65,9 @@ const light: ThemeColors = {
   dangerShadow: 'rgba(239, 83, 80, 0.28)',
   warning: '#F59E0B',
   competitive: '#F59E0B',
+  medalGold: '#D4A017',
+  medalSilver: '#A0A8B4',
+  medalBronze: '#CD7F32',
   tabBarBackground: '#FFFFFF',
   logoBackground: '#DBEAFE',
   icon: '#6B7C93',
@@ -100,6 +106,9 @@ const dark: ThemeColors = {
   dangerShadow: 'rgba(248, 113, 113, 0.25)',
   warning: '#FBBF24',
   competitive: '#FBBF24',
+  medalGold: '#F5C518',
+  medalSilver: '#C0C7D1',
+  medalBronze: '#E09B55',
   tabBarBackground: '#1E293B',
   logoBackground: '#1E3A5F',
   icon: '#94A3B8',
