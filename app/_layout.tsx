@@ -10,6 +10,7 @@ import { AuthProvider, useAuth, isPasswordRecoveryPending } from '../context/Aut
 import { ScoreProvider } from '../context/ScoreContext';
 import { BibleBooksProvider } from '../context/BibleBooksContext';
 import { ThemeProvider, useThemeContext } from '../context/ThemeContext';
+import { AlertProvider } from '../context/AlertContext';
 import { useSegments, useRouter } from 'expo-router';
 import { ServicesProvider } from '../context/ServicesContext';
 import { BackendProvider } from '../context/BackendContext';
@@ -59,24 +60,26 @@ function InnerApp() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <SettingsProvider userId={recovering ? undefined : user?.id}>
-          {/* During password recovery we have a session, but must not mount
-              BibleBooks/SQLite (or other logged-in providers) yet. */}
-          {!user || recovering ? (
-            <LayoutContent />
-          ) : (
-            <ServicesProvider>
-              <TimerProvider>
-                <BibleBooksProvider>
-                  <ScoreProvider>
-                    <ThemeLoader userId={user.id} />
-                    <LayoutContent />
-                  </ScoreProvider>
-                </BibleBooksProvider>
-              </TimerProvider>
-            </ServicesProvider>
-          )}
-        </SettingsProvider>
+        <AlertProvider>
+          <SettingsProvider userId={recovering ? undefined : user?.id}>
+            {/* During password recovery we have a session, but must not mount
+                BibleBooks/SQLite (or other logged-in providers) yet. */}
+            {!user || recovering ? (
+              <LayoutContent />
+            ) : (
+              <ServicesProvider>
+                <TimerProvider>
+                  <BibleBooksProvider>
+                    <ScoreProvider>
+                      <ThemeLoader userId={user.id} />
+                      <LayoutContent />
+                    </ScoreProvider>
+                  </BibleBooksProvider>
+                </TimerProvider>
+              </ServicesProvider>
+            )}
+          </SettingsProvider>
+        </AlertProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );

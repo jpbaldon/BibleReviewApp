@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { FlatList, Text, View, StyleSheet, ActivityIndicator, Alert, Pressable } from 'react-native';
+import { FlatList, Text, View, StyleSheet, ActivityIndicator, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MIN_CHAPTERS_ENABLED_FOR_SCORE, useBibleBooks } from '@/context/BibleBooksContext';
+import { useAlert } from '@/context/AlertContext';
 import { BibleBook, Chapter } from '../../types';
 import BulkRarityEditor from '../../components/ui/BulkRarityEditor';
 import { Screen } from '@/components/ui/Screen';
@@ -39,19 +40,20 @@ export default function EnabledBooksScreen() {
     setScoreEnabledFlag
   } = useBibleBooks();
   const { theme } = useThemeContext();
+  const { alert } = useAlert();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const totalEnabledBooks = bibleBooks.filter(b => b.enabled).length;
 
   useEffect(() => {
     if (enabledChapterCount < MIN_CHAPTERS_ENABLED_FOR_SCORE && scoreEnabledFlag) {
-      Alert.alert(
+      alert(
         'Score Disabled',
         `Score has been disabled since fewer than ${MIN_CHAPTERS_ENABLED_FOR_SCORE} chapters are enabled.`
       );
       setScoreEnabledFlag(false);
     } else if (enabledChapterCount >= MIN_CHAPTERS_ENABLED_FOR_SCORE && !scoreEnabledFlag) {
-      Alert.alert(
+      alert(
         'Score Enabled',
         `Score has been enabled since at least ${MIN_CHAPTERS_ENABLED_FOR_SCORE} chapters are enabled.`
       );
@@ -85,9 +87,9 @@ export default function EnabledBooksScreen() {
       }
     } catch (err) {
       console.error('Toggle failed:', err);
-      Alert.alert('Error', 'Failed to update book status.');
+      alert('Error', 'Failed to update book status.');
     }
-  }, [longPressActive, toggleBookEnabled, expandedBook]);
+  }, [longPressActive, toggleBookEnabled, expandedBook, alert]);
 
   const toggleExpanded = useCallback((bookName: string) => {
     if (bibleBooks.find(b => b.bookName === bookName)?.enabled) {
@@ -111,11 +113,11 @@ export default function EnabledBooksScreen() {
       await action();
     } catch (err) {
       console.error(errorMessage, err);
-      Alert.alert('Error', errorMessage);
+      alert('Error', errorMessage);
     } finally {
       setBulkActionInFlight(false);
     }
-  }, [bulkActionInFlight]);
+  }, [bulkActionInFlight, alert]);
 
   const handleRarityChange = async (
     bookName: string,
@@ -130,7 +132,7 @@ export default function EnabledBooksScreen() {
       // The true parameter ensures book status gets checked after update
     } catch (err) {
       console.error('Rarity update failed:', err);
-      Alert.alert('Error', 'Failed to update chapter rarity');
+      alert('Error', 'Failed to update chapter rarity');
     }
   };
 

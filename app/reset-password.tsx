@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import {
   StyleSheet,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 import { useThemeContext } from '../context/ThemeContext';
+import { useAlert } from '../context/AlertContext';
 import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
 import { TextField } from '@/components/ui/TextField';
@@ -22,18 +22,19 @@ export default function ResetPasswordScreen() {
   const router = useRouter();
   const { updatePassword, clearPasswordRecovery } = useAuth();
   const { theme } = useThemeContext();
+  const { alert } = useAlert();
 
   const handleSubmit = async () => {
     if (!password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in both password fields.');
+      alert('Error', 'Please fill in both password fields.');
       return;
     }
     if (password.length < 6) {
-      Alert.alert('Error', 'Password should be at least 6 characters.');
+      alert('Error', 'Password should be at least 6 characters.');
       return;
     }
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match.');
+      alert('Error', 'Passwords do not match.');
       return;
     }
 
@@ -42,7 +43,7 @@ export default function ResetPasswordScreen() {
       await updatePassword(password);
       // Keep the recovery lock until OK so the auth tree doesn't remount to
       // Home underneath this alert (which previously conflicted with "sign in").
-      Alert.alert('Success', 'Your password has been updated.', [
+      alert('Success', 'Your password has been updated.', [
         {
           text: 'OK',
           onPress: () => {
@@ -52,7 +53,7 @@ export default function ResetPasswordScreen() {
         },
       ]);
     } catch (error) {
-      Alert.alert(
+      alert(
         'Error',
         error instanceof Error ? error.message : 'Failed to update password. Please try again.',
       );

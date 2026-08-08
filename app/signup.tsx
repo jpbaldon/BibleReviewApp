@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import {
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 import { useThemeContext } from '../context/ThemeContext';
+import { useAlert } from '../context/AlertContext';
 import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
 import { TextField } from '@/components/ui/TextField';
@@ -26,6 +26,7 @@ export default function SignUpScreen() {
   const router = useRouter();
   const { signUp, checkUsernameAvailability } = useAuth();
   const { theme } = useThemeContext();
+  const { alert } = useAlert();
 
   const validateUsername = (text: string) => {
     if (text.length > 0 && text.length < 3) return 'Username must be at least 3 characters';
@@ -49,17 +50,17 @@ export default function SignUpScreen() {
 
   const handleSignUp = async () => {
     if (!email || !password || !username) {
-      Alert.alert('Error', 'Please fill in all fields.');
+      alert('Error', 'Please fill in all fields.');
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Error', 'Password should be at least 6 characters.');
+      alert('Error', 'Password should be at least 6 characters.');
       return;
     }
 
     if (usernameError) {
-      Alert.alert('Error', 'Please fix username errors');
+      alert('Error', 'Please fix username errors');
       return;
     }
 
@@ -67,15 +68,15 @@ export default function SignUpScreen() {
     try {
       const available = await checkUsernameAvailability(username.trim().toLowerCase());
       if (!available) {
-        Alert.alert('Error', 'Username is no longer available');
+        alert('Error', 'Username is no longer available');
         return;
       }
 
       await signUp(email, password, username.trim().toLowerCase());
-      Alert.alert('Success', 'Account created successfully!');
+      alert('Success', 'Account created successfully!');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Signup failed';
-      Alert.alert('Error', errorMessage);
+      alert('Error', errorMessage);
     } finally {
       setSubmitting(false);
     }

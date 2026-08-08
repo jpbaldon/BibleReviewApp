@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import {
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 import { useThemeContext } from '../context/ThemeContext';
+import { useAlert } from '../context/AlertContext';
 import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
 import { TextField } from '@/components/ui/TextField';
@@ -23,11 +23,12 @@ export default function ForgotPasswordScreen() {
   const router = useRouter();
   const { resetPasswordForEmail } = useAuth();
   const { theme } = useThemeContext();
+  const { alert } = useAlert();
 
   const handleSubmit = async () => {
     const trimmed = email.trim();
     if (!trimmed) {
-      Alert.alert('Error', 'Please enter your email address.');
+      alert('Error', 'Please enter your email address.');
       return;
     }
 
@@ -36,7 +37,7 @@ export default function ForgotPasswordScreen() {
       await resetPasswordForEmail(trimmed);
       setSent(true);
     } catch (error) {
-      Alert.alert(
+      alert(
         'Error',
         error instanceof Error ? error.message : 'Failed to send reset email. Please try again.',
       );

@@ -3,12 +3,12 @@ import {
   View,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 import { useThemeContext } from '../context/ThemeContext';
+import { useAlert } from '../context/AlertContext';
 import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
 import { TextField } from '@/components/ui/TextField';
@@ -25,6 +25,7 @@ export default function SignInScreen() {
   const router = useRouter();
   const { user, isLoading, signIn } = useAuth();
   const { theme } = useThemeContext();
+  const { alert } = useAlert();
 
   useEffect(() => {
     if (!isLoading && user) {
@@ -34,7 +35,7 @@ export default function SignInScreen() {
 
   const handleSignIn = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please enter both email and password.');
+      alert('Error', 'Please enter both email and password.');
       return;
     }
 
@@ -43,7 +44,7 @@ export default function SignInScreen() {
       await signIn(email, password);
       router.replace('/(tabs)');
     } catch (error) {
-      Alert.alert('Error', 'Failed to sign in. Please try again.');
+      alert('Error', 'Failed to sign in. Please try again.');
     } finally {
       setSubmitting(false);
     }

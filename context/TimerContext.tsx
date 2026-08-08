@@ -2,8 +2,8 @@ import React, { createContext, useContext, useState, useRef, useEffect, ReactNod
 import { useConfetti } from './ConfettiContext';
 import { useAuth } from './AuthContext';
 import { useServices } from './ServicesContext';
+import { useAlert } from './AlertContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert } from 'react-native';
 
 export interface Timer {
   id: string;
@@ -72,6 +72,7 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
   
   // Confetti trigger
   const confetti = useConfetti?.();
+  const { showAlert, showToast } = useAlert();
   // Load timers from AsyncStorage on mount
   useEffect(() => {
     (async () => {
@@ -178,6 +179,7 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
               return { ...t, remaining: t.remaining - 1 };
             } else {
               // Timer hits 0, reset to duration and alert
+              const durationLabel = `${Math.floor(t.duration / 60)}:${(t.duration % 60).toString().padStart(2, '0')}`;
               if (timedSessionScore > (oldSessionBest ?? 0)) {
                 if (confetti && typeof confetti.showConfetti === 'function') {
                   confetti.showConfetti();
@@ -185,9 +187,21 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
                   console.warn('Confetti context is missing or showConfetti is not a function:', confetti);
                 }
                 updateBestSessionScore(activeTimer.id, timedSessionScore);
-                Alert.alert('Timer Finished', `${t.name} Timer (${Math.floor(t.duration / 60)}:${(t.duration % 60).toString().padStart(2, '0')}) has finished! You beat your previous session score of ${oldSessionBest}`);
+                setTimeout(() => {
+                  showAlert({
+                    title: 'Timer Finished',
+                    message: `${t.name} Timer (${durationLabel}) has finished! You beat your previous session score of ${oldSessionBest}`,
+                    variant: 'success',
+                  });
+                }, 0);
               } else {
-                Alert.alert('Timer Finished', `${t.name} Timer (${Math.floor(t.duration / 60)}:${(t.duration % 60).toString().padStart(2, '0')}) has finished!`);
+                setTimeout(() => {
+                  showAlert({
+                    title: 'Timer Finished',
+                    message: `${t.name} Timer (${durationLabel}) has finished!`,
+                    variant: 'info',
+                  });
+                }, 0);
               }
               setTimedSessionScore(0);
               return { ...t, remaining: t.duration, isActive: false };
@@ -228,10 +242,22 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
                   );
                 }
               }
-              Alert.alert('Competitive Timer Finished', `🏆 Competitive Timer has finished!\n\nNew best score: ${newBest}\n(Previous: ${oldCompetitiveBest ?? 0})`);
+              setTimeout(() => {
+                showAlert({
+                  title: 'Competitive Timer Finished',
+                  message: `Competitive Timer has finished!\n\nNew best score: ${newBest}\n(Previous: ${oldCompetitiveBest ?? 0})`,
+                  variant: 'success',
+                });
+              }, 0);
               return { ...prev, remaining: prev.duration, isActive: false, bestScore: newBest };
             } else {
-              Alert.alert('Competitive Timer Finished', `Competitive Timer has finished!\n\nScore: ${competitiveScore}\nBest: ${oldCompetitiveBest ?? 0}`);
+              setTimeout(() => {
+                showAlert({
+                  title: 'Competitive Timer Finished',
+                  message: `Competitive Timer has finished!\n\nScore: ${competitiveScore}\nBest: ${oldCompetitiveBest ?? 0}`,
+                  variant: 'info',
+                });
+              }, 0);
               return { ...prev, remaining: prev.duration, isActive: false };
             }
           }
@@ -244,7 +270,13 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
   const addTimer = (name: string, duration: number) => {
     setTimers(prev => {
       if (prev.length >= 10) {
-        Alert.alert('Limit Reached', 'You can only have up to 10 timers.');
+        setTimeout(() => {
+          showToast({
+            title: 'Limit Reached',
+            message: 'You can only have up to 10 timers.',
+            variant: 'warning',
+          });
+        }, 0);
         return prev;
       }
       const updated = [

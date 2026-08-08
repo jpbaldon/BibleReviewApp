@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { useThemeContext } from '../context/ThemeContext';
+import { useAlert } from '../context/AlertContext';
 import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
 import { Button } from '@/components/ui/Button';
@@ -15,6 +16,7 @@ export default function VerifyEmailScreen() {
 
   const { resendVerificationEmail } = useAuth();
   const { theme } = useThemeContext();
+  const { alert } = useAlert();
   const router = useRouter();
   const params = useLocalSearchParams();
   const email = params.email as string;
@@ -26,7 +28,7 @@ export default function VerifyEmailScreen() {
     try {
       await resendVerificationEmail(email);
 
-      Alert.alert('Success', 'Verification email resent successfully!');
+      alert('Success', 'Verification email resent successfully!');
       setCoolDown(60);
 
       const interval = setInterval(() => {
@@ -36,7 +38,7 @@ export default function VerifyEmailScreen() {
         });
       }, 1000);
     } catch (error) {
-      Alert.alert(
+      alert(
         'Error',
         error instanceof Error ? error.message : 'Failed to resend verification email',
       );

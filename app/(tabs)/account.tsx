@@ -1,7 +1,8 @@
-import { Image, StyleSheet, ScrollView, Switch, View, TouchableOpacity, Text, Alert } from 'react-native';
+import { Image, StyleSheet, ScrollView, Switch, View, TouchableOpacity, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
 import { useThemeContext } from '@/context/ThemeContext';
+import { useAlert } from '@/context/AlertContext';
 import { useSettings } from '../../context/SettingsContext';
 import type { TranslationKey } from '../../data/translations';
 import { Screen } from '@/components/ui/Screen';
@@ -17,6 +18,7 @@ const TRANSLATIONS: { key: TranslationKey; label: string }[] = [
 export default function Settings() {
   const { signOut, deleteAccount } = useAuth();
   const { colorScheme, setColorScheme, theme } = useThemeContext();
+  const { alert } = useAlert();
   const insets = useSafeAreaInsets();
   const {
     holdToTryAnother,
@@ -32,7 +34,7 @@ export default function Settings() {
   };
 
   const handleDeleteAccount = async () => {
-    Alert.alert(
+    alert(
       'Delete Account',
       'Are you sure you want to delete your account? This action cannot be undone.',
       [
