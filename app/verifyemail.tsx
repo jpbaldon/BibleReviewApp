@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, ActivityIndicator } from 'react-native';
+import { StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
@@ -47,6 +47,10 @@ export default function VerifyEmailScreen() {
     }
   };
 
+  const handleWrongEmail = () => {
+    router.replace('/signup');
+  };
+
   return (
     <Screen edges={['left', 'right', 'bottom']} style={styles.container} padded>
       <Card style={styles.card}>
@@ -92,6 +96,15 @@ export default function VerifyEmailScreen() {
             fullWidth
           />
         )}
+
+        <TouchableOpacity onPress={handleWrongEmail} accessibilityRole="button">
+          <AppText variant="muted" style={styles.linkText}>
+            Wrong email?{' '}
+            <AppText variant="link" style={styles.linkHighlight}>
+              Sign up with a different address
+            </AppText>
+          </AppText>
+        </TouchableOpacity>
       </Card>
     </Screen>
   );
@@ -127,5 +140,12 @@ const styles = StyleSheet.create({
   },
   loader: {
     marginVertical: 12,
+  },
+  linkText: {
+    textAlign: 'center',
+    marginTop: 16,
+  },
+  linkHighlight: {
+    fontWeight: '700',
   },
 });
