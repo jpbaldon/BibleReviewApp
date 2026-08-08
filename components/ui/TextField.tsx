@@ -12,16 +12,20 @@ import { AppText } from './AppText';
 
 interface TextFieldProps extends TextInputProps {
   label?: string;
+  /** Inline validation message shown under the input. */
+  error?: string;
   containerStyle?: StyleProp<ViewStyle>;
 }
 
 export function TextField({
   label,
+  error,
   style,
   containerStyle,
   ...rest
 }: TextFieldProps) {
   const { theme } = useThemeContext();
+  const hasError = Boolean(error);
 
   return (
     <View style={[styles.container, containerStyle]}>
@@ -36,13 +40,18 @@ export function TextField({
           styles.input,
           {
             backgroundColor: theme.surface,
-            borderColor: theme.border,
+            borderColor: hasError ? theme.danger : theme.border,
             color: theme.text,
           },
           style,
         ]}
         {...rest}
       />
+      {hasError ? (
+        <AppText color={theme.danger} style={styles.errorText}>
+          {error}
+        </AppText>
+      ) : null}
     </View>
   );
 }
@@ -61,5 +70,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
     minHeight: 48,
+  },
+  errorText: {
+    marginTop: 6,
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

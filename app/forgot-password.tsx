@@ -7,38 +7,47 @@ import {
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 import { useThemeContext } from '../context/ThemeContext';
-import { useAlert } from '../context/AlertContext';
 import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
 import { TextField } from '@/components/ui/TextField';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { AuthKeyboardView } from '@/components/AuthKeyboardView';
+import { validateEmail } from '@/utils/validateEmail';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState<string>('');
+  const [emailError, setEmailError] = useState<string>('');
+  const [formError, setFormError] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [sent, setSent] = useState<boolean>(false);
 
   const router = useRouter();
   const { resetPasswordForEmail } = useAuth();
   const { theme } = useThemeContext();
-  const { alert } = useAlert();
+
+  const handleEmailChange = (text: string) => {
+    setEmail(text);
+    if (emailError) setEmailError('');
+    if (formError) setFormError('');
+  };
 
   const handleSubmit = async () => {
-    const trimmed = email.trim();
-    if (!trimmed) {
-      alert('Error', 'Please enter your email address.');
+    const nextEmailError = validateEmail(email);
+    if (nextEmailError) {
+      setEmailError(nextEmailError);
+      setFormError('');
       return;
     }
 
+    setEmailError('');
+    setFormError('');
     setSubmitting(true);
     try {
-      await resetPasswordForEmail(trimmed);
+      await resetPasswordForEmail(email.trim());
       setSent(true);
     } catch (error) {
-      alert(
-        'Error',
+      setFormError(
         error instanceof Error ? error.message : 'Failed to send reset email. Please try again.',
       );
     } finally {
@@ -75,11 +84,17 @@ export default function ForgotPasswordScreen() {
                 label="Email"
                 placeholder="Email"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={handleEmailChange}
                 autoCapitalize="none"
                 keyboardType="email-address"
                 autoComplete="email"
+                error={emailError}
               />
+              {formError ? (
+                <AppText color={theme.danger} style={styles.formError}>
+                  {formError}
+                </AppText>
+              ) : null}
               {submitting ? (
                 <ActivityIndicator size="large" color={theme.accent} style={styles.loader} />
               ) : (
@@ -111,6 +126,9 @@ const styles = StyleSheet.create({
   message: {
     textAlign: 'center',
     marginBottom: 20,
+  },
+  formError: {
+    marginBottom: 8,
   },
   loader: {
     marginVertical: 20,

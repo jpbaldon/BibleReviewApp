@@ -14,12 +14,18 @@ import { TextField } from '@/components/ui/TextField';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { AuthKeyboardView } from '@/components/AuthKeyboardView';
+import { validateEmail } from '@/utils/validateEmail';
 
 export default function SignUpScreen() {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
   const [username, setUsername] = useState<string>('');
+  const [emailError, setEmailError] = useState<string>('');
+  const [passwordError, setPasswordError] = useState<string>('');
+  const [confirmError, setConfirmError] = useState<string>('');
   const [usernameError, setUsernameError] = useState<string>('');
+  const [formError, setFormError] = useState<string>('');
   const [checkingUsername, setCheckingUsername] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
 
@@ -35,8 +41,28 @@ export default function SignUpScreen() {
     return '';
   };
 
+  const handleEmailChange = (text: string) => {
+    setEmail(text);
+    if (emailError) setEmailError('');
+    if (formError) setFormError('');
+  };
+
+  const handlePasswordChange = (text: string) => {
+    setPassword(text);
+    if (passwordError) setPasswordError('');
+    if (confirmError && text === confirmPassword) setConfirmError('');
+    if (formError) setFormError('');
+  };
+
+  const handleConfirmChange = (text: string) => {
+    setConfirmPassword(text);
+    if (confirmError) setConfirmError('');
+    if (formError) setFormError('');
+  };
+
   const handleUsernameChange = async (text: string) => {
     setUsername(text);
+    if (formError) setFormError('');
     const error = validateUsername(text);
     setUsernameError(error);
 
@@ -49,34 +75,42 @@ export default function SignUpScreen() {
   };
 
   const handleSignUp = async () => {
-    if (!email || !password || !username) {
-      alert('Error', 'Please fill in all fields.');
-      return;
-    }
+    const nextEmailError = validateEmail(email);
+    const nextPasswordError = !password
+      ? 'Password is required.'
+      : password.length < 6
+        ? 'Password should be at least 6 characters.'
+        : '';
+    const nextConfirmError = !confirmPassword
+      ? 'Please confirm your password.'
+      : password !== confirmPassword
+        ? 'Passwords do not match.'
+        : '';
+    const nextUsernameError = !username.trim()
+      ? 'Username is required.'
+      : usernameError || validateUsername(username);
 
-    if (password.length < 6) {
-      alert('Error', 'Password should be at least 6 characters.');
-      return;
-    }
+    setEmailError(nextEmailError);
+    setPasswordError(nextPasswordError);
+    setConfirmError(nextConfirmError);
+    setUsernameError(nextUsernameError);
+    setFormError('');
 
-    if (usernameError) {
-      alert('Error', 'Please fix username errors');
-      return;
-    }
+    if (nextEmailError || nextPasswordError || nextConfirmError || nextUsernameError) return;
 
     setSubmitting(true);
     try {
       const available = await checkUsernameAvailability(username.trim().toLowerCase());
       if (!available) {
-        alert('Error', 'Username is no longer available');
+        setUsernameError('Username is no longer available');
         return;
       }
 
-      await signUp(email, password, username.trim().toLowerCase());
+      await signUp(email.trim(), password, username.trim().toLowerCase());
       alert('Success', 'Account created successfully!');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Signup failed';
-      alert('Error', errorMessage);
+      setFormError(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -96,18 +130,30 @@ export default function SignUpScreen() {
             label="Email"
             placeholder="Email"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={handleEmailChange}
             autoCapitalize="none"
             keyboardType="email-address"
+            error={emailError}
           />
 
           <TextField
             label="Password"
             placeholder="Password (min 6 chars)"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={handlePasswordChange}
             secureTextEntry
             autoCapitalize="none"
+            error={passwordError}
+          />
+
+          <TextField
+            label="Confirm Password"
+            placeholder="Confirm password"
+            value={confirmPassword}
+            onChangeText={handleConfirmChange}
+            secureTextEntry
+            autoCapitalize="none"
+            error={confirmError}
           />
 
           <TextField
@@ -116,18 +162,20 @@ export default function SignUpScreen() {
             value={username}
             onChangeText={handleUsernameChange}
             autoCapitalize="none"
-            style={usernameError ? { borderColor: theme.danger } : undefined}
+            error={usernameError}
           />
 
           {checkingUsername ? (
-            <ActivityIndicator size="small" color={theme.accent} />
-          ) : usernameError ? (
-            <AppText color={theme.danger} style={styles.statusText}>
-              {usernameError}
-            </AppText>
+            <ActivityIndicator size="small" color={theme.accent} style={styles.statusIndicator} />
           ) : username.length >= 3 && !usernameError ? (
             <AppText color={theme.success} style={styles.statusText}>
               Username available!
+            </AppText>
+          ) : null}
+
+          {formError ? (
+            <AppText color={theme.danger} style={styles.formError}>
+              {formError}
             </AppText>
           ) : null}
 
@@ -164,8 +212,15 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     textAlign: 'center',
   },
+  statusIndicator: {
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+  },
   statusText: {
     marginBottom: 10,
+  },
+  formError: {
+    marginBottom: 8,
   },
   loader: {
     marginVertical: 16,

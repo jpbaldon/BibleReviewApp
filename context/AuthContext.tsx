@@ -173,7 +173,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // ---- Auth Actions ----
 
   const signIn = async (email: string, password: string) => {
-    setIsLoading(true);
     setError(null);
     try {
       const { user, session } = await backend.auth.signIn(email, password);
@@ -181,16 +180,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsPasswordRecovery(false);
       setUser(user);
       setSession(session);
+      if (user) {
+        await AsyncStorage.setItem('currentUserId', user.id);
+      }
     } catch (err: any) {
       setError(err instanceof Error ? err.message : String(err));
       throw err;
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const signUp = async (email: string, password: string, username: string) => {
-    setIsLoading(true);
     setError(null);
     try {
       const { user, session } = await backend.auth.signUp(email, password, username);
@@ -203,12 +202,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else {
         setUser(user);
         setSession(session);
+        if (user) {
+          await AsyncStorage.setItem('currentUserId', user.id);
+        }
         router.replace({ pathname: '/(tabs)' });
       }
     } catch (err: any) {
       setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      //setIsLoading(false);
+      throw err;
     }
   };
 

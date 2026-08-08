@@ -17,6 +17,9 @@ import { AuthKeyboardView } from '@/components/AuthKeyboardView';
 export default function ResetPasswordScreen() {
   const [password, setPassword] = useState<string>('');
   const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const [passwordError, setPasswordError] = useState<string>('');
+  const [confirmError, setConfirmError] = useState<string>('');
+  const [formError, setFormError] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
 
   const router = useRouter();
@@ -24,19 +27,36 @@ export default function ResetPasswordScreen() {
   const { theme } = useThemeContext();
   const { alert } = useAlert();
 
+  const handlePasswordChange = (text: string) => {
+    setPassword(text);
+    if (passwordError) setPasswordError('');
+    if (confirmError && text === confirmPassword) setConfirmError('');
+    if (formError) setFormError('');
+  };
+
+  const handleConfirmChange = (text: string) => {
+    setConfirmPassword(text);
+    if (confirmError) setConfirmError('');
+    if (formError) setFormError('');
+  };
+
   const handleSubmit = async () => {
-    if (!password || !confirmPassword) {
-      alert('Error', 'Please fill in both password fields.');
-      return;
-    }
-    if (password.length < 6) {
-      alert('Error', 'Password should be at least 6 characters.');
-      return;
-    }
-    if (password !== confirmPassword) {
-      alert('Error', 'Passwords do not match.');
-      return;
-    }
+    const nextPasswordError = !password
+      ? 'Password is required.'
+      : password.length < 6
+        ? 'Password should be at least 6 characters.'
+        : '';
+    const nextConfirmError = !confirmPassword
+      ? 'Please confirm your password.'
+      : password !== confirmPassword
+        ? 'Passwords do not match.'
+        : '';
+
+    setPasswordError(nextPasswordError);
+    setConfirmError(nextConfirmError);
+    setFormError('');
+
+    if (nextPasswordError || nextConfirmError) return;
 
     setSubmitting(true);
     try {
@@ -53,8 +73,7 @@ export default function ResetPasswordScreen() {
         },
       ]);
     } catch (error) {
-      alert(
-        'Error',
+      setFormError(
         error instanceof Error ? error.message : 'Failed to update password. Please try again.',
       );
     } finally {
@@ -76,18 +95,25 @@ export default function ResetPasswordScreen() {
             label="New Password"
             placeholder="New password (min 6 chars)"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={handlePasswordChange}
             secureTextEntry
             autoCapitalize="none"
+            error={passwordError}
           />
           <TextField
             label="Confirm Password"
             placeholder="Confirm new password"
             value={confirmPassword}
-            onChangeText={setConfirmPassword}
+            onChangeText={handleConfirmChange}
             secureTextEntry
             autoCapitalize="none"
+            error={confirmError}
           />
+          {formError ? (
+            <AppText color={theme.danger} style={styles.formError}>
+              {formError}
+            </AppText>
+          ) : null}
           {submitting ? (
             <ActivityIndicator size="large" color={theme.accent} style={styles.loader} />
           ) : (
@@ -110,6 +136,9 @@ const styles = StyleSheet.create({
   message: {
     textAlign: 'center',
     marginBottom: 20,
+  },
+  formError: {
+    marginBottom: 8,
   },
   loader: {
     marginVertical: 20,
