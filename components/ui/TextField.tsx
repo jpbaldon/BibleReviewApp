@@ -12,6 +12,8 @@ import { AppText } from './AppText';
 
 interface TextFieldProps extends TextInputProps {
   label?: string;
+  /** Muted helper text under the input (hidden while an error is shown). */
+  hint?: string;
   /** Inline validation message shown under the input. */
   error?: string;
   containerStyle?: StyleProp<ViewStyle>;
@@ -19,6 +21,7 @@ interface TextFieldProps extends TextInputProps {
 
 export function TextField({
   label,
+  hint,
   error,
   style,
   containerStyle,
@@ -48,8 +51,12 @@ export function TextField({
         {...rest}
       />
       {hasError ? (
-        <AppText color={theme.danger} style={styles.errorText}>
+        <AppText color={theme.danger} style={styles.helperText}>
           {error}
+        </AppText>
+      ) : hint ? (
+        <AppText variant="muted" style={styles.helperText}>
+          {hint}
         </AppText>
       ) : null}
     </View>
@@ -71,7 +78,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     minHeight: 48,
   },
-  errorText: {
+  helperText: {
     marginTop: 6,
     fontSize: 13,
     lineHeight: 18,

@@ -15,6 +15,10 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { AuthKeyboardView } from '@/components/AuthKeyboardView';
 import { validateEmail } from '@/utils/validateEmail';
+import {
+  PASSWORD_REQUIREMENTS_HINT,
+  validatePassword,
+} from '@/utils/validatePassword';
 
 export default function SignUpScreen() {
   const [email, setEmail] = useState<string>('');
@@ -76,11 +80,7 @@ export default function SignUpScreen() {
 
   const handleSignUp = async () => {
     const nextEmailError = validateEmail(email);
-    const nextPasswordError = !password
-      ? 'Password is required.'
-      : password.length < 6
-        ? 'Password should be at least 6 characters.'
-        : '';
+    const nextPasswordError = validatePassword(password);
     const nextConfirmError = !confirmPassword
       ? 'Please confirm your password.'
       : password !== confirmPassword
@@ -138,11 +138,12 @@ export default function SignUpScreen() {
 
           <TextField
             label="Password"
-            placeholder="Password (min 6 chars)"
+            placeholder="Password"
             value={password}
             onChangeText={handlePasswordChange}
             secureTextEntry
             autoCapitalize="none"
+            hint={PASSWORD_REQUIREMENTS_HINT}
             error={passwordError}
           />
 

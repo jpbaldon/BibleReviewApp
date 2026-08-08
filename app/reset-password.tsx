@@ -13,6 +13,10 @@ import { TextField } from '@/components/ui/TextField';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { AuthKeyboardView } from '@/components/AuthKeyboardView';
+import {
+  PASSWORD_REQUIREMENTS_HINT,
+  validatePassword,
+} from '@/utils/validatePassword';
 
 export default function ResetPasswordScreen() {
   const [password, setPassword] = useState<string>('');
@@ -41,11 +45,7 @@ export default function ResetPasswordScreen() {
   };
 
   const handleSubmit = async () => {
-    const nextPasswordError = !password
-      ? 'Password is required.'
-      : password.length < 6
-        ? 'Password should be at least 6 characters.'
-        : '';
+    const nextPasswordError = validatePassword(password);
     const nextConfirmError = !confirmPassword
       ? 'Please confirm your password.'
       : password !== confirmPassword
@@ -93,11 +93,12 @@ export default function ResetPasswordScreen() {
           </AppText>
           <TextField
             label="New Password"
-            placeholder="New password (min 6 chars)"
+            placeholder="New password"
             value={password}
             onChangeText={handlePasswordChange}
             secureTextEntry
             autoCapitalize="none"
+            hint={PASSWORD_REQUIREMENTS_HINT}
             error={passwordError}
           />
           <TextField
