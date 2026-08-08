@@ -6,7 +6,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { StatusBar } from 'react-native';
 import { DarkTheme, DefaultTheme, ThemeProvider as NavThemeProvider } from '@react-navigation/native';
-import { AuthProvider, useAuth } from '../context/AuthContext';
+import { AuthProvider, useAuth, isPasswordRecoveryPending } from '../context/AuthContext';
 import { ScoreProvider } from '../context/ScoreContext';
 import { BibleBooksProvider } from '../context/BibleBooksContext';
 import { ThemeProvider, useThemeContext } from '../context/ThemeContext';
@@ -49,7 +49,8 @@ export default function Layout() {
 }
 
 function InnerApp() {
-  const { isLoading, user } = useAuth();
+  const { isLoading, user, isPasswordRecovery } = useAuth();
+  const recovering = isPasswordRecovery || isPasswordRecoveryPending();
 
   if (isLoading) {
     return <AppLoadingScreen message="Signing you in…" />;
@@ -58,8 +59,10 @@ function InnerApp() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <SettingsProvider userId={user?.id}>
-          {!user ? (
+        <SettingsProvider userId={recovering ? undefined : user?.id}>
+          {/* During password recovery we have a session, but must not mount
+              BibleBooks/SQLite (or other logged-in providers) yet. */}
+          {!user || recovering ? (
             <LayoutContent />
           ) : (
             <ServicesProvider>
@@ -81,21 +84,37 @@ function InnerApp() {
 
 function LayoutContent() {
   const { colorScheme, theme } = useThemeContext();
-  const { isLoading, user } = useAuth();
+  const { isLoading, user, isPasswordRecovery } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
     if (isLoading) return;
 
-    const inAuthGroup = ['signin', 'signup', 'verifyemail'].includes(segments[0]);
+    const segment = segments[0];
+    const publicAuthScreens = ['signin', 'signup', 'verifyemail', 'forgot-password'];
+    const isResetPassword = segment === 'reset-password';
+    const recovering = isPasswordRecovery || isPasswordRecoveryPending();
 
-    if (!user && !inAuthGroup) {
+    if (recovering) {
+      if (!isResetPassword) {
+        router.replace('/reset-password');
+      }
+      return;
+    }
+
+    // Finished (or skipped) recovery while still on the reset screen.
+    if (isResetPassword) {
+      router.replace(user ? '/(tabs)' : '/signin');
+      return;
+    }
+
+    if (!user && !publicAuthScreens.includes(segment)) {
       router.replace('/signin');
-    } else if (user && inAuthGroup) {
+    } else if (user && publicAuthScreens.includes(segment)) {
       router.replace('/(tabs)');
     }
-  }, [isLoading, user, segments]);
+  }, [isLoading, user, segments, isPasswordRecovery]);
 
   if (isLoading) {
     return <AppLoadingScreen />;
@@ -116,6 +135,8 @@ function LayoutContent() {
         <Stack.Screen name="signin" options={{ title: 'Sign In' }} />
         <Stack.Screen name="signup" options={{ title: 'Sign Up' }} />
         <Stack.Screen name="verifyemail" options={{ title: 'Verify Email' }} />
+        <Stack.Screen name="forgot-password" options={{ title: 'Forgot Password' }} />
+        <Stack.Screen name="reset-password" options={{ title: 'Reset Password', headerBackVisible: false }} />
       </Stack>
       <StatusBar
         barStyle={colorScheme === 'dark' ? 'light-content' : 'dark-content'}

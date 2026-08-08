@@ -5,10 +5,6 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Keyboard,
-  TouchableWithoutFeedback,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
@@ -19,6 +15,7 @@ import { TextField } from '@/components/ui/TextField';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { AppLoadingScreen } from '@/components/AppLoadingScreen';
+import { AuthKeyboardView } from '@/components/AuthKeyboardView';
 
 export default function SignInScreen() {
   const [email, setEmail] = useState<string>('');
@@ -57,70 +54,66 @@ export default function SignInScreen() {
   }
 
   return (
-    <Screen>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <KeyboardAvoidingView
-          style={styles.container}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <Card style={styles.card}>
-            <AppText variant="title" style={styles.title}>
-              Welcome Back
+    <Screen edges={['left', 'right', 'bottom']}>
+      <AuthKeyboardView>
+        <Card style={styles.card}>
+          <AppText variant="title" style={styles.title}>
+            Welcome Back
+          </AppText>
+          <TextField
+            label="Email"
+            placeholder="Email"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+          <TextField
+            label="Password"
+            placeholder="Password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoCapitalize="none"
+          />
+          <TouchableOpacity onPress={() => router.push('/forgot-password')}>
+            <AppText variant="link" style={styles.forgotLink}>
+              Forgot password?
             </AppText>
-            <TextField
-              label="Email"
-              placeholder="Email"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
-            <TextField
-              label="Password"
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-            />
-            {submitting ? (
-              <ActivityIndicator size="large" color={theme.accent} style={styles.loader} />
-            ) : (
-              <View>
-                <Button label="Sign In" onPress={handleSignIn} fullWidth />
-                <TouchableOpacity onPress={() => router.push('/signup')}>
-                  <AppText variant="muted" style={styles.linkText}>
-                    Don't have an account?{' '}
-                    <AppText variant="link" style={styles.linkHighlight}>
-                      Sign up
-                    </AppText>
+          </TouchableOpacity>
+          {submitting ? (
+            <ActivityIndicator size="large" color={theme.accent} style={styles.loader} />
+          ) : (
+            <View>
+              <Button label="Sign In" onPress={handleSignIn} fullWidth />
+              <TouchableOpacity onPress={() => router.push('/signup')}>
+                <AppText variant="muted" style={styles.linkText}>
+                  Don't have an account?{' '}
+                  <AppText variant="link" style={styles.linkHighlight}>
+                    Sign up
                   </AppText>
-                </TouchableOpacity>
-              </View>
-            )}
-          </Card>
-        </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
+                </AppText>
+              </TouchableOpacity>
+            </View>
+          )}
+        </Card>
+      </AuthKeyboardView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 20,
-  },
-  centered: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   card: {
     paddingVertical: 8,
   },
   title: {
-    marginBottom: 20,
+    marginBottom: 8,
     textAlign: 'center',
+  },
+  forgotLink: {
+    alignSelf: 'flex-end',
+    marginBottom: 12,
+    fontWeight: '600',
   },
   loader: {
     marginVertical: 20,

@@ -46,7 +46,7 @@ export default function VerifyEmailScreen() {
   };
 
   return (
-    <Screen style={styles.container} padded>
+    <Screen edges={['left', 'right', 'bottom']} style={styles.container} padded>
       <Card style={styles.card}>
         <MaterialIcons
           name="mark-email-read"

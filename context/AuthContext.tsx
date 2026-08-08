@@ -9,6 +9,19 @@ import { useBackend } from '../context/BackendContext';
 import { AppUser, AppSession } from '../types/index';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Linking from 'expo-linking';
+import {
+  getPasswordResetRedirectUrl,
+  isPasswordRecoveryUrl,
+  parseAuthUrlParams,
+} from '../utils/authRedirect';
+
+/** Sync lock so routing doesn't send recovery users to Home before React state commits. */
+let passwordRecoveryLock = false;
+
+export function isPasswordRecoveryPending(): boolean {
+  return passwordRecoveryLock;
+}
 
 type AuthContextType = {
   user: AppUser | null;
@@ -16,6 +29,7 @@ type AuthContextType = {
   profile: { username: string } | null;
   isLoading: boolean;
   error: string | null;
+  isPasswordRecovery: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, username: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -23,6 +37,9 @@ type AuthContextType = {
   checkUsernameAvailability: (username: string) => Promise<boolean>;
   updateUsername: (newUsername: string) => Promise<void>;
   resendVerificationEmail: (email: string) => Promise<void>;
+  resetPasswordForEmail: (email: string) => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<void>;
+  clearPasswordRecovery: () => void;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -42,6 +59,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<{ username: string } | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [isPasswordRecovery, setIsPasswordRecovery] = useState<boolean>(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -51,9 +69,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setSession(session);
         setUser(user);
         setProfile(profile);
-        if(user)
+        if (user) {
           await AsyncStorage.setItem('currentUserId', user.id);
-
+        }
       } catch (err: any) {
         setError(err instanceof Error ? err.message : String(err));
       } finally {
@@ -64,6 +82,94 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     init();
   }, [backend]);
 
+  const refreshAuthState = async () => {
+    const next = await backend.auth.init();
+    setSession(next.session);
+    setUser(next.user);
+    setProfile(next.profile);
+    return next;
+  };
+
+  // Handle password-recovery / auth deep links from email (Expo Go or native).
+  useEffect(() => {
+    const handleAuthUrl = async (url: string | null) => {
+      if (!url) return;
+
+      // Ignore non-auth deep links.
+      const looksLikeAuth =
+        url.includes('access_token') ||
+        url.includes('refresh_token') ||
+        url.includes('token_hash') ||
+        url.includes('type=recovery') ||
+        url.includes('reset-password') ||
+        url.includes('code=');
+      if (!looksLikeAuth) return;
+
+      try {
+        const params = parseAuthUrlParams(url);
+        // Any link aimed at reset-password is recovery — including after Supabase verify.
+        const isRecovery = isPasswordRecoveryUrl(url, params);
+
+        // Lock + navigate BEFORE establishing session so the auth guard can't
+        // treat the new session as a normal login and send the user to Home.
+        if (isRecovery) {
+          passwordRecoveryLock = true;
+          setIsPasswordRecovery(true);
+          router.replace('/reset-password');
+        }
+
+        if (params.access_token && params.refresh_token) {
+          await backend.auth.setSessionFromTokens(params.access_token, params.refresh_token);
+        } else if (params.token_hash && (params.type === 'recovery' || isRecovery)) {
+          await backend.auth.verifyRecoveryTokenHash(params.token_hash);
+        } else if (params.code) {
+          await backend.auth.exchangeCodeForSession(params.code);
+        } else {
+          if (isRecovery) {
+            passwordRecoveryLock = false;
+            setIsPasswordRecovery(false);
+          }
+          return;
+        }
+
+        await refreshAuthState();
+
+        if (isRecovery) {
+          router.replace('/reset-password');
+        }
+      } catch (err) {
+        console.error('Failed to handle auth deep link:', err);
+        passwordRecoveryLock = false;
+        setIsPasswordRecovery(false);
+      }
+    };
+
+    void Linking.getInitialURL().then(handleAuthUrl);
+    const subscription = Linking.addEventListener('url', ({ url }) => {
+      void handleAuthUrl(url);
+    });
+    return () => subscription.remove();
+  }, [backend, router]);
+
+  // Backup: if Supabase emits PASSWORD_RECOVERY / SIGNED_IN during recovery, stay on reset.
+  useEffect(() => {
+    const { unsubscribe } = backend.auth.onAuthStateChange((event, nextSession) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        passwordRecoveryLock = true;
+        setIsPasswordRecovery(true);
+        setSession(nextSession);
+        router.replace('/reset-password');
+        return;
+      }
+      if (passwordRecoveryLock && event === 'SIGNED_IN') {
+        setIsPasswordRecovery(true);
+        setSession(nextSession);
+        router.replace('/reset-password');
+      }
+    });
+    return unsubscribe;
+  }, [backend, router]);
+
   // ---- Auth Actions ----
 
   const signIn = async (email: string, password: string) => {
@@ -71,10 +177,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setError(null);
     try {
       const { user, session } = await backend.auth.signIn(email, password);
+      passwordRecoveryLock = false;
+      setIsPasswordRecovery(false);
       setUser(user);
       setSession(session);
     } catch (err: any) {
       setError(err instanceof Error ? err.message : String(err));
+      throw err;
     } finally {
       setIsLoading(false);
     }
@@ -86,16 +195,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { user, session } = await backend.auth.signUp(email, password, username);
 
-      console.log('Made it');
-      if(!session) { //if the user has not been automatically logged in, then presumably the verifciation requirement is enabled on supababase dashboard
-          router.replace({
+      if (!session) {
+        router.replace({
           pathname: '/verifyemail',
-          params: { email }
+          params: { email },
         });
-      } else {  //otherwise, they have automatically been logged in; direct user to the home screen
+      } else {
         setUser(user);
         setSession(session);
-        router.replace({ pathname: '/(tabs)'});
+        router.replace({ pathname: '/(tabs)' });
       }
     } catch (err: any) {
       setError(err instanceof Error ? err.message : String(err));
@@ -105,13 +213,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut = async () => {
-    //setIsLoading(true);
     setError(null);
     try {
       await backend.auth.signOut();
       setUser(null);
       setSession(null);
       setProfile(null);
+      passwordRecoveryLock = false;
+      setIsPasswordRecovery(false);
     } catch (err: any) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -126,8 +235,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     try {
       await backend.auth.deleteAccount(session.accessToken, user.id);
-
-      // After deletion, also sign the user out locally
       await backend.auth.signOut();
       setUser(null);
       setSession(null);
@@ -145,13 +252,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateUsername = async (newUsername: string) => {
-    if(!user) return;
+    if (!user) return;
     await backend.usernames.updateUsername(user.id, newUsername);
     setProfile({ username: newUsername });
   };
 
   const resendVerificationEmail = async (email: string) => {
     await backend.auth.resendVerificationEmail(email);
+  };
+
+  const resetPasswordForEmail = async (email: string) => {
+    const redirectTo = getPasswordResetRedirectUrl();
+    await backend.auth.resetPasswordForEmail(email.trim().toLowerCase(), redirectTo);
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    await backend.auth.updatePassword(newPassword);
+  };
+
+  const clearPasswordRecovery = () => {
+    passwordRecoveryLock = false;
+    setIsPasswordRecovery(false);
   };
 
   return (
@@ -162,6 +283,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         profile,
         isLoading,
         error,
+        isPasswordRecovery,
         signIn,
         signUp,
         signOut,
@@ -169,6 +291,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         checkUsernameAvailability,
         updateUsername,
         resendVerificationEmail,
+        resetPasswordForEmail,
+        updatePassword,
+        clearPasswordRecovery,
       }}
     >
       {children}

@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo, useRef } from 'react';
 import * as SQLite from 'expo-sqlite';
-import * as FileSystem from 'expo-file-system';
 import { TRANSLATIONS } from '@/data/translations';
 import { CHAPTER_SUMMARIES } from '@/data/chapter-summaries';
 import { BibleBook, Rarity } from '../types';
@@ -11,13 +10,113 @@ import {
   countEnabledChaptersForScore,
 } from '../utils/scoreGate';
 
-/** Keep the historical open path so existing installs resolve the same DB file. */
+/**
+ * Use the bare DB filename. expo-sqlite stores this under the app's SQLite directory,
+ * which matches the historical `{documentDirectory}SQLite/BibleBooks_*.db` path.
+ * Absolute `file://` paths have caused intermittent Android prepareAsync NPEs.
+ */
 function getUserDatabaseName(userId: string): string {
-  const documentDirectory = (FileSystem as { documentDirectory?: string | null }).documentDirectory;
-  if (documentDirectory) {
-    return `${documentDirectory}SQLite/BibleBooks_${userId}.db`;
-  }
   return `BibleBooks_${userId}.db`;
+}
+
+function isNativePrepareFailure(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return message.includes('prepareAsync') || message.includes('NullPointerException');
+}
+
+/**
+ * Module-level connection cache so React remounts / Fast Refresh do not reopen the
+ * same file under a new SharedObject (which can GC-close the native handle on Android).
+ */
+type DbConnection = {
+  userId: string;
+  ready: Promise<SQLite.SQLiteDatabase>;
+};
+
+let connection: DbConnection | null = null;
+let opChain: Promise<unknown> = Promise.resolve();
+/** >0 while a queued op is running; nested withDatabase calls run inline. */
+let opDepth = 0;
+
+/** Serialize every DB read/write onto one chain. */
+function enqueueDbOp<T>(task: () => Promise<T>): Promise<T> {
+  if (opDepth > 0) {
+    return task();
+  }
+
+  const run = async () => {
+    opDepth += 1;
+    try {
+      return await task();
+    } finally {
+      opDepth -= 1;
+    }
+  };
+
+  const next = opChain.then(run, run);
+  opChain = next.then(
+    () => undefined,
+    () => undefined,
+  );
+  return next;
+}
+
+async function closeConnection(): Promise<void> {
+  const current = connection;
+  connection = null;
+  if (!current) return;
+  try {
+    const db = await current.ready;
+    await db.closeAsync();
+  } catch {
+    // Ignore close errors — the native handle may already be gone.
+  }
+}
+
+async function openConnection(userId: string): Promise<SQLite.SQLiteDatabase> {
+  if (connection?.userId === userId) {
+    return connection.ready;
+  }
+
+  if (connection) {
+    await closeConnection();
+  }
+
+  const ready = SQLite.openDatabaseAsync(getUserDatabaseName(userId), {
+    // Dedicated connection for this singleton; avoids sharing a stale cached handle.
+    useNewConnection: true,
+  });
+
+  connection = { userId, ready };
+  try {
+    return await ready;
+  } catch (err) {
+    if (connection?.userId === userId) {
+      connection = null;
+    }
+    throw err;
+  }
+}
+
+async function withDatabase<T>(
+  userId: string,
+  task: (db: SQLite.SQLiteDatabase) => Promise<T>,
+): Promise<T> {
+  return enqueueDbOp(async () => {
+    const run = async () => {
+      const db = await openConnection(userId);
+      return task(db);
+    };
+
+    try {
+      return await run();
+    } catch (err) {
+      // Android can briefly hand back a dead native handle; reopen once and retry.
+      if (!isNativePrepareFailure(err)) throw err;
+      await closeConnection();
+      return run();
+    }
+  });
 }
 
 export { MIN_CHAPTERS_ENABLED_FOR_SCORE } from '../utils/scoreGate';
@@ -78,10 +177,9 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const dbRef = useRef<SQLite.SQLiteDatabase | null>(null);
-  const openedUserIdRef = useRef<string | null>(null);
-  const readyPromiseRef = useRef<Promise<SQLite.SQLiteDatabase> | null>(null);
-  const writeChainRef = useRef<Promise<unknown>>(Promise.resolve());
+  /** Latest desired enabled flag per book; rapid taps coalesce into one write. */
+  const desiredEnabledRef = useRef<Map<string, boolean>>(new Map());
+  const persistInFlightRef = useRef<Set<string>>(new Set());
 
   const enabledChapterCount = countEnabledChaptersForScore(bibleBooks);
   const [scoreEnabledFlag, setScoreEnabledFlag] = useState<boolean>(
@@ -94,16 +192,6 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
   useEffect(() => {
     translationRef.current = translation;
   }, [translation]);
-
-  /** Serialize DB writes so concurrent toggles can't hit a half-closed native handle. */
-  const enqueueWrite = useCallback(<T,>(task: () => Promise<T>): Promise<T> => {
-    const next = writeChainRef.current.then(task, task);
-    writeChainRef.current = next.then(
-      () => undefined,
-      () => undefined,
-    );
-    return next;
-  }, []);
 
   const loadBooksFromDB = useCallback(async (db: SQLite.SQLiteDatabase) => {
     const results = await db.getAllAsync<{ Book: string; Enabled: number }>(
@@ -175,44 +263,11 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     setBibleBooks(enrichBooks(loadedBooks, rarityResults, translationRef.current));
   }, [loadBooksFromDB, loadRaritiesFromDB]);
 
-  /**
-   * Open once per user. Re-opening the same DB (especially with absolute paths)
-   * causes intermittent Android NativeDatabase.prepareAsync NPEs when an older
-   * shared handle is GC'd/closed underneath an in-flight toggle.
-   */
-  const ensureDatabase = useCallback(async (userId: string): Promise<SQLite.SQLiteDatabase> => {
-    if (dbRef.current && openedUserIdRef.current === userId && readyPromiseRef.current) {
-      return readyPromiseRef.current;
-    }
-
-    if (readyPromiseRef.current && openedUserIdRef.current === userId) {
-      return readyPromiseRef.current;
-    }
-
-    openedUserIdRef.current = userId;
-    const initPromise = (async () => {
-      // Open once per user. Re-opening (effect churn / rapid toggles) is what
-      // triggers intermittent Android NativeDatabase.prepareAsync NPEs.
-      const db = await SQLite.openDatabaseAsync(getUserDatabaseName(userId));
-      dbRef.current = db;
+  const initializeForUser = useCallback(async (userId: string) => {
+    await withDatabase(userId, async (db) => {
       await setupSchemaAndSeed(db);
       await refreshEnrichedBooks(db);
-      return db;
-    })();
-
-    readyPromiseRef.current = initPromise;
-
-    try {
-      return await initPromise;
-    } catch (err) {
-      // Allow a future retry after a failed open/init.
-      if (openedUserIdRef.current === userId) {
-        readyPromiseRef.current = null;
-        dbRef.current = null;
-        openedUserIdRef.current = null;
-      }
-      throw err;
-    }
+    });
   }, [setupSchemaAndSeed, refreshEnrichedBooks]);
 
   useEffect(() => {
@@ -220,17 +275,15 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
 
     const init = async () => {
       if (!user?.id) {
-        dbRef.current = null;
-        openedUserIdRef.current = null;
-        readyPromiseRef.current = null;
-        setBibleBooks([]);
-        setIsLoading(false);
-        return;
-      }
-
-      // Already ready for this user — avoid loading flicker on callback identity changes.
-      if (openedUserIdRef.current === user.id && dbRef.current && readyPromiseRef.current) {
-        setIsLoading(false);
+        desiredEnabledRef.current.clear();
+        persistInFlightRef.current.clear();
+        await enqueueDbOp(async () => {
+          await closeConnection();
+        });
+        if (!cancelled) {
+          setBibleBooks([]);
+          setIsLoading(false);
+        }
         return;
       }
 
@@ -238,7 +291,7 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
       setError(null);
 
       try {
-        await ensureDatabase(user.id);
+        await initializeForUser(user.id);
         if (!cancelled) {
           setError(null);
         }
@@ -265,16 +318,16 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     return () => {
       cancelled = true;
     };
-  }, [user?.id, ensureDatabase]);
+  }, [user?.id, initializeForUser]);
 
   useEffect(() => {
-    if (!dbRef.current || !readyPromiseRef.current) return;
-    if (openedUserIdRef.current !== user?.id) return;
+    if (!user?.id || !connection || connection.userId !== user.id) return;
 
     void (async () => {
       try {
-        const db = await readyPromiseRef.current!;
-        await refreshEnrichedBooks(db);
+        await withDatabase(user.id, async (db) => {
+          await refreshEnrichedBooks(db);
+        });
       } catch (err) {
         console.error('Failed to re-enrich books:', err);
       }
@@ -286,10 +339,7 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
 
     try {
       setIsLoading(true);
-      // Force a fresh load through the existing connection (do not reopen).
-      const db = await ensureDatabase(user.id);
-      await setupSchemaAndSeed(db);
-      await refreshEnrichedBooks(db);
+      await initializeForUser(user.id);
       setError(null);
     } catch (err) {
       console.error('Refresh failed:', err);
@@ -297,38 +347,72 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  }, [user?.id, ensureDatabase, setupSchemaAndSeed, refreshEnrichedBooks]);
+  }, [user?.id, initializeForUser]);
+
+  const persistDesiredEnabled = useCallback(async (bookName: string, userId: string) => {
+    if (persistInFlightRef.current.has(bookName)) return;
+    persistInFlightRef.current.add(bookName);
+
+    try {
+      while (desiredEnabledRef.current.has(bookName)) {
+        const desired = desiredEnabledRef.current.get(bookName)!;
+        desiredEnabledRef.current.delete(bookName);
+
+        await withDatabase(userId, async (db) => {
+          await db.runAsync(
+            'UPDATE BibleBooks SET Enabled = ? WHERE Book = ?;',
+            [desired ? 1 : 0, bookName],
+          );
+        });
+      }
+    } catch (err) {
+      console.error('Toggle failed:', err);
+      setError(`Toggle failed: ${err instanceof Error ? err.message : String(err)}`);
+      // Re-sync UI from DB so a failed write cannot leave a stale optimistic state.
+      try {
+        await withDatabase(userId, async (db) => {
+          await refreshEnrichedBooks(db);
+        });
+      } catch (refreshErr) {
+        console.error('Failed to recover books after toggle error:', refreshErr);
+      }
+    } finally {
+      persistInFlightRef.current.delete(bookName);
+      // A tap may have landed after the while-loop exited but before we cleared in-flight.
+      if (desiredEnabledRef.current.has(bookName)) {
+        void persistDesiredEnabled(bookName, userId);
+      }
+    }
+  }, [refreshEnrichedBooks]);
 
   const toggleBookEnabled = useCallback(async (bookName: string) => {
     if (!user?.id) return;
 
-    try {
-      await enqueueWrite(async () => {
-        const db = await ensureDatabase(user.id);
-        await db.runAsync(
-          'UPDATE BibleBooks SET Enabled = NOT Enabled WHERE Book = ?;',
-          [bookName],
-        );
-        setBibleBooks(prevBooks =>
-          prevBooks.map(book =>
-            book.bookName === bookName
-              ? { ...book, enabled: !book.enabled }
-              : book,
-          ),
-        );
-      });
-    } catch (err) {
-      console.error('Toggle failed:', err);
-      setError(`Toggle failed: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }, [user?.id, ensureDatabase, enqueueWrite]);
+    setBibleBooks(prevBooks => {
+      const current = prevBooks.find(book => book.bookName === bookName);
+      if (!current) return prevBooks;
+
+      const baseline = desiredEnabledRef.current.has(bookName)
+        ? desiredEnabledRef.current.get(bookName)!
+        : current.enabled;
+      const nextEnabled = !baseline;
+      desiredEnabledRef.current.set(bookName, nextEnabled);
+
+      return prevBooks.map(book =>
+        book.bookName === bookName
+          ? { ...book, enabled: nextEnabled }
+          : book,
+      );
+    });
+
+    await persistDesiredEnabled(bookName, user.id);
+  }, [user?.id, persistDesiredEnabled]);
 
   const updateBookEnabledStatus = useCallback(async (bookName: string) => {
     if (!user?.id) return;
 
     try {
-      await enqueueWrite(async () => {
-        const db = await ensureDatabase(user.id);
+      await withDatabase(user.id, async (db) => {
         const asvBook = TRANSLATIONS[translationRef.current].Bible.find(b => b.Book === bookName);
         if (!asvBook) return;
 
@@ -359,14 +443,12 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
             [0, bookName],
           );
 
-          await Promise.all(
-            chapters.map(chapter =>
-              db.runAsync(
-                'UPDATE ChapterRarities SET Rarity = ? WHERE Book = ? AND Chapter = ?;',
-                ['common', bookName, chapter.Chapter],
-              ),
-            ),
-          );
+          for (const chapter of chapters) {
+            await db.runAsync(
+              'UPDATE ChapterRarities SET Rarity = ? WHERE Book = ? AND Chapter = ?;',
+              ['common', bookName, chapter.Chapter],
+            );
+          }
 
           setBibleBooks(prevBooks =>
             prevBooks.map(book => {
@@ -386,7 +468,7 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     } catch (err) {
       console.error('Failed to update book status:', err);
     }
-  }, [user?.id, ensureDatabase, enqueueWrite]);
+  }, [user?.id]);
 
   const updateChapterRarity = useCallback(async (
     bookName: string,
@@ -397,8 +479,7 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     if (!user?.id) return;
 
     try {
-      await enqueueWrite(async () => {
-        const db = await ensureDatabase(user.id);
+      await withDatabase(user.id, async (db) => {
         await db.runAsync(
           'INSERT OR REPLACE INTO ChapterRarities (Book, Chapter, Rarity) VALUES (?, ?, ?);',
           [bookName, chapterNum, rarity],
@@ -421,7 +502,7 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     } catch (err) {
       console.error('Failed to update rarity:', err);
     }
-  }, [user?.id, ensureDatabase, enqueueWrite, updateBookEnabledStatus]);
+  }, [user?.id, updateBookEnabledStatus]);
 
   const contextValue = useMemo(() => ({
     bibleBooks,

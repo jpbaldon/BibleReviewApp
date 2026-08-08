@@ -63,6 +63,14 @@ export interface AuthService {
   signOut(): Promise<void>;
   getSession(): Promise<AppSession | null>;
   resendVerificationEmail(email: string): Promise<void>;
+  resetPasswordForEmail(email: string, redirectTo: string): Promise<void>;
+  updatePassword(newPassword: string): Promise<void>;
+  setSessionFromTokens(accessToken: string, refreshToken: string): Promise<void>;
+  exchangeCodeForSession(code: string): Promise<void>;
+  verifyRecoveryTokenHash(tokenHash: string): Promise<void>;
+  onAuthStateChange(
+    callback: (event: string, session: AppSession | null) => void,
+  ): { unsubscribe: () => void };
   deleteAccount(accessToken: string, userId: string): Promise<void>;
   init(): Promise<{ session: AppSession | null; user: AppUser | null; profile: { username: string } | null }>;
 }

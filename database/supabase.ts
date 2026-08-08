@@ -99,6 +99,48 @@ export const SupabaseService = {
       if (error) throw error;
     },
 
+    resetPasswordForEmail: async (email: string, redirectTo: string): Promise<void> => {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectTo.trim(),
+      });
+      if (error) throw new Error(error.message);
+    },
+
+    updatePassword: async (newPassword: string): Promise<void> => {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw new Error(error.message);
+    },
+
+    setSessionFromTokens: async (accessToken: string, refreshToken: string): Promise<void> => {
+      const { error } = await supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+      if (error) throw new Error(error.message);
+    },
+
+    exchangeCodeForSession: async (code: string): Promise<void> => {
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      if (error) throw new Error(error.message);
+    },
+
+    verifyRecoveryTokenHash: async (tokenHash: string): Promise<void> => {
+      const { error } = await supabase.auth.verifyOtp({
+        type: 'recovery',
+        token_hash: tokenHash,
+      });
+      if (error) throw new Error(error.message);
+    },
+
+    onAuthStateChange: (
+      callback: (event: string, session: AppSession | null) => void,
+    ) => {
+      const { data } = supabase.auth.onAuthStateChange((event, session) => {
+        callback(event, session ? toAppSession(session) : null);
+      });
+      return { unsubscribe: () => data.subscription.unsubscribe() };
+    },
+
     deleteAccount: async (accessToken: string, userId: string) => {
       const res = await fetch('https://uohnbyejhxxypjvbauks.supabase.co/functions/v1/delete-user', {
         method: 'POST',
