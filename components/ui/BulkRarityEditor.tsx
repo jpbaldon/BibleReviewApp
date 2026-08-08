@@ -8,15 +8,8 @@ const rarities: Rarity[] = ['common', 'uncommon', 'rare', 'ultraRare', 'disabled
 
 export default function BulkRarityEditor({
   book,
-  updateChapterRarity,
 }: {
   book: { bookName: string; chapters: Chapter[] };
-  updateChapterRarity: (
-    bookName: string,
-    chapter: number,
-    rarity: Rarity,
-    shouldUpdateBook: boolean,
-  ) => Promise<void>;
 }) {
   const [fromChapter, setFromChapter] = useState<string>('1');
   const [toChapter, setToChapter] = useState<string>(book.chapters.length.toString());
@@ -24,7 +17,7 @@ export default function BulkRarityEditor({
   const [applyAllFrom, setApplyAllFrom] = useState<boolean>(false);
   const [toRarity, setToRarity] = useState<Rarity>('common');
 
-  const { updateBookEnabledStatus } = useBibleBooks();
+  const { updateChapterRarities } = useBibleBooks();
   const { theme } = useThemeContext();
 
   const getNextRarity = (rarity: Rarity): Rarity => {
@@ -55,20 +48,18 @@ export default function BulkRarityEditor({
       return;
     }
 
+    const updates = chaptersToUpdate.flatMap((ch) => {
+      const current = (ch.rarity || 'common') as Rarity;
+      const newRarity =
+        direction === 'increase' ? getNextRarity(current) : getPreviousRarity(current);
+      if (newRarity === current) return [];
+      return [{ chapter: ch.chapter, rarity: newRarity }];
+    });
+
+    if (updates.length === 0) return;
+
     try {
-      await Promise.all(
-        chaptersToUpdate.map((ch) => {
-          const current = (ch.rarity || 'common') as Rarity;
-          const newRarity =
-            direction === 'increase' ? getNextRarity(current) : getPreviousRarity(current);
-
-          if (newRarity === current) return Promise.resolve();
-
-          return updateChapterRarity(book.bookName, ch.chapter, newRarity, false);
-        }),
-      );
-
-      await updateBookEnabledStatus(book.bookName);
+      await updateChapterRarities(book.bookName, updates, true);
     } catch (err: any) {
       console.error(err);
       Alert.alert('Error', 'Failed to adjust chapter rarities.');
@@ -107,13 +98,11 @@ export default function BulkRarityEditor({
     }
 
     try {
-      await Promise.all(
-        chaptersToUpdate.map((ch) =>
-          updateChapterRarity(book.bookName, ch.chapter, toRarity, false),
-        ),
+      await updateChapterRarities(
+        book.bookName,
+        chaptersToUpdate.map((ch) => ({ chapter: ch.chapter, rarity: toRarity })),
+        true,
       );
-
-      await updateBookEnabledStatus(book.bookName);
     } catch (err: any) {
       console.error(err);
       Alert.alert('Error', 'Failed to update chapter rarities.');
@@ -295,7 +284,6 @@ export default function BulkRarityEditor({
           marginTop: 16,
           backgroundColor: theme.accent,
           padding: 10,
-          borderRadius: 8,
           alignItems: 'center',
         }}
       >

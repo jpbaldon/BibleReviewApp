@@ -58259,7 +58259,7 @@ export const BSB = {
 		]
 	},
 	{
-		"Book": "Psalm",
+		"Book": "Psalms",
 		"Enabled": true,
 		"Chapters": [
 			{

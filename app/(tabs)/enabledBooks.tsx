@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { FlatList, Text, View, StyleSheet, ActivityIndicator, Alert, Pressable } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { MIN_CHAPTERS_ENABLED_FOR_SCORE, useBibleBooks } from '@/context/BibleBooksContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BibleBook, Chapter } from '../../types';
-import BulkRarityEditor from '../../components/ui/BulkRarityEditor'
+import BulkRarityEditor from '../../components/ui/BulkRarityEditor';
 import { useThemeContext } from '../../context/ThemeContext';
 
 
@@ -81,13 +82,16 @@ export default function EnabledBooksScreen() {
     }
   }, [longPressActive, toggleBookEnabled, expandedBook]);
 
-  const handleLongPress = useCallback((bookName: string) => {
-    setLongPressActive(true);
-    // Only allow expanding enabled books
+  const toggleExpanded = useCallback((bookName: string) => {
     if (bibleBooks.find(b => b.bookName === bookName)?.enabled) {
-      setExpandedBook(prev => prev === bookName ? null : bookName);
+      setExpandedBook(prev => (prev === bookName ? null : bookName));
     }
   }, [bibleBooks]);
+
+  const handleLongPress = useCallback((bookName: string) => {
+    setLongPressActive(true);
+    toggleExpanded(bookName);
+  }, [toggleExpanded]);
 
   const handleRarityChange = async (
     bookName: string,
@@ -119,11 +123,12 @@ export default function EnabledBooksScreen() {
     </Pressable>
   );
 
-  const BookItem = React.memo(({ item, isExpanded, onPress, onLongPress, renderChapter }: {
+  const BookItem = React.memo(({ item, isExpanded, onPress, onLongPress, onExpandToggle, renderChapter }: {
     item: BibleBook;
     isExpanded: boolean;
     onPress: () => void;
     onLongPress: () => void;
+    onExpandToggle: () => void;
     renderChapter: (bookName: string, chapter: Chapter) => JSX.Element;
   }) => {
     return (
@@ -139,21 +144,39 @@ export default function EnabledBooksScreen() {
           ]}
         >
           <Text style={[styles.bookText, { color: theme.text }]}>{item.bookName}</Text>
-          <View
-            style={[
-              styles.statusIndicator,
-              item.enabled
-                ? { backgroundColor: theme.success }
-                : { backgroundColor: theme.textDisabled },
-            ]}
-          />
+          <View style={styles.bookRowTrailing}>
+            <View
+              style={[
+                styles.statusIndicator,
+                item.enabled
+                  ? { backgroundColor: theme.success }
+                  : { backgroundColor: theme.textDisabled },
+              ]}
+            />
+            {item.enabled ? (
+              <Pressable
+                onPress={onExpandToggle}
+                hitSlop={10}
+                style={styles.chevronButton}
+                accessibilityRole="button"
+                accessibilityLabel={`${isExpanded ? 'Collapse' : 'Expand'} chapter rarities for ${item.bookName}`}
+              >
+                <Ionicons
+                  name={isExpanded ? 'chevron-down' : 'chevron-forward'}
+                  size={20}
+                  color={theme.textMuted}
+                />
+              </Pressable>
+            ) : (
+              <View style={styles.chevronPlaceholder} />
+            )}
+          </View>
         </Pressable>
 
         {isExpanded && item.enabled && item.chapters && (
           <>
             <BulkRarityEditor
               book={{ bookName: item.bookName, chapters: item.chapters }}
-              updateChapterRarity={updateChapterRarity}
             />
             <View style={styles.chapterList}>
               {item.chapters.map(ch => renderChapter(item.bookName, ch))}
@@ -174,10 +197,11 @@ export default function EnabledBooksScreen() {
         isExpanded={isExpanded}
         onPress={() => handlePress(item.bookName)}
         onLongPress={() => handleLongPress(item.bookName)}
+        onExpandToggle={() => toggleExpanded(item.bookName)}
         renderChapter={renderChapter}
       />
     );
-  }, [expandedBook, handlePress, handleLongPress, renderChapter]);
+  }, [expandedBook, handlePress, handleLongPress, toggleExpanded, renderChapter]);
 
   if (isLoading) {
     return (
@@ -193,6 +217,9 @@ export default function EnabledBooksScreen() {
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <Text style={[styles.subHeaderText, { color: theme.text }]}>
           {totalEnabledBooks} {bookGrammar} enabled — {enabledChapterCount} {chapterGrammar} enabled
+        </Text>
+        <Text style={[styles.headerHintText, { color: theme.textMuted }]}>
+          Tap to enable · Tap › or long-press an enabled book to set chapter rarities
         </Text>
       </View>
 
@@ -219,11 +246,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 4,
   },
+  headerHintText: {
+    fontSize: 13,
+    marginTop: 8,
+    lineHeight: 18,
+  },
   listContent: {
     padding: 16,
   },
   bookItem: {
-    padding: 12,
+    minHeight: 44,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -245,7 +279,25 @@ const styles = StyleSheet.create({
     opacity: 0.85,
   },
   bookText: {
+    flex: 1,
     fontSize: 16,
+    marginRight: 8,
+  },
+  bookRowTrailing: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    minHeight: 28,
+  },
+  chevronButton: {
+    width: 32,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  chevronPlaceholder: {
+    width: 32,
+    height: 28,
   },
   statusIndicator: {
     width: 12,

@@ -121,10 +121,21 @@ async function withDatabase<T>(
 
 export { MIN_CHAPTERS_ENABLED_FOR_SCORE } from '../utils/scoreGate';
 
+export interface ChapterRarityUpdate {
+  chapter: number;
+  rarity: Rarity;
+}
+
 interface BibleBooksContextType {
   bibleBooks: BibleBook[];
   toggleBookEnabled: (bookName: string) => Promise<void>;
   updateChapterRarity: (bookName: string, chapter: number, rarity: Rarity, shouldUpdateBook?: boolean) => Promise<void>;
+  /** Batch rarity writes in one DB transaction and one React state update. */
+  updateChapterRarities: (
+    bookName: string,
+    updates: ChapterRarityUpdate[],
+    shouldUpdateBook?: boolean,
+  ) => Promise<void>;
   updateBookEnabledStatus: (bookName: string) => Promise<void>;
   isLoading: boolean;
   error: string | null;
@@ -138,6 +149,7 @@ const BibleBooksContext = createContext<BibleBooksContextType>({
   bibleBooks: [],
   toggleBookEnabled: async () => {},
   updateChapterRarity: async () => {},
+  updateChapterRarities: async () => {},
   updateBookEnabledStatus: async () => {},
   isLoading: true,
   error: null,
@@ -470,27 +482,32 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     }
   }, [user?.id]);
 
-  const updateChapterRarity = useCallback(async (
+  const updateChapterRarities = useCallback(async (
     bookName: string,
-    chapterNum: number,
-    rarity: Rarity,
+    updates: ChapterRarityUpdate[],
     shouldUpdateBook = true,
   ) => {
-    if (!user?.id) return;
+    if (!user?.id || updates.length === 0) return;
 
     try {
       await withDatabase(user.id, async (db) => {
-        await db.runAsync(
-          'INSERT OR REPLACE INTO ChapterRarities (Book, Chapter, Rarity) VALUES (?, ?, ?);',
-          [bookName, chapterNum, rarity],
-        );
+        await db.withExclusiveTransactionAsync(async (txn) => {
+          for (const { chapter, rarity } of updates) {
+            await txn.runAsync(
+              'INSERT OR REPLACE INTO ChapterRarities (Book, Chapter, Rarity) VALUES (?, ?, ?);',
+              [bookName, chapter, rarity],
+            );
+          }
+        });
 
+        const rarityByChapter = new Map(updates.map(u => [u.chapter, u.rarity]));
         setBibleBooks(prevBooks =>
           prevBooks.map(book => {
             if (book.bookName !== bookName) return book;
-            const updatedChapters = book.chapters?.map(ch =>
-              ch.chapter === chapterNum ? { ...ch, rarity } : ch,
-            ) ?? [];
+            const updatedChapters = book.chapters?.map(ch => {
+              const nextRarity = rarityByChapter.get(ch.chapter);
+              return nextRarity !== undefined ? { ...ch, rarity: nextRarity } : ch;
+            }) ?? [];
             return { ...book, chapters: updatedChapters };
           }),
         );
@@ -500,14 +517,24 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
         await updateBookEnabledStatus(bookName);
       }
     } catch (err) {
-      console.error('Failed to update rarity:', err);
+      console.error('Failed to update rarities:', err);
     }
   }, [user?.id, updateBookEnabledStatus]);
+
+  const updateChapterRarity = useCallback(async (
+    bookName: string,
+    chapterNum: number,
+    rarity: Rarity,
+    shouldUpdateBook = true,
+  ) => {
+    await updateChapterRarities(bookName, [{ chapter: chapterNum, rarity }], shouldUpdateBook);
+  }, [updateChapterRarities]);
 
   const contextValue = useMemo(() => ({
     bibleBooks,
     toggleBookEnabled,
     updateChapterRarity,
+    updateChapterRarities,
     updateBookEnabledStatus,
     isLoading,
     error,
@@ -519,6 +546,7 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     bibleBooks,
     toggleBookEnabled,
     updateChapterRarity,
+    updateChapterRarities,
     updateBookEnabledStatus,
     isLoading,
     error,
