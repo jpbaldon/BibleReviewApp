@@ -129,6 +129,8 @@ export interface ChapterRarityUpdate {
 interface BibleBooksContextType {
   bibleBooks: BibleBook[];
   toggleBookEnabled: (bookName: string) => Promise<void>;
+  setAllBooksEnabled: (enabled: boolean) => Promise<void>;
+  invertAllBooksEnabled: () => Promise<void>;
   updateChapterRarity: (bookName: string, chapter: number, rarity: Rarity, shouldUpdateBook?: boolean) => Promise<void>;
   /** Batch rarity writes in one DB transaction and one React state update. */
   updateChapterRarities: (
@@ -148,6 +150,8 @@ interface BibleBooksContextType {
 const BibleBooksContext = createContext<BibleBooksContextType>({
   bibleBooks: [],
   toggleBookEnabled: async () => {},
+  setAllBooksEnabled: async () => {},
+  invertAllBooksEnabled: async () => {},
   updateChapterRarity: async () => {},
   updateChapterRarities: async () => {},
   updateBookEnabledStatus: async () => {},
@@ -420,6 +424,63 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     await persistDesiredEnabled(bookName, user.id);
   }, [user?.id, persistDesiredEnabled]);
 
+  const setAllBooksEnabled = useCallback(async (enabled: boolean) => {
+    if (!user?.id) return;
+
+    desiredEnabledRef.current.clear();
+    persistInFlightRef.current.clear();
+
+    setBibleBooks(prevBooks =>
+      prevBooks.map(book => ({ ...book, enabled })),
+    );
+
+    try {
+      await withDatabase(user.id, async (db) => {
+        await db.runAsync(
+          'UPDATE BibleBooks SET Enabled = ?;',
+          [enabled ? 1 : 0],
+        );
+      });
+    } catch (err) {
+      console.error('Failed to set all books enabled:', err);
+      setError(`Failed to update books: ${err instanceof Error ? err.message : String(err)}`);
+      try {
+        await withDatabase(user.id, async (db) => {
+          await refreshEnrichedBooks(db);
+        });
+      } catch (refreshErr) {
+        console.error('Failed to recover books after bulk enable error:', refreshErr);
+      }
+    }
+  }, [user?.id, refreshEnrichedBooks]);
+
+  const invertAllBooksEnabled = useCallback(async () => {
+    if (!user?.id) return;
+
+    desiredEnabledRef.current.clear();
+    persistInFlightRef.current.clear();
+
+    setBibleBooks(prevBooks =>
+      prevBooks.map(book => ({ ...book, enabled: !book.enabled })),
+    );
+
+    try {
+      await withDatabase(user.id, async (db) => {
+        await db.runAsync('UPDATE BibleBooks SET Enabled = NOT Enabled;');
+      });
+    } catch (err) {
+      console.error('Failed to invert all books:', err);
+      setError(`Failed to update books: ${err instanceof Error ? err.message : String(err)}`);
+      try {
+        await withDatabase(user.id, async (db) => {
+          await refreshEnrichedBooks(db);
+        });
+      } catch (refreshErr) {
+        console.error('Failed to recover books after bulk invert error:', refreshErr);
+      }
+    }
+  }, [user?.id, refreshEnrichedBooks]);
+
   const updateBookEnabledStatus = useCallback(async (bookName: string) => {
     if (!user?.id) return;
 
@@ -533,6 +594,8 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
   const contextValue = useMemo(() => ({
     bibleBooks,
     toggleBookEnabled,
+    setAllBooksEnabled,
+    invertAllBooksEnabled,
     updateChapterRarity,
     updateChapterRarities,
     updateBookEnabledStatus,
@@ -545,6 +608,8 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
   }), [
     bibleBooks,
     toggleBookEnabled,
+    setAllBooksEnabled,
+    invertAllBooksEnabled,
     updateChapterRarity,
     updateChapterRarities,
     updateBookEnabledStatus,

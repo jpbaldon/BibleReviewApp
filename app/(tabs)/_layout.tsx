@@ -74,11 +74,6 @@ export default function TabLayout() {
         options={{
           title: 'Enabled Books',
           href: null,
-          headerShown: true,
-          headerStyle: {
-            backgroundColor: theme.background,
-          },
-          headerTintColor: theme.text,
         }}
       />
       <Tabs.Screen
