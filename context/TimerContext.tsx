@@ -1,26 +1,39 @@
-import React, { createContext, useContext, useState, useRef, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useRef, useEffect, ReactNode } from 'react';
 import { useConfetti } from './ConfettiContext';
 import { useAuth } from './AuthContext';
 import { useServices } from './ServicesContext';
 import { useAlert } from './AlertContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  COMPETITIVE_SCOPES,
+  COMPETITIVE_SCOPE_LABELS,
+  competitiveDurationSeconds,
+  type CompetitiveScope,
+} from '../utils/bibleScope';
+import {
+  competitiveStorageToBestScores,
+  emptyCompetitiveBestScores,
+  parseCompetitiveStorage,
+  setCompetitiveBest,
+  type CompetitiveStorageData,
+} from '../utils/competitiveStorage';
 
 export interface Timer {
   id: string;
   name: string;
-  duration: number; // seconds
-  remaining: number; // seconds
+  duration: number;
+  remaining: number;
   isActive: boolean;
   bestSessionScore: number;
 }
 
 export interface CompetitiveTimer {
   id: string;
-  name: string;
-  duration: number; // 15 minutes in seconds
+  duration: number;
   remaining: number;
   isActive: boolean;
-  bestScore: number;
+  activeScope: CompetitiveScope | null;
+  bestScores: Record<CompetitiveScope, number>;
 }
 
 interface TimerContextType {
@@ -35,7 +48,7 @@ interface TimerContextType {
   removeTimer: (id: string) => void;
   startTimer: (id: string) => void;
   stopTimer: () => void;
-  startCompetitiveTimer: () => void;
+  startCompetitiveTimer: (scope: CompetitiveScope) => void;
   stopCompetitiveTimer: () => void;
   resetTimer: (id: string) => void;
   updateTimer: (id: string, name: string, duration: number) => void;
@@ -50,6 +63,36 @@ export const useTimer = () => {
   return ctx;
 };
 
+async function syncCompetitiveScopeWithServer(
+  scope: CompetitiveScope,
+  storage: CompetitiveStorageData,
+  getCompetitiveScoreFromServer: (scope?: CompetitiveScope) => Promise<{
+    competitiveScore: number;
+    compScoreUpdate: string | null;
+  }>,
+  updateCompetitiveScoreOnServer: (score: number, scope?: CompetitiveScope) => Promise<void>,
+): Promise<CompetitiveStorageData> {
+  const localEntry = storage[scope];
+  const { competitiveScore: serverScore, compScoreUpdate: serverUpdatedAt } =
+    await getCompetitiveScoreFromServer(scope);
+
+  let localWins = false;
+  if (localEntry.updatedAt !== null && serverUpdatedAt !== null) {
+    localWins = localEntry.updatedAt > serverUpdatedAt;
+  } else if (localEntry.updatedAt !== null && serverUpdatedAt === null) {
+    localWins = true;
+  }
+
+  const bestScore = localWins ? localEntry.bestScore : serverScore;
+  const updatedAt = localWins ? localEntry.updatedAt : serverUpdatedAt;
+
+  if (localWins && localEntry.bestScore !== serverScore) {
+    await updateCompetitiveScoreOnServer(localEntry.bestScore, scope);
+  }
+
+  return setCompetitiveBest(storage, scope, bestScore, updatedAt);
+}
+
 export const TimerProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const onlinedb = useServices();
@@ -59,21 +102,51 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
   const [competitiveScore, setCompetitiveScore] = useState<number>(0);
   const [oldSessionBest, setOldSessionBest] = useState<number>(0);
   const [oldCompetitiveBest, setOldCompetitiveBest] = useState<number>(0);
-  
-  // Competitive Timer - Fixed 15 minutes
+
   const [competitiveTimer, setCompetitiveTimer] = useState<CompetitiveTimer>({
     id: 'competitive',
-    name: 'Competitive Timer',
-    duration: 300, // 5 minutes
+    duration: 300,
     remaining: 300,
     isActive: false,
-    bestScore: 0,
+    activeScope: null,
+    bestScores: emptyCompetitiveBestScores(),
   });
-  
-  // Confetti trigger
+
   const confetti = useConfetti?.();
   const { showAlert, showToast } = useAlert();
-  // Load timers from AsyncStorage on mount
+
+  const competitiveScoreRef = useRef(0);
+  const oldCompetitiveBestRef = useRef(0);
+  const activeScopeRef = useRef<CompetitiveScope | null>(null);
+
+  useEffect(() => {
+    competitiveScoreRef.current = competitiveScore;
+  }, [competitiveScore]);
+
+  useEffect(() => {
+    oldCompetitiveBestRef.current = oldCompetitiveBest;
+  }, [oldCompetitiveBest]);
+
+  useEffect(() => {
+    activeScopeRef.current = competitiveTimer.activeScope;
+  }, [competitiveTimer.activeScope]);
+
+  const persistCompetitiveStorage = async (data: CompetitiveStorageData) => {
+    if (!user) return;
+    await AsyncStorage.setItem(getKey('competitiveTimer'), JSON.stringify(data));
+  };
+
+  const saveCompetitiveBest = async (scope: CompetitiveScope, bestScore: number) => {
+    if (!user) return;
+    const updatedAt = new Date().toISOString();
+    const raw = await AsyncStorage.getItem(getKey('competitiveTimer'));
+    const storage = setCompetitiveBest(parseCompetitiveStorage(raw), scope, bestScore, updatedAt);
+    await persistCompetitiveStorage(storage);
+    if (onlinedb) {
+      await onlinedb.score.updateCompetitiveScoreOnServer(bestScore, scope);
+    }
+  };
+
   useEffect(() => {
     (async () => {
       try {
@@ -82,103 +155,82 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
           setActiveTimerId(null);
           setTimedSessionScore(0);
           setCompetitiveScore(0);
-          setCompetitiveTimer(prev => ({ ...prev, isActive: false, remaining: prev.duration, bestScore: 0 }));
+          setCompetitiveTimer((prev) => ({
+            ...prev,
+            isActive: false,
+            remaining: prev.duration,
+            activeScope: null,
+            bestScores: emptyCompetitiveBestScores(),
+          }));
           if (intervalRef.current) clearInterval(intervalRef.current);
           if (competitiveIntervalRef.current) clearInterval(competitiveIntervalRef.current);
           return;
         }
+
         const stored = await AsyncStorage.getItem(getKey('timers'));
         const competitiveStored = await AsyncStorage.getItem(getKey('competitiveTimer'));
-        
+
         let loadedTimers = stored ? JSON.parse(stored) : [];
-        // On login, reset all timers to inactive and remaining = duration
-        loadedTimers = (loadedTimers as Timer[]).map((t: Timer) => ({ ...t, isActive: false, remaining: t.duration }));
+        loadedTimers = (loadedTimers as Timer[]).map((t: Timer) => ({
+          ...t,
+          isActive: false,
+          remaining: t.duration,
+        }));
         setTimers(loadedTimers);
         setActiveTimerId(null);
         setTimedSessionScore(0);
         setCompetitiveScore(0);
-        
-        // Load competitive timer's best score and update timestamp from local storage first
-        let localBest = 0;
-        let localUpdatedAt: string | null = null;
-        if (competitiveStored) {
-          const parsedCompetitive = JSON.parse(competitiveStored);
-          localBest = parsedCompetitive.bestScore || 0;
-          localUpdatedAt = parsedCompetitive.updatedAt ?? null;
-        }
-        
-        // Sync with server
+
+        let storage = parseCompetitiveStorage(competitiveStored);
+
         if (onlinedb) {
           try {
-            const { competitiveScore: serverScore, compScoreUpdate: serverUpdatedAt } = await onlinedb.score.getCompetitiveScoreFromServer();
-            
-            // Determine which version is more recent.
-            // Server wins when timestamps are equal or when comparison is ambiguous.
-            let bestScore: number;
-            let localWins = false;
-            if (localUpdatedAt !== null && serverUpdatedAt !== null) {
-              localWins = localUpdatedAt > serverUpdatedAt;
-            } else if (localUpdatedAt !== null && serverUpdatedAt === null) {
-              // Local was explicitly updated, server timestamp missing → local wins
-              localWins = true;
+            for (const scope of COMPETITIVE_SCOPES) {
+              storage = await syncCompetitiveScopeWithServer(
+                scope,
+                storage,
+                onlinedb.score.getCompetitiveScoreFromServer,
+                onlinedb.score.updateCompetitiveScoreOnServer,
+              );
             }
-            // In all other cases (server has timestamp, or both null) → server wins
-            bestScore = localWins ? localBest : serverScore;
-            
-            setCompetitiveTimer(prev => ({
-              ...prev,
-              bestScore,
-              remaining: prev.duration,
-              isActive: false,
-            }));
-            // Update local storage if server score is being used and differs
-            if (!localWins && bestScore !== localBest) {
-              await AsyncStorage.setItem(getKey('competitiveTimer'), JSON.stringify({ bestScore, updatedAt: serverUpdatedAt }));
-            }
-            // Update server if local score wins
-            if (localWins) {
-              await onlinedb.score.updateCompetitiveScoreOnServer(localBest);
-            }
-          } catch (e) {
-            // If server sync fails, use local score
-            setCompetitiveTimer(prev => ({
-              ...prev,
-              bestScore: localBest,
-              remaining: prev.duration,
-              isActive: false,
-            }));
+            await persistCompetitiveStorage(storage);
+          } catch {
+            // Use local storage if server sync fails
           }
-        } else {
-          setCompetitiveTimer(prev => ({
-            ...prev,
-            bestScore: localBest,
-            remaining: prev.duration,
-            isActive: false,
-          }));
         }
-        
+
+        setCompetitiveTimer((prev) => ({
+          ...prev,
+          bestScores: competitiveStorageToBestScores(storage),
+          remaining: prev.duration,
+          isActive: false,
+          activeScope: null,
+        }));
+
         if (intervalRef.current) clearInterval(intervalRef.current);
         if (competitiveIntervalRef.current) clearInterval(competitiveIntervalRef.current);
-      } catch (e) { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const [activeTimerId, setActiveTimerId] = useState<string | null>(null);
-  const intervalRef = useRef<any>(null);
-  const competitiveIntervalRef = useRef<any>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const competitiveIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const activeTimer = timers.find(t => t.id === activeTimerId) || null;
+  const activeTimer = timers.find((t) => t.id === activeTimerId) || null;
 
   useEffect(() => {
     if (activeTimer && activeTimer.isActive && activeTimer.remaining > 0) {
       intervalRef.current = setInterval(() => {
-        setTimers(prev => prev.map(t => {
-          if (t.id === activeTimer.id) {
-            if (t.remaining > 1) {
-              return { ...t, remaining: t.remaining - 1 };
-            } else {
-              // Timer hits 0, reset to duration and alert
+        setTimers((prev) =>
+          prev.map((t) => {
+            if (t.id === activeTimer.id) {
+              if (t.remaining > 1) {
+                return { ...t, remaining: t.remaining - 1 };
+              }
               const durationLabel = `${Math.floor(t.duration / 60)}:${(t.duration % 60).toString().padStart(2, '0')}`;
               if (timedSessionScore > (oldSessionBest ?? 0)) {
                 if (confetti && typeof confetti.showConfetti === 'function') {
@@ -206,69 +258,70 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
               setTimedSessionScore(0);
               return { ...t, remaining: t.duration, isActive: false };
             }
-          }
-          return t;
-        }));
-      }, 1000) as any;
+            return t;
+          }),
+        );
+      }, 1000);
     } else if (activeTimer && activeTimer.remaining === 0) {
       stopTimer();
-      // Optionally: trigger a global alert/modal here
     }
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, [activeTimerId, activeTimer?.isActive, activeTimer?.remaining, timedSessionScore, confetti]);
 
-  // Competitive Timer Effect
   useEffect(() => {
     if (competitiveTimer.isActive && competitiveTimer.remaining > 0) {
       competitiveIntervalRef.current = setInterval(() => {
-        setCompetitiveTimer(prev => {
+        setCompetitiveTimer((prev) => {
           if (prev.remaining > 1) {
             return { ...prev, remaining: prev.remaining - 1 };
-          } else {
-            // Competitive timer hits 0
-            if (competitiveScore > (oldCompetitiveBest ?? 0)) {
-              if (confetti && typeof confetti.showConfetti === 'function') {
-                confetti.showConfetti();
-              }
-              // Update best score and save to AsyncStorage and server
-              const newBest = competitiveScore;
-              if (user) {
-                const updatedAt = new Date().toISOString();
-                AsyncStorage.setItem(getKey('competitiveTimer'), JSON.stringify({ bestScore: newBest, updatedAt }));
-                // Sync with server
-                if (onlinedb) {
-                  onlinedb.score.updateCompetitiveScoreOnServer(newBest).catch(err => 
-                    console.error('Failed to update competitive score on server:', err)
-                  );
-                }
-              }
-              setTimeout(() => {
-                showAlert({
-                  title: 'Competitive Timer Finished',
-                  message: `Competitive Timer has finished!\n\nNew best score: ${newBest}\n(Previous: ${oldCompetitiveBest ?? 0})`,
-                  variant: 'success',
-                });
-              }, 0);
-              return { ...prev, remaining: prev.duration, isActive: false, bestScore: newBest };
-            } else {
-              setTimeout(() => {
-                showAlert({
-                  title: 'Competitive Timer Finished',
-                  message: `Competitive Timer has finished!\n\nScore: ${competitiveScore}\nBest: ${oldCompetitiveBest ?? 0}`,
-                  variant: 'info',
-                });
-              }, 0);
-              return { ...prev, remaining: prev.duration, isActive: false };
-            }
           }
+
+          const scope = activeScopeRef.current ?? 'full';
+          const scopeLabel = COMPETITIVE_SCOPE_LABELS[scope];
+          const score = competitiveScoreRef.current;
+          const previousBest = oldCompetitiveBestRef.current;
+
+          if (score > (previousBest ?? 0)) {
+            if (confetti && typeof confetti.showConfetti === 'function') {
+              confetti.showConfetti();
+            }
+            void saveCompetitiveBest(scope, score);
+            setTimeout(() => {
+              showAlert({
+                title: 'Competitive Timer Finished',
+                message: `${scopeLabel} competitive timer has finished!\n\nNew best score: ${score}\n(Previous: ${previousBest ?? 0})`,
+                variant: 'success',
+              });
+            }, 0);
+            return {
+              ...prev,
+              remaining: prev.duration,
+              isActive: false,
+              activeScope: null,
+              bestScores: { ...prev.bestScores, [scope]: score },
+            };
+          }
+
+          setTimeout(() => {
+            showAlert({
+              title: 'Competitive Timer Finished',
+              message: `${scopeLabel} competitive timer has finished!\n\nScore: ${score}\nBest: ${previousBest ?? 0}`,
+              variant: 'info',
+            });
+          }, 0);
+          return { ...prev, remaining: prev.duration, isActive: false, activeScope: null };
         });
-      }, 1000) as any;
+      }, 1000);
     }
-    return () => { if (competitiveIntervalRef.current) clearInterval(competitiveIntervalRef.current); };
-  }, [competitiveTimer.isActive, competitiveTimer.remaining, competitiveScore, oldCompetitiveBest, confetti, user, getKey, onlinedb]);
+    return () => {
+      if (competitiveIntervalRef.current) clearInterval(competitiveIntervalRef.current);
+    };
+  }, [competitiveTimer.isActive, competitiveTimer.remaining, confetti, user, onlinedb]);
 
   const addTimer = (name: string, duration: number) => {
-    setTimers(prev => {
+    setTimers((prev) => {
       if (prev.length >= 10) {
         setTimeout(() => {
           showToast({
@@ -281,7 +334,14 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
       }
       const updated = [
         ...prev,
-        { id: Date.now().toString(), name, duration, remaining: duration, isActive: false, bestSessionScore: 0 }
+        {
+          id: Date.now().toString(),
+          name,
+          duration,
+          remaining: duration,
+          isActive: false,
+          bestSessionScore: 0,
+        },
       ];
       if (user) {
         AsyncStorage.setItem(getKey('timers'), JSON.stringify(updated));
@@ -289,10 +349,11 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
       return updated;
     });
   };
+
   const updateBestSessionScore = (id: string, score: number) => {
-    setTimers(prev => {
-      const updated = prev.map(t =>
-        t.id === id && score > t.bestSessionScore ? { ...t, bestSessionScore: score } : t
+    setTimers((prev) => {
+      const updated = prev.map((t) =>
+        t.id === id && score > t.bestSessionScore ? { ...t, bestSessionScore: score } : t,
       );
       if (user) {
         AsyncStorage.setItem(getKey('timers'), JSON.stringify(updated));
@@ -302,8 +363,8 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const removeTimer = (id: string) => {
-    setTimers(prev => {
-      const updated = prev.filter(t => t.id !== id);
+    setTimers((prev) => {
+      const updated = prev.filter((t) => t.id !== id);
       if (user) {
         AsyncStorage.setItem(getKey('timers'), JSON.stringify(updated));
       }
@@ -313,23 +374,28 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const startTimer = (id: string) => {
-    // Stop competitive timer if running
     if (competitiveTimer.isActive) {
-      setCompetitiveTimer(prev => ({ ...prev, isActive: false, remaining: prev.duration }));
+      setCompetitiveTimer((prev) => ({
+        ...prev,
+        isActive: false,
+        remaining: prev.duration,
+        activeScope: null,
+      }));
       setCompetitiveScore(0);
       if (competitiveIntervalRef.current) clearInterval(competitiveIntervalRef.current);
     }
-    
-    setTimers(prev => prev.map(t =>
-      t.id === id
-        ? { ...t, isActive: true, remaining: t.remaining === 0 ? t.duration : t.remaining }
-        : { ...t, isActive: false }
-    ));
+
+    setTimers((prev) =>
+      prev.map((t) =>
+        t.id === id
+          ? { ...t, isActive: true, remaining: t.remaining === 0 ? t.duration : t.remaining }
+          : { ...t, isActive: false },
+      ),
+    );
     setActiveTimerId(id);
     setTimedSessionScore(0);
-    // Remove setOldSessionBest here; will be handled by useEffect below
   };
-  // Always keep oldSessionBest in sync with the current activeTimer
+
   useEffect(() => {
     if (activeTimer) {
       setOldSessionBest(activeTimer.bestSessionScore || 0);
@@ -337,13 +403,16 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
   }, [activeTimer]);
 
   const stopTimer = () => {
-    // If a timer was active and a new best was achieved, update bestSessionScore
     if (activeTimer && timedSessionScore > (oldSessionBest || 0)) {
       updateBestSessionScore(activeTimer.id, timedSessionScore);
       if (confetti) confetti.showConfetti();
     }
     if (activeTimer) {
-      setTimers(prev => prev.map(t => t.id === activeTimer.id ? { ...t, remaining: t.duration, isActive: false } : t));
+      setTimers((prev) =>
+        prev.map((t) =>
+          t.id === activeTimer.id ? { ...t, remaining: t.duration, isActive: false } : t,
+        ),
+      );
     }
     setActiveTimerId(null);
     setTimedSessionScore(0);
@@ -351,16 +420,16 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const resetTimer = (id: string) => {
-    setTimers(prev => prev.map(t =>
-      t.id === id ? { ...t, remaining: t.duration, isActive: false } : t
-    ));
+    setTimers((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, remaining: t.duration, isActive: false } : t)),
+    );
     if (activeTimerId === id) stopTimer();
   };
 
   const updateTimer = (id: string, name: string, duration: number) => {
-    setTimers(prev => {
-      const updated = prev.map(t =>
-        t.id === id ? { ...t, name, duration, remaining: duration } : t
+    setTimers((prev) => {
+      const updated = prev.map((t) =>
+        t.id === id ? { ...t, name, duration, remaining: duration } : t,
       );
       if (user) {
         AsyncStorage.setItem(getKey('timers'), JSON.stringify(updated));
@@ -370,76 +439,81 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const incrementTimedSessionScore = async (points: number) => {
-    const newTimedSessionScore = timedSessionScore + points;
-    setTimedSessionScore(newTimedSessionScore);
+    setTimedSessionScore((prev) => prev + points);
     if (activeTimer) {
       setOldSessionBest(activeTimer.bestSessionScore || 0);
     }
   };
 
   const incrementCompetitiveScore = async (points: number) => {
-    const newCompetitiveScore = competitiveScore + points;
-    setCompetitiveScore(newCompetitiveScore);
+    setCompetitiveScore((prev) => prev + points);
   };
 
-  const startCompetitiveTimer = () => {
-    // Stop any active session timer
+  const startCompetitiveTimer = (scope: CompetitiveScope) => {
     if (activeTimer) {
       stopTimer();
     }
-    
-    setOldCompetitiveBest(competitiveTimer.bestScore || 0);
+
+    const scopeBest = competitiveTimer.bestScores[scope] || 0;
+    const duration = competitiveDurationSeconds(scope);
+    setOldCompetitiveBest(scopeBest);
     setCompetitiveScore(0);
-    setCompetitiveTimer(prev => ({
+    setCompetitiveTimer((prev) => ({
       ...prev,
       isActive: true,
-      remaining: prev.duration,
+      duration,
+      remaining: duration,
+      activeScope: scope,
     }));
   };
 
   const stopCompetitiveTimer = () => {
-    // Check if we beat the previous best and update if so
+    const scope = competitiveTimer.activeScope ?? 'full';
     if (competitiveTimer.isActive && competitiveScore > (oldCompetitiveBest || 0)) {
       const newBest = competitiveScore;
-      setCompetitiveTimer(prev => ({ ...prev, bestScore: newBest, isActive: false, remaining: prev.duration }));
-      if (user) {
-        const updatedAt = new Date().toISOString();
-        AsyncStorage.setItem(getKey('competitiveTimer'), JSON.stringify({ bestScore: newBest, updatedAt }));
-        // Sync with server
-        if (onlinedb) {
-          onlinedb.score.updateCompetitiveScoreOnServer(newBest).catch(err => 
-            console.error('Failed to update competitive score on server:', err)
-          );
-        }
-      }
+      setCompetitiveTimer((prev) => ({
+        ...prev,
+        bestScores: { ...prev.bestScores, [scope]: newBest },
+        isActive: false,
+        remaining: prev.duration,
+        activeScope: null,
+      }));
+      void saveCompetitiveBest(scope, newBest);
       if (confetti) confetti.showConfetti();
     } else {
-      setCompetitiveTimer(prev => ({ ...prev, isActive: false, remaining: prev.duration }));
+      setCompetitiveTimer((prev) => ({
+        ...prev,
+        isActive: false,
+        remaining: prev.duration,
+        activeScope: null,
+      }));
     }
-    
+
     setCompetitiveScore(0);
     if (competitiveIntervalRef.current) clearInterval(competitiveIntervalRef.current);
   };
 
   return (
-    <TimerContext value={{
-      timers,
-      activeTimer,
-      competitiveTimer,
-      timedSessionScore,
-      competitiveScore,
-      incrementTimedSessionScore,
-      incrementCompetitiveScore,
-      addTimer,
-      removeTimer,
-      startTimer,
-      stopTimer,
-      startCompetitiveTimer,
-      stopCompetitiveTimer,
-      resetTimer,
-      updateTimer,
-      updateBestSessionScore
-    }}>
+    <TimerContext
+      value={{
+        timers,
+        activeTimer,
+        competitiveTimer,
+        timedSessionScore,
+        competitiveScore,
+        incrementTimedSessionScore,
+        incrementCompetitiveScore,
+        addTimer,
+        removeTimer,
+        startTimer,
+        stopTimer,
+        startCompetitiveTimer,
+        stopCompetitiveTimer,
+        resetTimer,
+        updateTimer,
+        updateBestSessionScore,
+      }}
+    >
       {children}
     </TimerContext>
   );

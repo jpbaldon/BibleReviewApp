@@ -299,7 +299,7 @@ export default function EnabledBooksScreen() {
           </Pressable>
         </View>
         <Text style={[styles.headerHintText, { color: theme.textMuted }]}>
-          Tap to enable · Tap › or long-press an enabled book to set chapter rarities
+          Tap a book to enable · Tap › to set chapter rarities
         </Text>
       </View>
 

@@ -1,52 +1,79 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  ActivityIndicator,
+} from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import { useServices } from '@/context/ServicesContext';
 import { useThemeContext } from '@/context/ThemeContext';
-import { CompetitiveLeaderboardEntry } from '../../types';
+import { useTimer } from '@/context/TimerContext';
+import { CompetitiveLeaderboardEntry, CompetitiveScope } from '../../types';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
+import { CompetitiveScopeTabs } from '@/components/CompetitiveScopeTabs';
+import { CompetitiveTimerCard } from '@/components/CompetitiveTimerCard';
+import { COMPETITIVE_SCOPE_LABELS, competitiveDurationLabel } from '@/utils/bibleScope';
 
 export default function CompetitiveLeaderboardScreen() {
   const [scores, setScores] = useState<CompetitiveLeaderboardEntry[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [selectedScope, setSelectedScope] = useState<CompetitiveScope>('full');
 
   const { user } = useAuth();
   const { theme } = useThemeContext();
-  const server = user ? useServices() : null;
+  const { competitiveTimer } = useTimer();
+  const server = useServices();
 
-  const fetchLeaderboard = async () => {
-    if (!server) return;
-    try {
-      setRefreshing(true);
-      setError(null);
-      const data = await server.score.fetchTopCompetitiveScores();
-      const rankedData = data.map((item, index) => ({
-        ...item,
-        rank: index + 1,
-      }));
-      setScores(rankedData);
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('An unknown error occurred');
-      }
-    } finally {
-      setRefreshing(false);
-      setLoading(false);
+  useEffect(() => {
+    if (competitiveTimer.isActive && competitiveTimer.activeScope) {
+      setSelectedScope(competitiveTimer.activeScope);
     }
-  };
+  }, [competitiveTimer.isActive, competitiveTimer.activeScope]);
+
+  const fetchLeaderboard = useCallback(
+    async (scope: CompetitiveScope = selectedScope) => {
+      if (!user) return;
+      try {
+        setRefreshing(true);
+        setError(null);
+        const data = await server.score.fetchTopCompetitiveScores(scope);
+        const rankedData = data.map((item, index) => ({
+          ...item,
+          rank: index + 1,
+        }));
+        setScores(rankedData);
+      } catch (err) {
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError('An unknown error occurred');
+        }
+      } finally {
+        setRefreshing(false);
+        setLoading(false);
+      }
+    },
+    [user, server, selectedScope],
+  );
 
   useFocusEffect(
     useCallback(() => {
-      if (server) fetchLeaderboard();
-    }, [server]),
+      if (user) fetchLeaderboard(selectedScope);
+    }, [user, selectedScope, fetchLeaderboard]),
   );
+
+  const handleScopeChange = (scope: CompetitiveScope) => {
+    setSelectedScope(scope);
+    setLoading(true);
+    void fetchLeaderboard(scope);
+  };
 
   const getMedalColor = (rank: number) => {
     switch (rank) {
@@ -153,9 +180,18 @@ export default function CompetitiveLeaderboardScreen() {
         <Icon name="trophy" size={28} color={theme.competitive} />
       </View>
 
-      <View style={styles.subtitle}>
+      <View style={styles.scopeTabs}>
+        <CompetitiveScopeTabs
+          selectedScope={selectedScope}
+          onSelectScope={handleScopeChange}
+        />
+      </View>
+
+      <CompetitiveTimerCard scope={selectedScope} />
+
+      <View style={[styles.subtitle, { marginTop: 12 }]}>
         <Text style={[styles.subtitleText, { color: theme.textMuted }]}>
-          5-Minute Challenge · Best Scores
+          {competitiveDurationLabel(selectedScope)} · {COMPETITIVE_SCOPE_LABELS[selectedScope]} Best Scores
         </Text>
       </View>
 
@@ -176,7 +212,7 @@ export default function CompetitiveLeaderboardScreen() {
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
-        onRefresh={fetchLeaderboard}
+        onRefresh={() => fetchLeaderboard(selectedScope)}
         refreshing={refreshing}
       />
     </Screen>
@@ -206,6 +242,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: '700',
+  },
+  scopeTabs: {
+    marginBottom: 4,
   },
   subtitle: {
     alignItems: 'center',

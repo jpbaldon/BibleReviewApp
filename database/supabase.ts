@@ -1,6 +1,6 @@
 import { createClient, User as SupabaseUser, Session as SupabaseSession } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { BibleBook, Chapter, Rarity, UserSettings, AppUser, AppSession } from '../types/index'
+import { BibleBook, Chapter, Rarity, UserSettings, AppUser, AppSession, CompetitiveScope } from '../types/index'
 import Constants from 'expo-constants';
 import { Alert } from 'react-native';
 
@@ -9,6 +9,15 @@ console.log('Expo Config:', Constants.expoConfig); // Debug log
 const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl;
 const supabaseKey = Constants.expoConfig?.extra?.supabaseKey;
 const LEADERBOARD_ENTRIES_LIMIT = 50;
+
+const COMPETITIVE_SCORE_COLUMNS: Record<
+  CompetitiveScope,
+  { score: string; updated: string }
+> = {
+  full: { score: 'competitive_score', updated: 'comp_score_update' },
+  ot: { score: 'competitive_score_ot', updated: 'comp_score_update_ot' },
+  nt: { score: 'competitive_score_nt', updated: 'comp_score_update_nt' },
+};
 
 if (!supabaseUrl || !supabaseKey) {
   throw new Error(`
@@ -260,40 +269,54 @@ export const SupabaseService = {
       return data;
     },
     
-    getCompetitiveScoreFromServer: async (userId: string) => {
+    getCompetitiveScoreFromServer: async (userId: string, scope: CompetitiveScope = 'full') => {
+      const columns = COMPETITIVE_SCORE_COLUMNS[scope];
       const { data, error } = await supabase
         .from('profiles')
-        .select('competitive_score, comp_score_update')
+        .select(`${columns.score}, ${columns.updated}`)
         .eq('id', userId)
         .single();
 
       if (error) throw new Error(error.message);
 
       return {
-        competitiveScore: data?.competitive_score ?? 0,
-        compScoreUpdate: data?.comp_score_update ?? null,
+        competitiveScore: (data as Record<string, number | null>)?.[columns.score] ?? 0,
+        compScoreUpdate: (data as Record<string, string | null>)?.[columns.updated] ?? null,
       };
     },
-    
-    updateCompetitiveScoreOnServer: async (userId: string, competitiveScore: number) => {
+
+    updateCompetitiveScoreOnServer: async (
+      userId: string,
+      competitiveScore: number,
+      scope: CompetitiveScope = 'full',
+    ) => {
+      const columns = COMPETITIVE_SCORE_COLUMNS[scope];
       const { error } = await supabase
         .from('profiles')
-        .update({ competitive_score: competitiveScore, comp_score_update: new Date().toISOString() })
+        .update({
+          [columns.score]: competitiveScore,
+          [columns.updated]: new Date().toISOString(),
+        })
         .eq('id', userId);
 
       if (error) throw error;
     },
-    
-    fetchTopCompetitiveScores: async (limit = LEADERBOARD_ENTRIES_LIMIT) => {
+
+    fetchTopCompetitiveScores: async (scope: CompetitiveScope = 'full', limit = LEADERBOARD_ENTRIES_LIMIT) => {
+      const columns = COMPETITIVE_SCORE_COLUMNS[scope];
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, username, competitive_score')
-        .order('competitive_score', { ascending: false })
-        .order('comp_score_update', { ascending: true })
+        .select(`id, username, ${columns.score}`)
+        .order(columns.score, { ascending: false })
+        .order(columns.updated, { ascending: true })
         .limit(limit);
 
       if (error) throw error;
-      return data;
+      return (data ?? []).map((row) => ({
+        id: row.id,
+        username: row.username,
+        competitive_score: (row as Record<string, number>)[columns.score] ?? 0,
+      }));
     },
 
   },

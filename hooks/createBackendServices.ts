@@ -1,4 +1,4 @@
-import { Rarity, UserSettings, BackendService } from '../types/index';
+import { Rarity, UserSettings, BackendService, CompetitiveScope } from '../types/index';
 
 export const createBackendServices = (backend: BackendService, userId: string) => {
 
@@ -15,9 +15,12 @@ export const createBackendServices = (backend: BackendService, userId: string) =
       updateOverallScoreOnServer: (overallScore: number) => backend.score.updateOverallScoreOnServer(userId, overallScore),
       incrementUserScoreRpc: (points: number) => backend.score.incrementUserScoreRpc(userId, points),
       fetchTopScores: (limit?: number) => backend.score.fetchTopScores(limit),
-      getCompetitiveScoreFromServer: () => backend.score.getCompetitiveScoreFromServer(userId),
-      updateCompetitiveScoreOnServer: (competitiveScore: number) => backend.score.updateCompetitiveScoreOnServer(userId, competitiveScore),
-      fetchTopCompetitiveScores: (limit?: number) => backend.score.fetchTopCompetitiveScores(limit),
+      getCompetitiveScoreFromServer: (scope?: CompetitiveScope) =>
+        backend.score.getCompetitiveScoreFromServer(userId, scope),
+      updateCompetitiveScoreOnServer: (competitiveScore: number, scope?: CompetitiveScope) =>
+        backend.score.updateCompetitiveScoreOnServer(userId, competitiveScore, scope),
+      fetchTopCompetitiveScores: (scope?: CompetitiveScope, limit?: number) =>
+        backend.score.fetchTopCompetitiveScores(scope, limit),
     },
     usernames: {
       checkAvailability: (username: string) => backend.usernames.checkAvailability(username),

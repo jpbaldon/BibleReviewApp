@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import { useTimer } from '../../context/TimerContext';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -6,13 +6,16 @@ import { TimerInputRow } from '../../components/TimerInputRow';
 import { useThemeContext } from '@/context/ThemeContext';
 import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
-import { Card } from '@/components/ui/Card';
+import { CompetitiveScopeTabs } from '@/components/CompetitiveScopeTabs';
+import { CompetitiveTimerCard } from '@/components/CompetitiveTimerCard';
+import type { CompetitiveScope } from '@/utils/bibleScope';
 
 export default function TimerScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState<string>('');
   const [editMinutes, setEditMinutes] = useState<string>('0');
   const [editSeconds, setEditSeconds] = useState<string>('0');
+  const [selectedScope, setSelectedScope] = useState<CompetitiveScope>('full');
 
   const {
     timers,
@@ -22,10 +25,14 @@ export default function TimerScreen() {
     startTimer,
     stopTimer,
     updateTimer,
-    startCompetitiveTimer,
-    stopCompetitiveTimer,
   } = useTimer();
   const { theme } = useThemeContext();
+
+  useEffect(() => {
+    if (competitiveTimer.isActive && competitiveTimer.activeScope) {
+      setSelectedScope(competitiveTimer.activeScope);
+    }
+  }, [competitiveTimer.isActive, competitiveTimer.activeScope]);
 
   const handleAdd = (name: string, minutes: number, seconds: number) => {
     const duration = minutes * 60 + seconds;
@@ -40,57 +47,11 @@ export default function TimerScreen() {
         <AppText variant="subtitle" style={styles.competitiveTitle}>
           Competitive Timer
         </AppText>
-        <Card
-          style={[
-            styles.competitiveTimerItem,
-            {
-              borderColor: competitiveTimer.isActive ? theme.competitive : theme.border,
-            },
-          ]}
-        >
-          <View style={styles.itemTopRow}>
-            <Text style={[styles.timerName, { color: theme.text }]}>
-              {competitiveTimer.name}
-            </Text>
-            <Text
-              style={[
-                styles.timerTime,
-                {
-                  color: competitiveTimer.isActive ? theme.competitive : theme.text,
-                  fontWeight: '700',
-                  fontSize: 18,
-                },
-              ]}
-            >
-              {`${Math.floor(competitiveTimer.remaining / 60)}:${(competitiveTimer.remaining % 60)
-                .toString()
-                .padStart(2, '0')}`}
-            </Text>
-            <TouchableOpacity
-              onPress={() => startCompetitiveTimer()}
-              disabled={competitiveTimer.isActive}
-            >
-              <Icon
-                name="play"
-                size={28}
-                color={competitiveTimer.isActive ? theme.textDisabled : theme.competitive}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => stopCompetitiveTimer()}>
-              <Icon name="refresh" size={28} color={theme.textMuted} />
-            </TouchableOpacity>
-          </View>
-          {competitiveTimer.bestScore > 0 && (
-            <View style={styles.itemBottomRow}>
-              <Text style={{ color: theme.text, fontSize: 13 }}>
-                Personal Best:{' '}
-                <Text style={{ fontWeight: '700', color: theme.competitive }}>
-                  {competitiveTimer.bestScore}
-                </Text>
-              </Text>
-            </View>
-          )}
-        </Card>
+        <CompetitiveScopeTabs
+          selectedScope={selectedScope}
+          onSelectScope={setSelectedScope}
+        />
+        <CompetitiveTimerCard scope={selectedScope} />
       </View>
 
       <AppText variant="subtitle" style={styles.sectionTitle}>
@@ -229,9 +190,6 @@ const styles = StyleSheet.create({
   competitiveTitle: {
     marginBottom: 12,
     textAlign: 'center',
-  },
-  competitiveTimerItem: {
-    borderWidth: 2,
   },
   sectionTitle: {
     marginTop: 8,

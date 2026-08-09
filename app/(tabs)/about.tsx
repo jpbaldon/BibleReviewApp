@@ -49,8 +49,10 @@ export default function About() {
             Bible chapter instead of a chapter summary. The Verses tab is worth double points.
           </AppText>
           <AppText style={styles.body}>
-            When the competitive timer is active, prompts will be pulled from all Bible Chapters,
-            regardless of which ones you have enabled.
+            Competitive timers let you race the clock in three modes: Full Bible, Old Testament,
+            or New Testament. While a competitive timer is active, prompts are pulled from every
+            chapter in that scope, regardless of which books you have enabled. Each mode has its
+            own personal best and leaderboard.
           </AppText>
           <AppText style={styles.body}>
             I hope this app is a fun way to help develop your knowledge of the Scripture!
