@@ -3,6 +3,35 @@ import {
   type CompetitiveScope,
 } from './bibleScope';
 
+export type ChampionCelebratedData = Record<CompetitiveScope, boolean>;
+
+export function emptyChampionCelebrated(): ChampionCelebratedData {
+  return {
+    full: false,
+    ot: false,
+    nt: false,
+  };
+}
+
+export function parseChampionCelebrated(raw: string | null): ChampionCelebratedData {
+  if (!raw) return emptyChampionCelebrated();
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<ChampionCelebratedData>;
+    const data = emptyChampionCelebrated();
+    for (const scope of COMPETITIVE_SCOPES) {
+      data[scope] = parsed[scope] === true;
+    }
+    return data;
+  } catch {
+    return emptyChampionCelebrated();
+  }
+}
+
+export function championCelebratedStorageKey(userId: string): string {
+  return `competitiveChampionCelebrated-${userId}`;
+}
+
 export type CompetitiveBestRecord = {
   bestScore: number;
   updatedAt: string | null;

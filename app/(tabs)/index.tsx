@@ -8,6 +8,8 @@ import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
 import { Card } from '@/components/ui/Card';
 import { ListRow } from '@/components/ui/ListRow';
+import { Badge } from '@/components/ui/Badge';
+import { useCompetitiveChampion } from '@/hooks/useCompetitiveChampion';
 
 type LinkItem = {
   id: string;
@@ -19,6 +21,7 @@ export default function HomeScreen() {
   const { theme } = useThemeContext();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const { isChampion, championLabel } = useCompetitiveChampion();
 
   const links: LinkItem[] = [
     { id: '1', title: 'About', route: 'about' },
@@ -60,18 +63,30 @@ export default function HomeScreen() {
         </AppText>
 
         <Card padded={false} style={styles.listCard}>
-          {links.map((item, index) => (
-            <ListRow
-              key={item.id}
-              title={item.title}
-              onPress={() => handlePress(item.route)}
-              showDivider={index < links.length - 1}
-              style={styles.listRow}
-              right={
-                <Icon name="chevron-forward" size={22} color={theme.textMuted} />
-              }
-            />
-          ))}
+          {links.map((item, index) => {
+            const isCompetitiveLink = item.route === 'competitiveLeaderboard';
+            return (
+              <ListRow
+                key={item.id}
+                title={item.title}
+                subtitle={isCompetitiveLink && isChampion ? championLabel ?? undefined : undefined}
+                onPress={() => handlePress(item.route)}
+                showDivider={index < links.length - 1}
+                style={styles.listRow}
+                right={
+                  <View style={styles.rowRight}>
+                    {isCompetitiveLink && isChampion ? (
+                      <Icon name="ribbon" size={20} color={theme.medalGold} />
+                    ) : null}
+                    {isCompetitiveLink && isChampion ? (
+                      <Badge label="#1" tone="gold" style={styles.championBadge} />
+                    ) : null}
+                    <Icon name="chevron-forward" size={22} color={theme.textMuted} />
+                  </View>
+                }
+              />
+            );
+          })}
         </Card>
       </View>
     </Screen>
@@ -108,5 +123,13 @@ const styles = StyleSheet.create({
   },
   listRow: {
     paddingHorizontal: 14,
+  },
+  rowRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  championBadge: {
+    marginRight: 2,
   },
 });

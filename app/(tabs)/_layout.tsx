@@ -91,7 +91,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="competitiveLeaderboard"
         options={{
-          title: 'Competitive',
+          title: 'Competitive Leaderboard',
           href: null,
           headerShown: true,
           headerStyle: {
