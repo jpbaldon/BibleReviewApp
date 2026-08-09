@@ -11,7 +11,7 @@ const outPath = path.join(__dirname, '..', 'data', 'chapter-summaries.ts');
 const content = fs.readFileSync(asvPath, 'utf-8');
 
 const allBookMatches = [...content.matchAll(/"Book":\s*"([^"]+)"/g)];
-const summaryMatches = [...content.matchAll(/"Summary":\s*"([^"]+)"/g)];
+const summaryMatches = [...content.matchAll(/"Summary":\s*"((?:[^"\\]|\\.)*)"/g)];
 
 // Filter to only top-level book entries: followed by "Enabled" or "Chapters" within 100 chars.
 // duplicateLocation "Book" entries are followed by "Chapter" (singular).
@@ -35,6 +35,10 @@ const chapterPositions = chapterMatches.map(m => ({
 }));
 const summaryPositions = summaryMatches.map(m => ({ index: m.index, summary: m[1] }));
 
+function decodeSummaryEscapes(summary) {
+  return summary.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+}
+
 const result = {};
 
 for (const sumEntry of summaryPositions) {
@@ -45,7 +49,7 @@ for (const sumEntry of summaryPositions) {
   if (!chapter) continue;
 
   if (!result[book]) result[book] = {};
-  result[book][chapter] = sumEntry.summary;
+  result[book][chapter] = decodeSummaryEscapes(sumEntry.summary);
 }
 
 let output = `// Auto-generated from asv.ts. Do not edit manually.

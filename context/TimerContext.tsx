@@ -232,30 +232,33 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
                 return { ...t, remaining: t.remaining - 1 };
               }
               const durationLabel = `${Math.floor(t.duration / 60)}:${(t.duration % 60).toString().padStart(2, '0')}`;
-              if (timedSessionScore > (oldSessionBest ?? 0)) {
-                if (confetti && typeof confetti.showConfetti === 'function') {
-                  confetti.showConfetti();
-                } else {
-                  console.warn('Confetti context is missing or showConfetti is not a function:', confetti);
-                }
-                updateBestSessionScore(activeTimer.id, timedSessionScore);
-                setTimeout(() => {
+              const beatBest = timedSessionScore > (oldSessionBest ?? 0);
+              const finishedTimerId = activeTimer.id;
+              const finishedScore = timedSessionScore;
+              const previousBest = oldSessionBest;
+
+              setTimeout(() => {
+                if (beatBest) {
+                  if (confetti && typeof confetti.showConfetti === 'function') {
+                    confetti.showConfetti();
+                  } else {
+                    console.warn('Confetti context is missing or showConfetti is not a function:', confetti);
+                  }
+                  updateBestSessionScore(finishedTimerId, finishedScore);
                   showAlert({
                     title: 'Timer Finished',
-                    message: `${t.name} Timer (${durationLabel}) has finished! You beat your previous session score of ${oldSessionBest}`,
+                    message: `${t.name} Timer (${durationLabel}) has finished! You beat your previous session score of ${previousBest}`,
                     variant: 'success',
                   });
-                }, 0);
-              } else {
-                setTimeout(() => {
+                } else {
                   showAlert({
                     title: 'Timer Finished',
                     message: `${t.name} Timer (${durationLabel}) has finished!`,
                     variant: 'info',
                   });
-                }, 0);
-              }
-              setTimedSessionScore(0);
+                }
+                setTimedSessionScore(0);
+              }, 0);
               return { ...t, remaining: t.duration, isActive: false };
             }
             return t;
@@ -282,19 +285,29 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
           const scopeLabel = COMPETITIVE_SCOPE_LABELS[scope];
           const score = competitiveScoreRef.current;
           const previousBest = oldCompetitiveBestRef.current;
+          const beatBest = score > (previousBest ?? 0);
 
-          if (score > (previousBest ?? 0)) {
-            if (confetti && typeof confetti.showConfetti === 'function') {
-              confetti.showConfetti();
-            }
-            void saveCompetitiveBest(scope, score);
-            setTimeout(() => {
+          setTimeout(() => {
+            if (beatBest) {
+              if (confetti && typeof confetti.showConfetti === 'function') {
+                confetti.showConfetti();
+              }
+              void saveCompetitiveBest(scope, score);
               showAlert({
                 title: 'Competitive Timer Finished',
                 message: `${scopeLabel} competitive timer has finished!\n\nNew best score: ${score}\n(Previous: ${previousBest ?? 0})`,
                 variant: 'success',
               });
-            }, 0);
+            } else {
+              showAlert({
+                title: 'Competitive Timer Finished',
+                message: `${scopeLabel} competitive timer has finished!\n\nScore: ${score}\nBest: ${previousBest ?? 0}`,
+                variant: 'info',
+              });
+            }
+          }, 0);
+
+          if (beatBest) {
             return {
               ...prev,
               remaining: prev.duration,
@@ -304,13 +317,6 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
             };
           }
 
-          setTimeout(() => {
-            showAlert({
-              title: 'Competitive Timer Finished',
-              message: `${scopeLabel} competitive timer has finished!\n\nScore: ${score}\nBest: ${previousBest ?? 0}`,
-              variant: 'info',
-            });
-          }, 0);
           return { ...prev, remaining: prev.duration, isActive: false, activeScope: null };
         });
       }, 1000);

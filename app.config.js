@@ -5,7 +5,7 @@ export default {
     name: 'Bible Review',
     slug: 'biblereviewapp',
     scheme: 'biblereviewapp',
-    version: '0.10.0-beta',
+    version: '0.11.0-beta',
     orientation: 'portrait',
     userInterfaceStyle: 'automatic',
     icon: './assets/images/icon.png',
@@ -18,7 +18,7 @@ export default {
     },
     android: {
       package: 'com.jbaldon.biblereviewapp',
-      versionCode: 1,
+      versionCode: 2,
       adaptiveIcon: {
         foregroundImage: './assets/images/adaptive-icon.png',
         backgroundColor: '#000000',

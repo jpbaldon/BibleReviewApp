@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import { useTimer } from '../../context/TimerContext';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { TimerInputRow } from '../../components/TimerInputRow';
 import { useThemeContext } from '@/context/ThemeContext';
+import { useAlert } from '@/context/AlertContext';
 import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
 import { CompetitiveScopeTabs } from '@/components/CompetitiveScopeTabs';
@@ -27,6 +28,7 @@ export default function TimerScreen() {
     updateTimer,
   } = useTimer();
   const { theme } = useThemeContext();
+  const { alert } = useAlert();
 
   useEffect(() => {
     if (competitiveTimer.isActive && competitiveTimer.activeScope) {
@@ -40,6 +42,29 @@ export default function TimerScreen() {
       addTimer(name || 'Unnamed', duration);
     }
   };
+
+  const confirmRemoveTimer = useCallback(
+    (timerId: string, timerName: string) => {
+      alert(
+        'Delete Timer',
+        `Delete "${timerName}"? This cannot be undone.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: () => {
+              removeTimer(timerId);
+              if (editingId === timerId) {
+                setEditingId(null);
+              }
+            },
+          },
+        ],
+      );
+    },
+    [alert, removeTimer, editingId],
+  );
 
   return (
     <Screen style={styles.container} safe={false}>
@@ -149,9 +174,6 @@ export default function TimerScreen() {
                   <TouchableOpacity onPress={() => stopTimer()}>
                     <Icon name="refresh" size={28} color={theme.textMuted} />
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => removeTimer(item.id)}>
-                    <Icon name="trash" size={28} color={theme.danger} />
-                  </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => {
                       setEditingId(item.id);
@@ -162,12 +184,18 @@ export default function TimerScreen() {
                   >
                     <Icon name="pencil" size={24} color={theme.textMuted} />
                   </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.deleteButton}
+                    onPress={() => confirmRemoveTimer(item.id, item.name)}
+                  >
+                    <Icon name="trash" size={28} color={theme.danger} />
+                  </TouchableOpacity>
                 </View>
               )}
               {(item.bestSessionScore ?? 0) > 0 && (
                 <View style={styles.itemBottomRow}>
                   <Text style={{ color: theme.text, fontSize: 13 }}>
-                    Highest session score:{' '}
+                    Highest score:{' '}
                     <Text style={{ fontWeight: '700' }}>{item.bestSessionScore}</Text>
                   </Text>
                 </View>
@@ -221,4 +249,7 @@ const styles = StyleSheet.create({
   },
   timerName: { flex: 1, fontSize: 16, fontWeight: '700' },
   timerTime: { width: 60, fontSize: 16, textAlign: 'center' },
+  deleteButton: {
+    marginLeft: 10,
+  },
 });
