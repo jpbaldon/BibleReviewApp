@@ -79,7 +79,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="leaderboard"
         options={{
-          title: 'Leader Board',
+          title: 'Leaderboard',
           href: null,
           headerShown: true,
           headerStyle: {
