@@ -12,16 +12,23 @@ import { AppText } from './AppText';
 
 interface TextFieldProps extends TextInputProps {
   label?: string;
+  /** Muted helper text under the input (hidden while an error is shown). */
+  hint?: string;
+  /** Inline validation message shown under the input. */
+  error?: string;
   containerStyle?: StyleProp<ViewStyle>;
 }
 
 export function TextField({
   label,
+  hint,
+  error,
   style,
   containerStyle,
   ...rest
 }: TextFieldProps) {
   const { theme } = useThemeContext();
+  const hasError = Boolean(error);
 
   return (
     <View style={[styles.container, containerStyle]}>
@@ -36,13 +43,22 @@ export function TextField({
           styles.input,
           {
             backgroundColor: theme.surface,
-            borderColor: theme.border,
+            borderColor: hasError ? theme.danger : theme.border,
             color: theme.text,
           },
           style,
         ]}
         {...rest}
       />
+      {hasError ? (
+        <AppText color={theme.danger} style={styles.helperText}>
+          {error}
+        </AppText>
+      ) : hint ? (
+        <AppText variant="muted" style={styles.helperText}>
+          {hint}
+        </AppText>
+      ) : null}
     </View>
   );
 }
@@ -61,5 +77,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
     minHeight: 48,
+  },
+  helperText: {
+    marginTop: 6,
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

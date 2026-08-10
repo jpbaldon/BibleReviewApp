@@ -74,17 +74,12 @@ export default function TabLayout() {
         options={{
           title: 'Enabled Books',
           href: null,
-          headerShown: true,
-          headerStyle: {
-            backgroundColor: theme.background,
-          },
-          headerTintColor: theme.text,
         }}
       />
       <Tabs.Screen
         name="leaderboard"
         options={{
-          title: 'Leader Board',
+          title: 'Leaderboard',
           href: null,
           headerShown: true,
           headerStyle: {
@@ -96,7 +91,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="competitiveLeaderboard"
         options={{
-          title: 'Competitive',
+          title: 'Competitive Leaderboard',
           href: null,
           headerShown: true,
           headerStyle: {

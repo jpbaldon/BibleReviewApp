@@ -57,12 +57,22 @@ export interface CompetitiveLeaderboardEntry {
   rank?: number;
 }
 
+export type CompetitiveScope = 'full' | 'ot' | 'nt';
+
 export interface AuthService {
   signIn(email: string, password: string): Promise<{ user: AppUser; session: AppSession }>;
   signUp(email: string, password: string, username: string): Promise<any>;
   signOut(): Promise<void>;
   getSession(): Promise<AppSession | null>;
   resendVerificationEmail(email: string): Promise<void>;
+  resetPasswordForEmail(email: string, redirectTo: string): Promise<void>;
+  updatePassword(newPassword: string): Promise<void>;
+  setSessionFromTokens(accessToken: string, refreshToken: string): Promise<void>;
+  exchangeCodeForSession(code: string): Promise<void>;
+  verifyRecoveryTokenHash(tokenHash: string): Promise<void>;
+  onAuthStateChange(
+    callback: (event: string, session: AppSession | null) => void,
+  ): { unsubscribe: () => void };
   deleteAccount(accessToken: string, userId: string): Promise<void>;
   init(): Promise<{ session: AppSession | null; user: AppUser | null; profile: { username: string } | null }>;
 }
@@ -77,9 +87,19 @@ export interface ScoreService {
   updateOverallScoreOnServer(userId: string, overallScore: number): Promise<void>;
   incrementUserScoreRpc(userId: string, points: number): Promise<void>;
   fetchTopScores(limit?: number): Promise<LeaderboardEntry[]>;
-  getCompetitiveScoreFromServer(userId: string): Promise<{ competitiveScore: number; compScoreUpdate: string | null; error?: string }>;
-  updateCompetitiveScoreOnServer(userId: string, competitiveScore: number): Promise<void>;
-  fetchTopCompetitiveScores(limit?: number): Promise<CompetitiveLeaderboardEntry[]>;
+  getCompetitiveScoreFromServer(
+    userId: string,
+    scope?: CompetitiveScope,
+  ): Promise<{ competitiveScore: number; compScoreUpdate: string | null; error?: string }>;
+  updateCompetitiveScoreOnServer(
+    userId: string,
+    competitiveScore: number,
+    scope?: CompetitiveScope,
+  ): Promise<void>;
+  fetchTopCompetitiveScores(
+    scope?: CompetitiveScope,
+    limit?: number,
+  ): Promise<CompetitiveLeaderboardEntry[]>;
 }
 
 export interface BibleBooksService {

@@ -1,18 +1,22 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import { useTimer } from '../../context/TimerContext';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { TimerInputRow } from '../../components/TimerInputRow';
 import { useThemeContext } from '@/context/ThemeContext';
+import { useAlert } from '@/context/AlertContext';
 import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
-import { Card } from '@/components/ui/Card';
+import { CompetitiveScopeTabs } from '@/components/CompetitiveScopeTabs';
+import { CompetitiveTimerCard } from '@/components/CompetitiveTimerCard';
+import type { CompetitiveScope } from '@/utils/bibleScope';
 
 export default function TimerScreen() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState<string>('');
   const [editMinutes, setEditMinutes] = useState<string>('0');
   const [editSeconds, setEditSeconds] = useState<string>('0');
+  const [selectedScope, setSelectedScope] = useState<CompetitiveScope>('full');
 
   const {
     timers,
@@ -22,10 +26,15 @@ export default function TimerScreen() {
     startTimer,
     stopTimer,
     updateTimer,
-    startCompetitiveTimer,
-    stopCompetitiveTimer,
   } = useTimer();
   const { theme } = useThemeContext();
+  const { alert } = useAlert();
+
+  useEffect(() => {
+    if (competitiveTimer.isActive && competitiveTimer.activeScope) {
+      setSelectedScope(competitiveTimer.activeScope);
+    }
+  }, [competitiveTimer.isActive, competitiveTimer.activeScope]);
 
   const handleAdd = (name: string, minutes: number, seconds: number) => {
     const duration = minutes * 60 + seconds;
@@ -34,63 +43,40 @@ export default function TimerScreen() {
     }
   };
 
+  const confirmRemoveTimer = useCallback(
+    (timerId: string, timerName: string) => {
+      alert(
+        'Delete Timer',
+        `Delete "${timerName}"? This cannot be undone.`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: () => {
+              removeTimer(timerId);
+              if (editingId === timerId) {
+                setEditingId(null);
+              }
+            },
+          },
+        ],
+      );
+    },
+    [alert, removeTimer, editingId],
+  );
+
   return (
     <Screen style={styles.container} safe={false}>
       <View style={[styles.competitiveSection, { borderBottomColor: theme.border }]}>
         <AppText variant="subtitle" style={styles.competitiveTitle}>
           Competitive Timer
         </AppText>
-        <Card
-          style={[
-            styles.competitiveTimerItem,
-            {
-              borderColor: competitiveTimer.isActive ? theme.competitive : theme.border,
-            },
-          ]}
-        >
-          <View style={styles.itemTopRow}>
-            <Text style={[styles.timerName, { color: theme.text }]}>
-              {competitiveTimer.name}
-            </Text>
-            <Text
-              style={[
-                styles.timerTime,
-                {
-                  color: competitiveTimer.isActive ? theme.competitive : theme.text,
-                  fontWeight: '700',
-                  fontSize: 18,
-                },
-              ]}
-            >
-              {`${Math.floor(competitiveTimer.remaining / 60)}:${(competitiveTimer.remaining % 60)
-                .toString()
-                .padStart(2, '0')}`}
-            </Text>
-            <TouchableOpacity
-              onPress={() => startCompetitiveTimer()}
-              disabled={competitiveTimer.isActive}
-            >
-              <Icon
-                name="play"
-                size={28}
-                color={competitiveTimer.isActive ? theme.textDisabled : theme.competitive}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => stopCompetitiveTimer()}>
-              <Icon name="refresh" size={28} color={theme.textMuted} />
-            </TouchableOpacity>
-          </View>
-          {competitiveTimer.bestScore > 0 && (
-            <View style={styles.itemBottomRow}>
-              <Text style={{ color: theme.text, fontSize: 13 }}>
-                Personal Best:{' '}
-                <Text style={{ fontWeight: '700', color: theme.competitive }}>
-                  {competitiveTimer.bestScore}
-                </Text>
-              </Text>
-            </View>
-          )}
-        </Card>
+        <CompetitiveScopeTabs
+          selectedScope={selectedScope}
+          onSelectScope={setSelectedScope}
+        />
+        <CompetitiveTimerCard scope={selectedScope} />
       </View>
 
       <AppText variant="subtitle" style={styles.sectionTitle}>
@@ -188,9 +174,6 @@ export default function TimerScreen() {
                   <TouchableOpacity onPress={() => stopTimer()}>
                     <Icon name="refresh" size={28} color={theme.textMuted} />
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={() => removeTimer(item.id)}>
-                    <Icon name="trash" size={28} color={theme.danger} />
-                  </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => {
                       setEditingId(item.id);
@@ -201,12 +184,18 @@ export default function TimerScreen() {
                   >
                     <Icon name="pencil" size={24} color={theme.textMuted} />
                   </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.deleteButton}
+                    onPress={() => confirmRemoveTimer(item.id, item.name)}
+                  >
+                    <Icon name="trash" size={28} color={theme.danger} />
+                  </TouchableOpacity>
                 </View>
               )}
               {(item.bestSessionScore ?? 0) > 0 && (
                 <View style={styles.itemBottomRow}>
                   <Text style={{ color: theme.text, fontSize: 13 }}>
-                    Highest session score:{' '}
+                    Highest score:{' '}
                     <Text style={{ fontWeight: '700' }}>{item.bestSessionScore}</Text>
                   </Text>
                 </View>
@@ -229,9 +218,6 @@ const styles = StyleSheet.create({
   competitiveTitle: {
     marginBottom: 12,
     textAlign: 'center',
-  },
-  competitiveTimerItem: {
-    borderWidth: 2,
   },
   sectionTitle: {
     marginTop: 8,
@@ -263,4 +249,7 @@ const styles = StyleSheet.create({
   },
   timerName: { flex: 1, fontSize: 16, fontWeight: '700' },
   timerTime: { width: 60, fontSize: 16, textAlign: 'center' },
+  deleteButton: {
+    marginLeft: 10,
+  },
 });

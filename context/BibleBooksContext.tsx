@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo, useRef } from 'react';
 import * as SQLite from 'expo-sqlite';
-import * as FileSystem from 'expo-file-system';
 import { TRANSLATIONS } from '@/data/translations';
 import { CHAPTER_SUMMARIES } from '@/data/chapter-summaries';
 import { BibleBook, Rarity } from '../types';
@@ -11,12 +10,134 @@ import {
   countEnabledChaptersForScore,
 } from '../utils/scoreGate';
 
+/**
+ * Use the bare DB filename. expo-sqlite stores this under the app's SQLite directory,
+ * which matches the historical `{documentDirectory}SQLite/BibleBooks_*.db` path.
+ * Absolute `file://` paths have caused intermittent Android prepareAsync NPEs.
+ */
+function getUserDatabaseName(userId: string): string {
+  return `BibleBooks_${userId}.db`;
+}
+
+function isNativePrepareFailure(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return message.includes('prepareAsync') || message.includes('NullPointerException');
+}
+
+/**
+ * Module-level connection cache so React remounts / Fast Refresh do not reopen the
+ * same file under a new SharedObject (which can GC-close the native handle on Android).
+ */
+type DbConnection = {
+  userId: string;
+  ready: Promise<SQLite.SQLiteDatabase>;
+};
+
+let connection: DbConnection | null = null;
+let opChain: Promise<unknown> = Promise.resolve();
+/** >0 while a queued op is running; nested withDatabase calls run inline. */
+let opDepth = 0;
+
+/** Serialize every DB read/write onto one chain. */
+function enqueueDbOp<T>(task: () => Promise<T>): Promise<T> {
+  if (opDepth > 0) {
+    return task();
+  }
+
+  const run = async () => {
+    opDepth += 1;
+    try {
+      return await task();
+    } finally {
+      opDepth -= 1;
+    }
+  };
+
+  const next = opChain.then(run, run);
+  opChain = next.then(
+    () => undefined,
+    () => undefined,
+  );
+  return next;
+}
+
+async function closeConnection(): Promise<void> {
+  const current = connection;
+  connection = null;
+  if (!current) return;
+  try {
+    const db = await current.ready;
+    await db.closeAsync();
+  } catch {
+    // Ignore close errors — the native handle may already be gone.
+  }
+}
+
+async function openConnection(userId: string): Promise<SQLite.SQLiteDatabase> {
+  if (connection?.userId === userId) {
+    return connection.ready;
+  }
+
+  if (connection) {
+    await closeConnection();
+  }
+
+  const ready = SQLite.openDatabaseAsync(getUserDatabaseName(userId), {
+    // Dedicated connection for this singleton; avoids sharing a stale cached handle.
+    useNewConnection: true,
+  });
+
+  connection = { userId, ready };
+  try {
+    return await ready;
+  } catch (err) {
+    if (connection?.userId === userId) {
+      connection = null;
+    }
+    throw err;
+  }
+}
+
+async function withDatabase<T>(
+  userId: string,
+  task: (db: SQLite.SQLiteDatabase) => Promise<T>,
+): Promise<T> {
+  return enqueueDbOp(async () => {
+    const run = async () => {
+      const db = await openConnection(userId);
+      return task(db);
+    };
+
+    try {
+      return await run();
+    } catch (err) {
+      // Android can briefly hand back a dead native handle; reopen once and retry.
+      if (!isNativePrepareFailure(err)) throw err;
+      await closeConnection();
+      return run();
+    }
+  });
+}
+
 export { MIN_CHAPTERS_ENABLED_FOR_SCORE } from '../utils/scoreGate';
+
+export interface ChapterRarityUpdate {
+  chapter: number;
+  rarity: Rarity;
+}
 
 interface BibleBooksContextType {
   bibleBooks: BibleBook[];
   toggleBookEnabled: (bookName: string) => Promise<void>;
+  setAllBooksEnabled: (enabled: boolean) => Promise<void>;
+  invertAllBooksEnabled: () => Promise<void>;
   updateChapterRarity: (bookName: string, chapter: number, rarity: Rarity, shouldUpdateBook?: boolean) => Promise<void>;
+  /** Batch rarity writes in one DB transaction and one React state update. */
+  updateChapterRarities: (
+    bookName: string,
+    updates: ChapterRarityUpdate[],
+    shouldUpdateBook?: boolean,
+  ) => Promise<void>;
   updateBookEnabledStatus: (bookName: string) => Promise<void>;
   isLoading: boolean;
   error: string | null;
@@ -29,7 +150,10 @@ interface BibleBooksContextType {
 const BibleBooksContext = createContext<BibleBooksContextType>({
   bibleBooks: [],
   toggleBookEnabled: async () => {},
+  setAllBooksEnabled: async () => {},
+  invertAllBooksEnabled: async () => {},
   updateChapterRarity: async () => {},
+  updateChapterRarities: async () => {},
   updateBookEnabledStatus: async () => {},
   isLoading: true,
   error: null,
@@ -39,239 +163,199 @@ const BibleBooksContext = createContext<BibleBooksContextType>({
   setScoreEnabledFlag: () => {},
 });
 
-export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+function enrichBooks(
+  loadedBooks: { bookName: string; enabled: boolean }[],
+  rarityResults: { bookName: string; chapter: number; rarity: Rarity }[],
+  translationKey: keyof typeof TRANSLATIONS,
+): BibleBook[] {
+  const translationData = TRANSLATIONS[translationKey];
+  return loadedBooks.map(book => {
+    const tBook = translationData.Bible.find(b => b.Book === book.bookName);
+    const chapters = tBook?.Chapters.map(ch => {
+      const match = rarityResults.find(r => r.bookName === book.bookName && r.chapter === ch.Chapter);
+      return {
+        chapter: ch.Chapter,
+        verses: ch.Verses.map(v => ({
+          verseNumber: v.VerseNumber,
+          text: v.Text,
+          duplicateLocations: v.duplicateLocations ?? [],
+        })),
+        summary: ch.Summary ?? CHAPTER_SUMMARIES[book.bookName]?.[ch.Chapter] ?? null,
+        rarity: match?.rarity ?? 'common',
+      };
+    }) ?? [];
+    return { ...book, chapters };
+  });
+}
 
+export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [bibleBooks, setBibleBooks] = useState<BibleBook[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const dbRef = useRef<SQLite.SQLiteDatabase | null>(null);
-  const isInitializingRef = useRef(false);
-  const isDbInitializedRef = useRef(false);
+
+  /** Latest desired enabled flag per book; rapid taps coalesce into one write. */
+  const desiredEnabledRef = useRef<Map<string, boolean>>(new Map());
+  const persistInFlightRef = useRef<Set<string>>(new Set());
 
   const enabledChapterCount = countEnabledChaptersForScore(bibleBooks);
-
-  const [scoreEnabledFlag, setScoreEnabledFlag] = useState<boolean>(enabledChapterCount >= MIN_CHAPTERS_ENABLED_FOR_SCORE);
+  const [scoreEnabledFlag, setScoreEnabledFlag] = useState<boolean>(
+    enabledChapterCount >= MIN_CHAPTERS_ENABLED_FOR_SCORE,
+  );
 
   const { user } = useAuth();
   const { translation } = useSettings();
   const translationRef = useRef(translation);
-  useEffect(() => { translationRef.current = translation; }, [translation]);
+  useEffect(() => {
+    translationRef.current = translation;
+  }, [translation]);
 
-  // Initialize database asynchronously
-  const openDatabase = useCallback<() => Promise<SQLite.SQLiteDatabase>>(async () => {
-    if (!user?.id) throw new Error('User ID is not defined. Cannot open user-scoped database.');
-
-    const sqliteDir = `${(FileSystem as any).documentDirectory}SQLite`;
-
-    const dbPath = `${sqliteDir}/BibleBooks_${user.id}.db`;
-
-    const db = await SQLite.openDatabaseAsync(dbPath);
-    dbRef.current = db;
-
-    return db;
-  }, [user?.id]);
-
-  const loadBooksFromDB = useCallback(async (localdbInstance: SQLite.SQLiteDatabase) => {
-    try {
-      const results = await localdbInstance.getAllAsync<{Book: string, Enabled: number}>(
-        'SELECT * FROM BibleBooks;'
-      );
-      console.log(results);
-      return results.map(book => ({
-        bookName: book.Book,
-        enabled: book.Enabled === 1
-      }));
-    } catch (err) {
-      console.error('Failed to load books:', err);
-      throw err;
-    }
+  const loadBooksFromDB = useCallback(async (db: SQLite.SQLiteDatabase) => {
+    const results = await db.getAllAsync<{ Book: string; Enabled: number }>(
+      'SELECT * FROM BibleBooks;',
+    );
+    return results.map(book => ({
+      bookName: book.Book,
+      enabled: book.Enabled === 1,
+    }));
   }, []);
 
-  const initializeDatabase = useCallback(async (localdbInstance: SQLite.SQLiteDatabase | null) => {
-    if (isInitializingRef.current) return;
-    isInitializingRef.current = true;
-    setIsLoading(true);
-    setError(null);
-    if (!localdbInstance) {
-      setError('Database instance is not available.');
-      setIsLoading(false);
-      return;
-    }
-    try {
-      // 1. Create table if not exists
-      await localdbInstance.execAsync(`
-        CREATE TABLE IF NOT EXISTS BibleBooks (
-          Book TEXT PRIMARY KEY NOT NULL,
-          Enabled INTEGER NOT NULL DEFAULT 0,
-          updated_at TEXT DEFAULT '${new Date().toISOString()}'
-        );
-      `);
+  const loadRaritiesFromDB = useCallback(async (db: SQLite.SQLiteDatabase) => {
+    return db.getAllAsync<{ bookName: string; chapter: number; rarity: Rarity }>(
+      'SELECT Book as bookName, Chapter as chapter, Rarity as rarity FROM ChapterRarities',
+    );
+  }, []);
 
-      await localdbInstance.execAsync(`
-        CREATE TABLE IF NOT EXISTS ChapterRarities (
+  const setupSchemaAndSeed = useCallback(async (db: SQLite.SQLiteDatabase) => {
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS BibleBooks (
+        Book TEXT PRIMARY KEY NOT NULL,
+        Enabled INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT DEFAULT '${new Date().toISOString()}'
+      );
+    `);
+
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS ChapterRarities (
         Book TEXT NOT NULL,
         Chapter INTEGER NOT NULL,
         Rarity TEXT NOT NULL DEFAULT 'common',
         updated_at TEXT DEFAULT '${new Date().toISOString()}',
         PRIMARY KEY (Book, Chapter)
-        );
+      );
+    `);
+
+    const columns = await db.getAllAsync<{ name: string }>(
+      "PRAGMA table_info('BibleBooks');",
+    );
+    const hasUpdatedAt = columns.some(col => col.name === 'updated_at');
+    // Removable in 0.5.0-beta+ (users from 0.3.0-beta or earlier can reinstall)
+    if (!hasUpdatedAt) {
+      await db.execAsync(`
+        ALTER TABLE BibleBooks ADD COLUMN updated_at TEXT DEFAULT '${new Date().toISOString()}';
+        ALTER TABLE ChapterRarities ADD COLUMN updated_at TEXT DEFAULT '${new Date().toISOString()}';
       `);
+    }
 
-      const columns = await localdbInstance.getAllAsync<{name: string}>(
-        "PRAGMA table_info('BibleBooks');"
-      );
+    const countResult = await db.getFirstAsync<{ count: number }>(
+      'SELECT COUNT(*) as count FROM BibleBooks;',
+    );
 
-      const hasUpdatedAt = columns.some(col => col.name === 'updated_at');
-      //This IF can be removed in build 0.5.0-beta or later (users will just have to uninstall the app and redownload if updating from 0.3.0-beta or earlier)
-      if (!hasUpdatedAt) {
-        await localdbInstance.execAsync(`
-          ALTER TABLE BibleBooks ADD COLUMN updated_at TEXT DEFAULT '${new Date().toISOString()}';
-          ALTER TABLE ChapterRarities ADD COLUMN updated_at TEXT DEFAULT '${new Date().toISOString()}';
-        `);
-      }
-
-      // 2. Check if table is empty
-      const countResult = await localdbInstance.getFirstAsync<{ count: number }>(
-        'SELECT COUNT(*) as count FROM BibleBooks;'
-      );
-      
-      // 3. Initialize with default books if empty
-      if (!countResult || countResult.count === 0) {
-        await localdbInstance.execAsync('BEGIN TRANSACTION');
-        try {
-          for (const book of TRANSLATIONS[translationRef.current].Bible) {
-            const isGenesis = book.Book === "Genesis";
-            await localdbInstance.runAsync(
-              'INSERT OR IGNORE INTO BibleBooks (Book, Enabled) VALUES (?, ?);',
-              [book.Book, isGenesis ? 1 : 0]
-            );
-          }
-          await localdbInstance.execAsync('COMMIT');
-        } catch (txError) {
-          await localdbInstance.execAsync('ROLLBACK');
-          throw txError;
+    if (!countResult || countResult.count === 0) {
+      await db.withTransactionAsync(async () => {
+        for (const book of TRANSLATIONS[translationRef.current].Bible) {
+          const isGenesis = book.Book === 'Genesis';
+          await db.runAsync(
+            'INSERT OR IGNORE INTO BibleBooks (Book, Enabled) VALUES (?, ?);',
+            [book.Book, isGenesis ? 1 : 0],
+          );
         }
-      }
-
-      // 4. Load books
-      const loadedBooks = await loadBooksFromDB(localdbInstance);
-
-      const rarityResults = await localdbInstance.getAllAsync<{bookName: string, chapter: number, rarity: Rarity}>(
-        'SELECT Book as bookName, Chapter as chapter, Rarity as rarity FROM ChapterRarities'
-      );
-
-      const rarityMap: Record<string, Record<number, Rarity>> = {};
-
-      rarityResults.forEach(({ bookName, chapter, rarity }) => {
-        if (!rarityMap[bookName]) rarityMap[bookName] = {};
-        rarityMap[bookName][chapter] = rarity;
       });
-
-      const translationData = TRANSLATIONS[translationRef.current];
-      const enrichedBooks = loadedBooks.map(book => {
-        const asvBook = translationData.Bible.find(b => b.Book === book.bookName);
-        const chapterWithRarity = asvBook?.Chapters.map(ch => {
-          const match = rarityResults.find(r => r.bookName === book.bookName && r.chapter === ch.Chapter);
-          return {
-            chapter: ch.Chapter,
-            verses: ch.Verses.map(v => ({
-              verseNumber: v.VerseNumber,
-              text: v.Text,
-              duplicateLocations: v.duplicateLocations ?? [],
-            })),
-            summary: ch.Summary ?? CHAPTER_SUMMARIES[book.bookName]?.[ch.Chapter] ?? null,
-            rarity: match?.rarity ?? 'common',
-          };
-        }) ?? [];
-        return {
-          ...book,
-          chapters: chapterWithRarity,
-        };
-      });
-
-      setBibleBooks(enrichedBooks);
-      isDbInitializedRef.current = true;
-
-    } catch (err) {
-      console.error('Database initialization failed:', err);
-      setError('Database error. Using default books.');
-      setBibleBooks(TRANSLATIONS[translationRef.current].Bible.map(book => ({ bookName: book.Book, enabled: false })));
-    } finally {
-      setIsLoading(false);
-      isInitializingRef.current = false;
     }
-  }, [loadBooksFromDB]);
+  }, []);
 
+  const refreshEnrichedBooks = useCallback(async (db: SQLite.SQLiteDatabase) => {
+    const loadedBooks = await loadBooksFromDB(db);
+    const rarityResults = await loadRaritiesFromDB(db);
+    setBibleBooks(enrichBooks(loadedBooks, rarityResults, translationRef.current));
+  }, [loadBooksFromDB, loadRaritiesFromDB]);
 
-
-  const reEnrichBooks = useCallback(async (db: SQLite.SQLiteDatabase) => {
-    try {
-      const loadedBooks = await loadBooksFromDB(db);
-      const rarityResults = await db.getAllAsync<{bookName: string, chapter: number, rarity: Rarity}>(
-        'SELECT Book as bookName, Chapter as chapter, Rarity as rarity FROM ChapterRarities'
-      );
-      const translationData = TRANSLATIONS[translationRef.current];
-      const enrichedBooks = loadedBooks.map(book => {
-        const tBook = translationData.Bible.find(b => b.Book === book.bookName);
-        const chapters = tBook?.Chapters.map(ch => {
-          const match = rarityResults.find(r => r.bookName === book.bookName && r.chapter === ch.Chapter);
-          return {
-            chapter: ch.Chapter,
-            verses: ch.Verses.map(v => ({
-              verseNumber: v.VerseNumber,
-              text: v.Text,
-              duplicateLocations: v.duplicateLocations ?? [],
-            })),
-            summary: ch.Summary ?? CHAPTER_SUMMARIES[book.bookName]?.[ch.Chapter] ?? null,
-            rarity: match?.rarity ?? 'common',
-          };
-        }) ?? [];
-        return { ...book, chapters };
-      });
-      setBibleBooks(enrichedBooks);
-    } catch (err) {
-      console.error('Failed to re-enrich books:', err);
-    }
-  }, [loadBooksFromDB]);
+  const initializeForUser = useCallback(async (userId: string) => {
+    await withDatabase(userId, async (db) => {
+      await setupSchemaAndSeed(db);
+      await refreshEnrichedBooks(db);
+    });
+  }, [setupSchemaAndSeed, refreshEnrichedBooks]);
 
   useEffect(() => {
-    let mounted = true;
-    
-    const initDB = async () => {
+    let cancelled = false;
+
+    const init = async () => {
+      if (!user?.id) {
+        desiredEnabledRef.current.clear();
+        persistInFlightRef.current.clear();
+        await enqueueDbOp(async () => {
+          await closeConnection();
+        });
+        if (!cancelled) {
+          setBibleBooks([]);
+          setIsLoading(false);
+        }
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+
       try {
-        if(!user?.id) return;
-        const database = await openDatabase();
-        if (mounted) {
-          dbRef.current = database;
-          await initializeDatabase(database);
+        await initializeForUser(user.id);
+        if (!cancelled) {
+          setError(null);
         }
       } catch (err) {
-        if (mounted) {
-          setError('Failed to initialize database');
+        console.error('Database initialization failed:', err);
+        if (!cancelled) {
+          setError('Database error. Using default books.');
+          setBibleBooks(
+            TRANSLATIONS[translationRef.current].Bible.map(book => ({
+              bookName: book.Book,
+              enabled: false,
+            })),
+          );
+        }
+      } finally {
+        if (!cancelled) {
           setIsLoading(false);
         }
       }
     };
 
-    initDB();
+    void init();
 
     return () => {
-      mounted = false;
+      cancelled = true;
     };
-  }, [openDatabase, initializeDatabase, user?.id]);
+  }, [user?.id, initializeForUser]);
 
   useEffect(() => {
-    if (!isDbInitializedRef.current) return;
-    if (!dbRef.current) return;
-    reEnrichBooks(dbRef.current);
-  }, [translation, reEnrichBooks]);
+    if (!user?.id || !connection || connection.userId !== user.id) return;
+
+    void (async () => {
+      try {
+        await withDatabase(user.id, async (db) => {
+          await refreshEnrichedBooks(db);
+        });
+      } catch (err) {
+        console.error('Failed to re-enrich books:', err);
+      }
+    })();
+  }, [translation, refreshEnrichedBooks, user?.id]);
 
   const refreshBooks = useCallback(async () => {
-    if (!dbRef.current) return;
+    if (!user?.id) return;
 
     try {
       setIsLoading(true);
-      await initializeDatabase(dbRef.current); // Reuse the full loading logic
+      await initializeForUser(user.id);
       setError(null);
     } catch (err) {
       console.error('Refresh failed:', err);
@@ -279,145 +363,241 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
-  }, [dbRef.current, initializeDatabase]);
+  }, [user?.id, initializeForUser]);
 
-  const toggleBookEnabled = useCallback(async (bookName: string) => {
-  if (!dbRef.current) return;
-
-  try {
-    if(!dbRef.current) return;
-    await dbRef.current.runAsync(
-      'UPDATE BibleBooks SET Enabled = NOT Enabled WHERE Book = ?;',
-      [bookName]
-    );
-
-    // Optimistically update the local state
-    setBibleBooks(prevBooks =>
-      prevBooks.map(book =>
-        book.bookName === bookName
-          ? { ...book, enabled: !book.enabled }
-          : book
-      )
-    );
-  } catch (err) {
-    console.error('Toggle failed:', err);
-    setError(`Toggle failed: ${err instanceof Error ? err.message : String(err)}`);
-  }
-}, [dbRef.current]);
-
-  // Automatically disables a book if no chapters in the book are enabled (prevents awkwardness on other tabs when the user is being)
-  const updateBookEnabledStatus = useCallback(async (bookName: string) => {
-    if (!dbRef.current) return;
+  const persistDesiredEnabled = useCallback(async (bookName: string, userId: string) => {
+    if (persistInFlightRef.current.has(bookName)) return;
+    persistInFlightRef.current.add(bookName);
 
     try {
-      const asvBook = TRANSLATIONS[translationRef.current].Bible.find(b => b.Book === bookName);
-      if(!asvBook) return;
+      while (desiredEnabledRef.current.has(bookName)) {
+        const desired = desiredEnabledRef.current.get(bookName)!;
+        desiredEnabledRef.current.delete(bookName);
 
-      const totalChapters = asvBook.Chapters.map(ch => ch.Chapter);
+        await withDatabase(userId, async (db) => {
+          await db.runAsync(
+            'UPDATE BibleBooks SET Enabled = ? WHERE Book = ?;',
+            [desired ? 1 : 0, bookName],
+          );
+        });
+      }
+    } catch (err) {
+      console.error('Toggle failed:', err);
+      setError(`Toggle failed: ${err instanceof Error ? err.message : String(err)}`);
+      // Re-sync UI from DB so a failed write cannot leave a stale optimistic state.
+      try {
+        await withDatabase(userId, async (db) => {
+          await refreshEnrichedBooks(db);
+        });
+      } catch (refreshErr) {
+        console.error('Failed to recover books after toggle error:', refreshErr);
+      }
+    } finally {
+      persistInFlightRef.current.delete(bookName);
+      // A tap may have landed after the while-loop exited but before we cleared in-flight.
+      if (desiredEnabledRef.current.has(bookName)) {
+        void persistDesiredEnabled(bookName, userId);
+      }
+    }
+  }, [refreshEnrichedBooks]);
 
-      const chapters = await dbRef.current.getAllAsync<{Chapter: number, Rarity: Rarity}>(
-        'SELECT Chapter, Rarity FROM ChapterRarities WHERE Book = ?;',
-        [bookName]
+  const toggleBookEnabled = useCallback(async (bookName: string) => {
+    if (!user?.id) return;
+
+    setBibleBooks(prevBooks => {
+      const current = prevBooks.find(book => book.bookName === bookName);
+      if (!current) return prevBooks;
+
+      const baseline = desiredEnabledRef.current.has(bookName)
+        ? desiredEnabledRef.current.get(bookName)!
+        : current.enabled;
+      const nextEnabled = !baseline;
+      desiredEnabledRef.current.set(bookName, nextEnabled);
+
+      return prevBooks.map(book =>
+        book.bookName === bookName
+          ? { ...book, enabled: nextEnabled }
+          : book,
       );
+    });
 
-      const rarityMap: Record<number, Rarity> = {};
+    await persistDesiredEnabled(bookName, user.id);
+  }, [user?.id, persistDesiredEnabled]);
+
+  const setAllBooksEnabled = useCallback(async (enabled: boolean) => {
+    if (!user?.id) return;
+
+    desiredEnabledRef.current.clear();
+    persistInFlightRef.current.clear();
+
+    setBibleBooks(prevBooks =>
+      prevBooks.map(book => ({ ...book, enabled })),
+    );
+
+    try {
+      await withDatabase(user.id, async (db) => {
+        await db.runAsync(
+          'UPDATE BibleBooks SET Enabled = ?;',
+          [enabled ? 1 : 0],
+        );
+      });
+    } catch (err) {
+      console.error('Failed to set all books enabled:', err);
+      setError(`Failed to update books: ${err instanceof Error ? err.message : String(err)}`);
+      try {
+        await withDatabase(user.id, async (db) => {
+          await refreshEnrichedBooks(db);
+        });
+      } catch (refreshErr) {
+        console.error('Failed to recover books after bulk enable error:', refreshErr);
+      }
+    }
+  }, [user?.id, refreshEnrichedBooks]);
+
+  const invertAllBooksEnabled = useCallback(async () => {
+    if (!user?.id) return;
+
+    desiredEnabledRef.current.clear();
+    persistInFlightRef.current.clear();
+
+    setBibleBooks(prevBooks =>
+      prevBooks.map(book => ({ ...book, enabled: !book.enabled })),
+    );
+
+    try {
+      await withDatabase(user.id, async (db) => {
+        await db.runAsync('UPDATE BibleBooks SET Enabled = NOT Enabled;');
+      });
+    } catch (err) {
+      console.error('Failed to invert all books:', err);
+      setError(`Failed to update books: ${err instanceof Error ? err.message : String(err)}`);
+      try {
+        await withDatabase(user.id, async (db) => {
+          await refreshEnrichedBooks(db);
+        });
+      } catch (refreshErr) {
+        console.error('Failed to recover books after bulk invert error:', refreshErr);
+      }
+    }
+  }, [user?.id, refreshEnrichedBooks]);
+
+  const updateBookEnabledStatus = useCallback(async (bookName: string) => {
+    if (!user?.id) return;
+
+    try {
+      await withDatabase(user.id, async (db) => {
+        const asvBook = TRANSLATIONS[translationRef.current].Bible.find(b => b.Book === bookName);
+        if (!asvBook) return;
+
+        const totalChapters = asvBook.Chapters.map(ch => ch.Chapter);
+        const chapters = await db.getAllAsync<{ Chapter: number; Rarity: Rarity }>(
+          'SELECT Chapter, Rarity FROM ChapterRarities WHERE Book = ?;',
+          [bookName],
+        );
+
+        const rarityMap: Record<number, Rarity> = {};
         chapters.forEach(ch => {
           rarityMap[ch.Chapter] = ch.Rarity;
         });
 
-      const allChaptersDisabled = totalChapters.every(chNum => {
-        const rarity = rarityMap[chNum] ?? 'common';
-        return rarity === 'disabled';
-      });
+        const allChaptersDisabled = totalChapters.every(chNum => {
+          const rarity = rarityMap[chNum] ?? 'common';
+          return rarity === 'disabled';
+        });
 
-
-      // 2. Get the book's current enabled status
-      const bookStatus = await dbRef.current.getFirstAsync<{Enabled: number}>(
-        'SELECT Enabled FROM BibleBooks WHERE Book = ?;',
-        [bookName]
-      );
-
-      if (allChaptersDisabled && bookStatus?.Enabled === 1) {
-        // 4. Disable the book in database
-        await dbRef.current.runAsync(
-          'UPDATE BibleBooks SET Enabled = ? WHERE Book = ?;',
-          [0, bookName]
+        const bookStatus = await db.getFirstAsync<{ Enabled: number }>(
+          'SELECT Enabled FROM BibleBooks WHERE Book = ?;',
+          [bookName],
         );
 
-        // 5. Reset all chapters to 'common'
-        await Promise.all(
-          chapters.map(chapter =>
-            dbRef.current?.runAsync(
+        if (allChaptersDisabled && bookStatus?.Enabled === 1) {
+          await db.runAsync(
+            'UPDATE BibleBooks SET Enabled = ? WHERE Book = ?;',
+            [0, bookName],
+          );
+
+          for (const chapter of chapters) {
+            await db.runAsync(
               'UPDATE ChapterRarities SET Rarity = ? WHERE Book = ? AND Chapter = ?;',
-              ['common', bookName, chapter.Chapter]
-            )
-          )
-        );
+              ['common', bookName, chapter.Chapter],
+            );
+          }
 
-        // 6. Update local state
-        setBibleBooks(prevBooks =>
-          prevBooks.map(book => {
-            if (book.bookName !== bookName) return book;
-            return {
-              ...book,
-              enabled: false,
-              chapters: book.chapters?.map(ch => ({
-                ...ch,
-                rarity: 'common'
-              }))
-            };
-          })
-        );
-      }
+          setBibleBooks(prevBooks =>
+            prevBooks.map(book => {
+              if (book.bookName !== bookName) return book;
+              return {
+                ...book,
+                enabled: false,
+                chapters: book.chapters?.map(ch => ({
+                  ...ch,
+                  rarity: 'common',
+                })),
+              };
+            }),
+          );
+        }
+      });
     } catch (err) {
       console.error('Failed to update book status:', err);
     }
-  }, [dbRef.current]);
+  }, [user?.id]);
+
+  const updateChapterRarities = useCallback(async (
+    bookName: string,
+    updates: ChapterRarityUpdate[],
+    shouldUpdateBook = true,
+  ) => {
+    if (!user?.id || updates.length === 0) return;
+
+    try {
+      await withDatabase(user.id, async (db) => {
+        await db.withExclusiveTransactionAsync(async (txn) => {
+          for (const { chapter, rarity } of updates) {
+            await txn.runAsync(
+              'INSERT OR REPLACE INTO ChapterRarities (Book, Chapter, Rarity) VALUES (?, ?, ?);',
+              [bookName, chapter, rarity],
+            );
+          }
+        });
+
+        const rarityByChapter = new Map(updates.map(u => [u.chapter, u.rarity]));
+        setBibleBooks(prevBooks =>
+          prevBooks.map(book => {
+            if (book.bookName !== bookName) return book;
+            const updatedChapters = book.chapters?.map(ch => {
+              const nextRarity = rarityByChapter.get(ch.chapter);
+              return nextRarity !== undefined ? { ...ch, rarity: nextRarity } : ch;
+            }) ?? [];
+            return { ...book, chapters: updatedChapters };
+          }),
+        );
+      });
+
+      if (shouldUpdateBook) {
+        await updateBookEnabledStatus(bookName);
+      }
+    } catch (err) {
+      console.error('Failed to update rarities:', err);
+    }
+  }, [user?.id, updateBookEnabledStatus]);
 
   const updateChapterRarity = useCallback(async (
     bookName: string,
     chapterNum: number,
     rarity: Rarity,
-    shouldUpdateBook = true
+    shouldUpdateBook = true,
   ) => {
-    if (!dbRef.current) return;
-
-    try {
-      // Update the chapter rarity in database
-      await dbRef.current.runAsync(
-        'INSERT OR REPLACE INTO ChapterRarities (Book, Chapter, Rarity) VALUES (?, ?, ?);',
-        [bookName, chapterNum, rarity]
-      );
-
-      // Update local state
-      setBibleBooks(prevBooks => 
-        prevBooks.map(book => {
-          if (book.bookName !== bookName) return book;
-          
-          const updatedChapters = book.chapters?.map(ch => 
-            ch.chapter === chapterNum ? { ...ch, rarity } : ch
-          ) ?? [];
-          
-          return {
-            ...book,
-            chapters: updatedChapters
-          };
-        })
-      );
-
-      if (shouldUpdateBook) {
-        await updateBookEnabledStatus(bookName);
-      }
-
-    } catch (err) {
-      console.error('Failed to update rarity:', err);
-    }
-  }, [dbRef.current, updateBookEnabledStatus]);
+    await updateChapterRarities(bookName, [{ chapter: chapterNum, rarity }], shouldUpdateBook);
+  }, [updateChapterRarities]);
 
   const contextValue = useMemo(() => ({
     bibleBooks,
     toggleBookEnabled,
+    setAllBooksEnabled,
+    invertAllBooksEnabled,
     updateChapterRarity,
+    updateChapterRarities,
     updateBookEnabledStatus,
     isLoading,
     error,
@@ -425,7 +605,20 @@ export const BibleBooksProvider: React.FC<{ children: ReactNode }> = ({ children
     enabledChapterCount,
     scoreEnabledFlag,
     setScoreEnabledFlag,
-  }), [bibleBooks, error]);
+  }), [
+    bibleBooks,
+    toggleBookEnabled,
+    setAllBooksEnabled,
+    invertAllBooksEnabled,
+    updateChapterRarity,
+    updateChapterRarities,
+    updateBookEnabledStatus,
+    isLoading,
+    error,
+    refreshBooks,
+    enabledChapterCount,
+    scoreEnabledFlag,
+  ]);
 
   return (
     <BibleBooksContext value={contextValue}>

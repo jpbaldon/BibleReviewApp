@@ -1,6 +1,7 @@
 import { BibleBook, Chapter, Rarity } from '../types';
 import { useTimer } from '../context/TimerContext';
 import { useBibleBooks } from '../context/BibleBooksContext';
+import { filterBooksByScope } from './bibleScope';
 
 export type { Rarity };
 
@@ -57,7 +58,9 @@ export function useWeightedChapters(enabledBooks: BibleBook[]): WeightedChapter[
   const { bibleBooks } = useBibleBooks();
 
   const inCompetitiveSession = competitiveTimer && competitiveTimer.isActive;
-  const allowedBooks = inCompetitiveSession ? bibleBooks : enabledBooks;
+  const allowedBooks = inCompetitiveSession && competitiveTimer.activeScope
+    ? filterBooksByScope(bibleBooks, competitiveTimer.activeScope)
+    : enabledBooks;
 
   return buildWeightedChapters(allowedBooks, {
     treatAllAsCommon: !!inCompetitiveSession,

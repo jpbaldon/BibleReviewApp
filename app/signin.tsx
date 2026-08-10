@@ -3,12 +3,7 @@ import {
   View,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Keyboard,
-  TouchableWithoutFeedback,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
@@ -19,10 +14,15 @@ import { TextField } from '@/components/ui/TextField';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { AppLoadingScreen } from '@/components/AppLoadingScreen';
+import { AuthKeyboardView } from '@/components/AuthKeyboardView';
+import { validateEmail } from '@/utils/validateEmail';
 
 export default function SignInScreen() {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  const [emailError, setEmailError] = useState<string>('');
+  const [passwordError, setPasswordError] = useState<string>('');
+  const [formError, setFormError] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
 
   const router = useRouter();
@@ -35,18 +35,35 @@ export default function SignInScreen() {
     }
   }, [user, isLoading]);
 
+  const handleEmailChange = (text: string) => {
+    setEmail(text);
+    if (emailError) setEmailError('');
+    if (formError) setFormError('');
+  };
+
+  const handlePasswordChange = (text: string) => {
+    setPassword(text);
+    if (passwordError) setPasswordError('');
+    if (formError) setFormError('');
+  };
+
   const handleSignIn = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please enter both email and password.');
-      return;
-    }
+    const nextEmailError = validateEmail(email);
+    const nextPasswordError = password ? '' : 'Password is required.';
+    setEmailError(nextEmailError);
+    setPasswordError(nextPasswordError);
+    setFormError('');
+
+    if (nextEmailError || nextPasswordError) return;
 
     setSubmitting(true);
     try {
-      await signIn(email, password);
+      await signIn(email.trim(), password);
       router.replace('/(tabs)');
     } catch (error) {
-      Alert.alert('Error', 'Failed to sign in. Please try again.');
+      setFormError(
+        error instanceof Error ? error.message : 'Failed to sign in. Please try again.',
+      );
     } finally {
       setSubmitting(false);
     }
@@ -57,70 +74,77 @@ export default function SignInScreen() {
   }
 
   return (
-    <Screen>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <KeyboardAvoidingView
-          style={styles.container}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
-          <Card style={styles.card}>
-            <AppText variant="title" style={styles.title}>
-              Welcome Back
+    <Screen edges={['left', 'right', 'bottom']}>
+      <AuthKeyboardView>
+        <Card style={styles.card}>
+          <AppText variant="title" style={styles.title}>
+            Welcome Back
+          </AppText>
+          <TextField
+            label="Email"
+            placeholder="Email"
+            value={email}
+            onChangeText={handleEmailChange}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            error={emailError}
+          />
+          <TextField
+            label="Password"
+            placeholder="Password"
+            value={password}
+            onChangeText={handlePasswordChange}
+            secureTextEntry
+            autoCapitalize="none"
+            error={passwordError}
+          />
+          {formError ? (
+            <AppText color={theme.danger} style={styles.formError}>
+              {formError}
             </AppText>
-            <TextField
-              label="Email"
-              placeholder="Email"
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
-            <TextField
-              label="Password"
-              placeholder="Password"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoCapitalize="none"
-            />
-            {submitting ? (
-              <ActivityIndicator size="large" color={theme.accent} style={styles.loader} />
-            ) : (
-              <View>
-                <Button label="Sign In" onPress={handleSignIn} fullWidth />
-                <TouchableOpacity onPress={() => router.push('/signup')}>
-                  <AppText variant="muted" style={styles.linkText}>
-                    Don't have an account?{' '}
-                    <AppText variant="link" style={styles.linkHighlight}>
-                      Sign up
-                    </AppText>
+          ) : null}
+          <TouchableOpacity onPress={() => router.push('/forgot-password')}>
+            <AppText variant="link" style={styles.forgotLink}>
+              Forgot password?
+            </AppText>
+          </TouchableOpacity>
+          {submitting ? (
+            <ActivityIndicator size="large" color={theme.accent} style={styles.loader} />
+          ) : (
+            <View>
+              <Button label="Sign In" onPress={handleSignIn} fullWidth />
+              <TouchableOpacity onPress={() => router.push('/signup')}>
+                <AppText variant="muted" style={styles.linkText}>
+                  Don't have an account?{' '}
+                  <AppText variant="link" style={styles.linkHighlight}>
+                    Sign up
                   </AppText>
-                </TouchableOpacity>
-              </View>
-            )}
-          </Card>
-        </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
+                </AppText>
+              </TouchableOpacity>
+            </View>
+          )}
+        </Card>
+      </AuthKeyboardView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: 20,
-  },
-  centered: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   card: {
     paddingVertical: 8,
   },
   title: {
-    marginBottom: 20,
+    marginBottom: 8,
     textAlign: 'center',
+  },
+  formError: {
+    marginTop: 4,
+    marginBottom: 4,
+  },
+  forgotLink: {
+    alignSelf: 'flex-end',
+    marginBottom: 12,
+    fontWeight: '600',
   },
   loader: {
     marginVertical: 20,

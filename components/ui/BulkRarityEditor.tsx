@@ -1,22 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, Alert, StyleSheet } from 'react-native';
+import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { Rarity, Chapter } from '../../types';
 import { useBibleBooks } from '../../context/BibleBooksContext';
 import { useThemeContext } from '../../context/ThemeContext';
+import { useAlert } from '../../context/AlertContext';
 
 const rarities: Rarity[] = ['common', 'uncommon', 'rare', 'ultraRare', 'disabled'];
 
 export default function BulkRarityEditor({
   book,
-  updateChapterRarity,
 }: {
   book: { bookName: string; chapters: Chapter[] };
-  updateChapterRarity: (
-    bookName: string,
-    chapter: number,
-    rarity: Rarity,
-    shouldUpdateBook: boolean,
-  ) => Promise<void>;
 }) {
   const [fromChapter, setFromChapter] = useState<string>('1');
   const [toChapter, setToChapter] = useState<string>(book.chapters.length.toString());
@@ -24,8 +18,9 @@ export default function BulkRarityEditor({
   const [applyAllFrom, setApplyAllFrom] = useState<boolean>(false);
   const [toRarity, setToRarity] = useState<Rarity>('common');
 
-  const { updateBookEnabledStatus } = useBibleBooks();
+  const { updateChapterRarities } = useBibleBooks();
   const { theme } = useThemeContext();
+  const { alert } = useAlert();
 
   const getNextRarity = (rarity: Rarity): Rarity => {
     const index = rarities.indexOf(rarity);
@@ -42,7 +37,7 @@ export default function BulkRarityEditor({
     const to = parseInt(toChapter);
 
     if (isNaN(from) || isNaN(to) || from > to) {
-      Alert.alert('Invalid Range', 'Please enter a valid chapter number range.');
+      alert('Invalid Range', 'Please enter a valid chapter number range.');
       return;
     }
 
@@ -51,27 +46,25 @@ export default function BulkRarityEditor({
     );
 
     if (chaptersToUpdate.length === 0) {
-      Alert.alert('No Chapters Matched', 'No chapters matched the selected range.');
+      alert('No Chapters Matched', 'No chapters matched the selected range.');
       return;
     }
 
+    const updates = chaptersToUpdate.flatMap((ch) => {
+      const current = (ch.rarity || 'common') as Rarity;
+      const newRarity =
+        direction === 'increase' ? getNextRarity(current) : getPreviousRarity(current);
+      if (newRarity === current) return [];
+      return [{ chapter: ch.chapter, rarity: newRarity }];
+    });
+
+    if (updates.length === 0) return;
+
     try {
-      await Promise.all(
-        chaptersToUpdate.map((ch) => {
-          const current = (ch.rarity || 'common') as Rarity;
-          const newRarity =
-            direction === 'increase' ? getNextRarity(current) : getPreviousRarity(current);
-
-          if (newRarity === current) return Promise.resolve();
-
-          return updateChapterRarity(book.bookName, ch.chapter, newRarity, false);
-        }),
-      );
-
-      await updateBookEnabledStatus(book.bookName);
+      await updateChapterRarities(book.bookName, updates, true);
     } catch (err: any) {
       console.error(err);
-      Alert.alert('Error', 'Failed to adjust chapter rarities.');
+      alert('Error', 'Failed to adjust chapter rarities.');
     }
   };
 
@@ -80,13 +73,13 @@ export default function BulkRarityEditor({
     const to = parseInt(toChapter);
 
     if (isNaN(from) || isNaN(to) || from > to) {
-      Alert.alert('Invalid Range', 'Please enter a valid chapter number range.');
+      alert('Invalid Range', 'Please enter a valid chapter number range.');
       return;
     }
 
     const selectedFrom = applyAllFrom ? rarities : fromRarities;
     if (!applyAllFrom && selectedFrom.length === 0) {
-      Alert.alert(
+      alert(
         'No From Rarities',
         'Please select at least one "from" rarity or choose "apply to all".',
       );
@@ -102,21 +95,19 @@ export default function BulkRarityEditor({
     );
 
     if (chaptersToUpdate.length === 0) {
-      Alert.alert('No Chapters Matched', 'No chapters matched the selected criteria.');
+      alert('No Chapters Matched', 'No chapters matched the selected criteria.');
       return;
     }
 
     try {
-      await Promise.all(
-        chaptersToUpdate.map((ch) =>
-          updateChapterRarity(book.bookName, ch.chapter, toRarity, false),
-        ),
+      await updateChapterRarities(
+        book.bookName,
+        chaptersToUpdate.map((ch) => ({ chapter: ch.chapter, rarity: toRarity })),
+        true,
       );
-
-      await updateBookEnabledStatus(book.bookName);
     } catch (err: any) {
       console.error(err);
-      Alert.alert('Error', 'Failed to update chapter rarities.');
+      alert('Error', 'Failed to update chapter rarities.');
     }
   };
 
@@ -295,7 +286,6 @@ export default function BulkRarityEditor({
           marginTop: 16,
           backgroundColor: theme.accent,
           padding: 10,
-          borderRadius: 8,
           alignItems: 'center',
         }}
       >

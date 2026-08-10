@@ -17,6 +17,7 @@ import { Button } from './ui/Button';
 import { Card } from './ui/Card';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { pointsForAttempt } from '../utils/scoring';
+import { filterBooksByScope, competitiveBannerLabel } from '../utils/bibleScope';
 
 interface ContextVerse {
   verseNumber: number;
@@ -95,8 +96,12 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
 
   const inTimedSession = activeTimer && activeTimer.isActive;
   const inCompetitiveSession = competitiveTimer && competitiveTimer.isActive;
+  const activeCompetitiveScope = competitiveTimer.activeScope;
   const enabledBooks = bibleBooks.filter((book) => book.enabled);
-  const allowedBooks = inCompetitiveSession ? bibleBooks : enabledBooks;
+  const allowedBooks =
+    inCompetitiveSession && activeCompetitiveScope
+      ? filterBooksByScope(bibleBooks, activeCompetitiveScope)
+      : enabledBooks;
 
   const isScoreEnabled = useMemo(
     () => isScoreEnabledForBooks(bibleBooks),
@@ -290,14 +295,14 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
               </Text>
             </View>
           )}
-          {inCompetitiveSession && (
+          {inCompetitiveSession && activeCompetitiveScope && (
             <View style={styles.sessionBanner}>
               <Text
                 style={[styles.sessionBannerText, { color: theme.competitive }]}
                 numberOfLines={1}
                 ellipsizeMode="tail"
               >
-                Competitive Timer
+                {competitiveBannerLabel(activeCompetitiveScope)}
               </Text>
               <Text style={[styles.sessionBannerText, { color: theme.competitive, marginLeft: 8 }]}>
                 - {Math.floor(competitiveTimer.remaining / 60)}:
@@ -322,8 +327,8 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
                 {inCompetitiveSession || inTimedSession ? 'Personal Best:' : 'Overall:'}
               </Text>
               <Text style={[styles.scoreValue, { color: scoreValueColor }]}>
-                {inCompetitiveSession
-                  ? competitiveTimer.bestScore
+                {inCompetitiveSession && activeCompetitiveScope
+                  ? competitiveTimer.bestScores[activeCompetitiveScope]
                   : inTimedSession
                     ? activeTimer.bestSessionScore
                     : overallScore}

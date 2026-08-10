@@ -1,123 +1,218 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  ActivityIndicator,
+} from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import { useServices } from '@/context/ServicesContext';
 import { useThemeContext } from '@/context/ThemeContext';
-import { CompetitiveLeaderboardEntry } from '../../types';
+import { useTimer } from '@/context/TimerContext';
+import { useConfetti } from '@/context/ConfettiContext';
+import { useAlert } from '@/context/AlertContext';
+import { CompetitiveLeaderboardEntry, CompetitiveScope } from '../../types';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { Screen } from '@/components/ui/Screen';
 import { AppText } from '@/components/ui/AppText';
+import { Badge } from '@/components/ui/Badge';
+import { LeaderboardPodium } from '@/components/LeaderboardPodium';
+import { CompetitiveScopeTabs } from '@/components/CompetitiveScopeTabs';
+import { CompetitiveTimerCard } from '@/components/CompetitiveTimerCard';
+import { clearCompetitiveChampionCache } from '@/hooks/useCompetitiveChampion';
+import { COMPETITIVE_SCOPE_LABELS, competitiveDurationLabel } from '@/utils/bibleScope';
+import {
+  findUserRank,
+  splitCompetitiveLeaderboard,
+  userRankSubtitle,
+  type RankedCompetitiveEntry,
+} from '@/utils/competitiveLeaderboard';
+import {
+  readChampionCelebrated,
+  setChampionCelebrated,
+} from '@/utils/competitiveChampionCelebration';
 
 export default function CompetitiveLeaderboardScreen() {
   const [scores, setScores] = useState<CompetitiveLeaderboardEntry[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [selectedScope, setSelectedScope] = useState<CompetitiveScope>('full');
 
   const { user } = useAuth();
   const { theme } = useThemeContext();
-  const server = user ? useServices() : null;
+  const { competitiveTimer } = useTimer();
+  const { showConfetti } = useConfetti();
+  const { showToast } = useAlert();
+  const server = useServices();
 
-  const fetchLeaderboard = async () => {
-    if (!server) return;
-    try {
-      setRefreshing(true);
-      setError(null);
-      const data = await server.score.fetchTopCompetitiveScores();
-      const rankedData = data.map((item, index) => ({
-        ...item,
-        rank: index + 1,
-      }));
-      setScores(rankedData);
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('An unknown error occurred');
-      }
-    } finally {
-      setRefreshing(false);
-      setLoading(false);
+  const { podium, list } = useMemo(() => splitCompetitiveLeaderboard(scores), [scores]);
+  const userRank = useMemo(() => findUserRank(scores, user?.id), [scores, user?.id]);
+  const rankSubtitle = useMemo(
+    () => userRankSubtitle(userRank, COMPETITIVE_SCOPE_LABELS[selectedScope]),
+    [userRank, selectedScope],
+  );
+
+  useEffect(() => {
+    if (competitiveTimer.isActive && competitiveTimer.activeScope) {
+      setSelectedScope(competitiveTimer.activeScope);
     }
-  };
+  }, [competitiveTimer.isActive, competitiveTimer.activeScope]);
+
+  const fetchLeaderboard = useCallback(
+    async (scope: CompetitiveScope = selectedScope) => {
+      if (!user) return;
+      try {
+        setRefreshing(true);
+        setError(null);
+        const data = await server.score.fetchTopCompetitiveScores(scope);
+        const rankedData = data.map((item, index) => ({
+          ...item,
+          rank: index + 1,
+        }));
+        setScores(rankedData);
+        clearCompetitiveChampionCache();
+      } catch (err) {
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError('An unknown error occurred');
+        }
+      } finally {
+        setRefreshing(false);
+        setLoading(false);
+      }
+    },
+    [user, server, selectedScope],
+  );
 
   useFocusEffect(
     useCallback(() => {
-      if (server) fetchLeaderboard();
-    }, [server]),
+      if (user) {
+        void fetchLeaderboard(selectedScope);
+      }
+    }, [user, selectedScope, fetchLeaderboard]),
   );
 
-  const getMedalColor = (rank: number) => {
-    switch (rank) {
-      case 1:
-        return theme.competitive;
-      case 2:
-        return theme.textMuted;
-      case 3:
-        return theme.warning;
-      default:
-        return theme.text;
-    }
+  useEffect(() => {
+    if (loading || refreshing || !user) return;
+
+    let ignore = false;
+
+    const handleChampionCelebration = async () => {
+      if (userRank !== 1) {
+        await setChampionCelebrated(user.id, selectedScope, false);
+        return;
+      }
+
+      const celebrated = await readChampionCelebrated(user.id);
+      if (ignore || celebrated[selectedScope]) return;
+
+      await setChampionCelebrated(user.id, selectedScope, true);
+      if (ignore) return;
+
+      showConfetti({ count: 120 });
+      showToast({
+        title: 'Champion!',
+        message: `You're #1 on the ${COMPETITIVE_SCOPE_LABELS[selectedScope]} board!`,
+        variant: 'success',
+      });
+    };
+
+    void handleChampionCelebration();
+
+    return () => {
+      ignore = true;
+    };
+  }, [loading, refreshing, user, userRank, selectedScope, showConfetti, showToast]);
+
+  const handleScopeChange = (scope: CompetitiveScope) => {
+    setSelectedScope(scope);
+    setLoading(true);
+    void fetchLeaderboard(scope);
   };
 
-  const renderItem = ({ item }: { item: CompetitiveLeaderboardEntry }) => {
+  const renderItem = ({ item }: { item: RankedCompetitiveEntry }) => {
     const isCurrentUser = user?.id === item.id;
-    const isTopThree = item.rank && item.rank <= 3;
-
-    if (item.competitive_score === 0) return null;
 
     return (
       <View
         style={[
           styles.row,
           { borderBottomColor: theme.border },
-          isTopThree ? styles.topThreeRow : null,
           isCurrentUser ? { backgroundColor: theme.accentMuted } : null,
         ]}
       >
-        <View style={[styles.rankContainer, { width: 60 }]}>
-          <Icon
-            name={isTopThree ? 'medal' : 'trophy'}
-            size={24}
-            color={getMedalColor(item.rank || 0)}
-          />
-          <Text
-            style={[
-              styles.rank,
-              { color: getMedalColor(item.rank || 0) },
-              isTopThree ? styles.topThreeRank : null,
-            ]}
-          >
-            {item.rank}
-          </Text>
+        <View style={styles.rankCell}>
+          <Text style={[styles.rank, { color: theme.textMuted }]}>{item.rank}</Text>
         </View>
         <Text
           style={[
             styles.username,
-            { flex: 1, paddingLeft: 10, color: theme.text },
-            isCurrentUser ? { color: theme.warning, fontWeight: '700' } : null,
-            isTopThree ? styles.topThreeName : null,
+            { color: isCurrentUser ? theme.warning : theme.text },
+            isCurrentUser ? styles.boldUsername : null,
           ]}
           numberOfLines={1}
           ellipsizeMode="tail"
         >
           {item.username || 'Anonymous'}
         </Text>
-        <View style={styles.scoreContainer}>
-          <Text
-            style={[
-              styles.score,
-              { color: getMedalColor(item.rank || 0) },
-              isTopThree ? styles.topThreeScore : null,
-            ]}
-          >
-            {item.competitive_score}
-          </Text>
-        </View>
+        <Text style={[styles.score, { color: theme.competitive }]}>{item.competitive_score}</Text>
       </View>
     );
   };
+
+  const fixedHeader = (
+    <>
+      <View style={styles.scopeTabs}>
+        <CompetitiveScopeTabs
+          selectedScope={selectedScope}
+          onSelectScope={handleScopeChange}
+        />
+      </View>
+
+      <CompetitiveTimerCard scope={selectedScope} />
+
+      <View style={[styles.subtitle, { marginTop: 12 }]}>
+        <Text style={[styles.subtitleText, { color: theme.textMuted }]}>
+          {competitiveDurationLabel(selectedScope)} · {COMPETITIVE_SCOPE_LABELS[selectedScope]} Best Scores
+        </Text>
+        {rankSubtitle ? (
+          <View style={styles.rankBadgeRow}>
+            {userRank === 1 ? (
+              <Icon name="ribbon" size={16} color={theme.medalGold} />
+            ) : null}
+            <Badge
+              label={rankSubtitle}
+              tone={userRank === 1 ? 'gold' : userRank === 2 ? 'silver' : 'bronze'}
+            />
+          </View>
+        ) : null}
+      </View>
+    </>
+  );
+
+  const scrollHeader = (
+    <>
+      <LeaderboardPodium entries={podium} currentUserId={user?.id} />
+
+      {list.length > 0 ? (
+        <View style={[styles.headerRow, { borderBottomColor: theme.border }]}>
+          <Text style={[styles.headerText, styles.rankHeader, { color: theme.textMuted }]}>
+            Rank
+          </Text>
+          <Text style={[styles.headerText, styles.nameHeader, { color: theme.textMuted }]}>
+            Player
+          </Text>
+          <Text style={[styles.headerText, styles.scoreHeader, { color: theme.textMuted }]}>
+            Score
+          </Text>
+        </View>
+      ) : null}
+    </>
+  );
 
   if (!user) {
     return (
@@ -145,39 +240,23 @@ export default function CompetitiveLeaderboardScreen() {
 
   return (
     <Screen style={styles.container} safe={false}>
-      <View style={styles.header}>
-        <Icon name="trophy" size={28} color={theme.competitive} />
-        <Text style={[styles.headerTitle, { color: theme.text }]}>
-          Competitive Leaderboard
-        </Text>
-        <Icon name="trophy" size={28} color={theme.competitive} />
-      </View>
-
-      <View style={styles.subtitle}>
-        <Text style={[styles.subtitleText, { color: theme.textMuted }]}>
-          5-Minute Challenge · Best Scores
-        </Text>
-      </View>
-
-      <View style={[styles.headerRow, { borderBottomColor: theme.border }]}>
-        <Text style={[styles.headerText, { width: 60, textAlign: 'center', color: theme.textMuted }]}>
-          Rank
-        </Text>
-        <Text style={[styles.headerText, { flex: 1, paddingLeft: 10, color: theme.textMuted }]}>
-          Player
-        </Text>
-        <Text style={[styles.headerText, { width: 80, textAlign: 'right', color: theme.textMuted }]}>
-          Score
-        </Text>
-      </View>
-
+      {fixedHeader}
       <FlatList
-        data={scores}
+        style={styles.list}
+        data={list}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
+        ListHeaderComponent={scrollHeader}
         contentContainerStyle={styles.listContent}
-        onRefresh={fetchLeaderboard}
+        onRefresh={() => fetchLeaderboard(selectedScope)}
         refreshing={refreshing}
+        ListEmptyComponent={
+          podium.length === 0 ? (
+            <AppText variant="muted" style={styles.emptyText}>
+              No scores yet. Start a competitive timer and set a personal best!
+            </AppText>
+          ) : null
+        }
       />
     </Screen>
   );
@@ -186,6 +265,10 @@ export default function CompetitiveLeaderboardScreen() {
 const styles = StyleSheet.create({
   container: {
     padding: 10,
+    flex: 1,
+  },
+  list: {
+    flex: 1,
   },
   centered: {
     justifyContent: 'center',
@@ -196,24 +279,23 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontSize: 18,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 16,
-    gap: 12,
-  },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: '700',
+  scopeTabs: {
+    marginBottom: 4,
   },
   subtitle: {
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
+    gap: 8,
   },
   subtitleText: {
     fontSize: 14,
     fontStyle: 'italic',
+    textAlign: 'center',
+  },
+  rankBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   headerRow: {
     flexDirection: 'row',
@@ -225,6 +307,18 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 14,
   },
+  rankHeader: {
+    width: 48,
+    textAlign: 'center',
+  },
+  nameHeader: {
+    flex: 1,
+    paddingLeft: 10,
+  },
+  scoreHeader: {
+    width: 80,
+    textAlign: 'right',
+  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -233,46 +327,34 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderRadius: 8,
   },
-  topThreeRow: {
-    paddingVertical: 16,
-  },
-  rankContainer: {
-    flexDirection: 'row',
+  rankCell: {
+    width: 48,
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
   },
   rank: {
     fontWeight: '700',
     fontSize: 14,
   },
-  topThreeRank: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
   username: {
+    flex: 1,
+    paddingLeft: 10,
     fontSize: 15,
   },
-  topThreeName: {
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  scoreContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: 80,
-    justifyContent: 'flex-end',
+  boldUsername: {
+    fontWeight: '700',
   },
   score: {
+    width: 80,
+    textAlign: 'right',
     fontWeight: '700',
     fontSize: 16,
-    textAlign: 'right',
-  },
-  topThreeScore: {
-    fontSize: 20,
-    fontWeight: '700',
   },
   listContent: {
     paddingBottom: 20,
+  },
+  emptyText: {
+    textAlign: 'center',
+    marginTop: 12,
+    paddingHorizontal: 16,
   },
 });

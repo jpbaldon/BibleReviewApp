@@ -3,7 +3,16 @@ import { View, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { useThemeContext } from '@/context/ThemeContext';
 import { AppText } from './AppText';
 
-type BadgeTone = 'accent' | 'success' | 'danger' | 'warning' | 'neutral' | 'competitive';
+type BadgeTone =
+  | 'accent'
+  | 'success'
+  | 'danger'
+  | 'warning'
+  | 'neutral'
+  | 'competitive'
+  | 'gold'
+  | 'silver'
+  | 'bronze';
 
 interface BadgeProps {
   label: string;
@@ -24,6 +33,12 @@ export function Badge({ label, tone = 'accent', style }: BadgeProps) {
         return { bg: theme.warning + '22', fg: theme.warning };
       case 'competitive':
         return { bg: theme.competitive + '22', fg: theme.competitive };
+      case 'gold':
+        return { bg: theme.medalGold + '22', fg: theme.medalGold };
+      case 'silver':
+        return { bg: theme.medalSilver + '33', fg: theme.medalSilver };
+      case 'bronze':
+        return { bg: theme.medalBronze + '22', fg: theme.medalBronze };
       case 'neutral':
         return { bg: theme.border, fg: theme.textMuted };
       case 'accent':

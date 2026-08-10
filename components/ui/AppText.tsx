@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, type TextProps, StyleSheet } from 'react-native';
+import { Platform, Text, type TextProps, StyleSheet } from 'react-native';
 import { useThemeContext } from '@/context/ThemeContext';
 
 export type AppTextVariant =
@@ -39,6 +39,9 @@ export function AppText({
         style,
       ]}
       {...rest}
+      // Android adds extra font padding under large text by default, which
+      // looks like unexplained dead space below titles on auth screens.
+      {...(Platform.OS === 'android' ? { includeFontPadding: false } : null)}
     />
   );
 }
