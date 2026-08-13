@@ -1,4 +1,4 @@
-import { Stack } from 'expo-router';
+import { Redirect, Stack, useRouter, useSegments } from 'expo-router';
 import { TimerProvider } from '../context/TimerContext';
 import { ConfettiProvider } from '../context/ConfettiContext';
 import { useFonts } from 'expo-font';
@@ -11,7 +11,6 @@ import { ScoreProvider } from '../context/ScoreContext';
 import { BibleBooksProvider } from '../context/BibleBooksContext';
 import { ThemeProvider, useThemeContext } from '../context/ThemeContext';
 import { AlertProvider } from '../context/AlertContext';
-import { useSegments, useRouter } from 'expo-router';
 import { ServicesProvider } from '../context/ServicesContext';
 import { BackendProvider } from '../context/BackendContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -57,27 +56,27 @@ function InnerApp() {
     return <AppLoadingScreen message="Signing you in…" />;
   }
 
+  const loggedInContent = user && !recovering ? (
+    <ServicesProvider>
+      <TimerProvider>
+        <BibleBooksProvider>
+          <ScoreProvider>
+            <ThemeLoader userId={user.id} />
+            <LayoutContent />
+          </ScoreProvider>
+        </BibleBooksProvider>
+      </TimerProvider>
+    </ServicesProvider>
+  ) : (
+    <LayoutContent />
+  );
+
   return (
     <SafeAreaProvider>
       <ThemeProvider>
         <AlertProvider>
           <SettingsProvider userId={recovering ? undefined : user?.id}>
-            {/* During password recovery we have a session, but must not mount
-                BibleBooks/SQLite (or other logged-in providers) yet. */}
-            {!user || recovering ? (
-              <LayoutContent />
-            ) : (
-              <ServicesProvider>
-                <TimerProvider>
-                  <BibleBooksProvider>
-                    <ScoreProvider>
-                      <ThemeLoader userId={user.id} />
-                      <LayoutContent />
-                    </ScoreProvider>
-                  </BibleBooksProvider>
-                </TimerProvider>
-              </ServicesProvider>
-            )}
+            {loggedInContent}
           </SettingsProvider>
         </AlertProvider>
       </ThemeProvider>
@@ -90,14 +89,14 @@ function LayoutContent() {
   const { isLoading, user, isPasswordRecovery } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const recovering = isPasswordRecovery || isPasswordRecoveryPending();
+  const segment = segments[0];
+  const publicAuthScreens = ['signin', 'signup', 'verifyemail', 'forgot-password'];
+  const isResetPassword = segment === 'reset-password';
+  const isPublicAuth = publicAuthScreens.includes(segment);
 
   useEffect(() => {
     if (isLoading) return;
-
-    const segment = segments[0];
-    const publicAuthScreens = ['signin', 'signup', 'verifyemail', 'forgot-password'];
-    const isResetPassword = segment === 'reset-password';
-    const recovering = isPasswordRecovery || isPasswordRecoveryPending();
 
     if (recovering) {
       if (!isResetPassword) {
@@ -112,15 +111,31 @@ function LayoutContent() {
       return;
     }
 
-    if (!user && !publicAuthScreens.includes(segment)) {
+    if (!user && !isPublicAuth) {
       router.replace('/signin');
-    } else if (user && publicAuthScreens.includes(segment)) {
+    } else if (user && isPublicAuth) {
       router.replace('/(tabs)');
     }
-  }, [isLoading, user, segments, isPasswordRecovery]);
+  }, [isLoading, user, segments, isPasswordRecovery, recovering, isResetPassword, isPublicAuth, router]);
 
   if (isLoading) {
     return <AppLoadingScreen />;
+  }
+
+  // Redirect on the first paint. A useEffect replace is too late: expo-router
+  // mounts HomeScreen first, and a release build dies if that screen calls
+  // useServices() outside ServicesProvider (logged-out cold start).
+  if (recovering && !isResetPassword) {
+    return <Redirect href="/reset-password" />;
+  }
+  if (!recovering && isResetPassword) {
+    return <Redirect href={user ? '/(tabs)' : '/signin'} />;
+  }
+  if (!user && !isPublicAuth) {
+    return <Redirect href="/signin" />;
+  }
+  if (user && !recovering && isPublicAuth) {
+    return <Redirect href="/(tabs)" />;
   }
 
   return (

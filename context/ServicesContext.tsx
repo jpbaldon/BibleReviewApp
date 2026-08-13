@@ -11,6 +11,9 @@ export const useServices = () => {
   return ctx;
 };
 
+/** Returns null when the logged-in services tree is not mounted (e.g. sign-in). */
+export const useOptionalServices = () => useContext(ServicesContext);
+
 export const ServicesProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
   const backend = useBackend();
