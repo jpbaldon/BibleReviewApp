@@ -27,3 +27,12 @@ export const getTranslation = async (userId: string): Promise<TranslationKey> =>
   const value = await AsyncStorage.getItem(`translation-${userId}`);
   return (value as TranslationKey) ?? 'BSB';
 };
+
+export const setMicButtonEnabled = async (userId: string, value: boolean) => {
+  await AsyncStorage.setItem(`micButtonEnabled-${userId}`, JSON.stringify(value));
+};
+
+export const getMicButtonEnabled = async (userId: string): Promise<boolean> => {
+  const value = await AsyncStorage.getItem(`micButtonEnabled-${userId}`);
+  return value ? JSON.parse(value) : true;
+};
