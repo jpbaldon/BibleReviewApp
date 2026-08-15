@@ -6,6 +6,8 @@ import {
   setSoundEnabled,
   getTranslation,
   setTranslation,
+  getMicButtonEnabled,
+  setMicButtonEnabled,
 } from './UserSettings';
 
 describe('UserSettings', () => {
@@ -51,6 +53,22 @@ describe('UserSettings', () => {
     it('persists translation choice', async () => {
       await setTranslation('user-a', 'ASV');
       expect(await getTranslation('user-a')).toBe('ASV');
+    });
+  });
+
+  describe('micButtonEnabled', () => {
+    it('defaults to true', async () => {
+      expect(await getMicButtonEnabled('user-a')).toBe(true);
+    });
+
+    it('persists false when hidden', async () => {
+      await setMicButtonEnabled('user-a', false);
+      expect(await getMicButtonEnabled('user-a')).toBe(false);
+    });
+
+    it('keeps settings isolated by user', async () => {
+      await setMicButtonEnabled('user-a', false);
+      expect(await getMicButtonEnabled('user-b')).toBe(true);
     });
   });
 });

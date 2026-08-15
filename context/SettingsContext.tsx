@@ -6,6 +6,8 @@ import {
   setSoundEnabled,
   getTranslation,
   setTranslation,
+  getMicButtonEnabled,
+  setMicButtonEnabled,
 } from '../utils/UserSettings';
 import type { TranslationKey } from '../data/translations';
 
@@ -16,6 +18,8 @@ type SettingsContextType = {
   setSoundEnabledSetting: (value: boolean) => void;
   translation: TranslationKey;
   setTranslationSetting: (value: TranslationKey) => void;
+  micButtonEnabled: boolean;
+  setMicButtonEnabledSetting: (value: boolean) => void;
 };
 
 const SettingsContext = createContext<SettingsContextType>({
@@ -25,6 +29,8 @@ const SettingsContext = createContext<SettingsContextType>({
   setSoundEnabledSetting: () => {},
   translation: 'BSB',
   setTranslationSetting: () => {},
+  micButtonEnabled: true,
+  setMicButtonEnabledSetting: () => {},
 });
 
 export const useSettings = () => useContext(SettingsContext);
@@ -33,6 +39,7 @@ export const SettingsProvider = ({ userId, children }: { userId?: string | null;
   const [holdToTryAnother, setHoldToTryAnotherState] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabledState] = useState<boolean>(true);
   const [translation, setTranslationState] = useState<TranslationKey>('BSB');
+  const [micButtonEnabled, setMicButtonEnabledState] = useState<boolean>(true);
 
   useEffect(() => {
     if (!userId) {
@@ -40,6 +47,7 @@ export const SettingsProvider = ({ userId, children }: { userId?: string | null;
       setHoldToTryAnotherState(false);
       setSoundEnabledState(true);
       setTranslationState('BSB');
+      setMicButtonEnabledState(true);
       return;
     }
 
@@ -65,6 +73,14 @@ export const SettingsProvider = ({ userId, children }: { userId?: string | null;
         setTranslationState(trans);
       } catch (error) {
         console.error('Failed to load translation setting:', error);
+      }
+
+      try {
+        const micButton = await getMicButtonEnabled(userId);
+        setMicButtonEnabledState(micButton);
+      } catch (error) {
+        console.error('Failed to load mic button setting:', error);
+        setMicButtonEnabledState(true);
       }
     };
 
@@ -104,6 +120,17 @@ export const SettingsProvider = ({ userId, children }: { userId?: string | null;
     }
   };
 
+  const setMicButtonEnabledSetting = async (value: boolean) => {
+    if (!userId) return;
+
+    try {
+      await setMicButtonEnabled(userId, value);
+      setMicButtonEnabledState(value);
+    } catch (error) {
+      console.error('Failed to save mic button setting:', error);
+    }
+  };
+
   return (
     <SettingsContext
       value={{
@@ -113,6 +140,8 @@ export const SettingsProvider = ({ userId, children }: { userId?: string | null;
         setSoundEnabledSetting,
         translation,
         setTranslationSetting,
+        micButtonEnabled,
+        setMicButtonEnabledSetting,
       }}
     >
       {children}

@@ -118,6 +118,7 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
   const competitiveScoreRef = useRef(0);
   const oldCompetitiveBestRef = useRef(0);
   const activeScopeRef = useRef<CompetitiveScope | null>(null);
+  const startCompetitiveTimerRef = useRef<(scope: CompetitiveScope) => void>(() => {});
 
   useEffect(() => {
     competitiveScoreRef.current = competitiveScore;
@@ -297,12 +298,26 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
                 title: 'Competitive Timer Finished',
                 message: `${scopeLabel} competitive timer has finished!\n\nNew best score: ${score}\n(Previous: ${previousBest ?? 0})`,
                 variant: 'success',
+                buttons: [
+                  { text: 'OK', style: 'cancel' },
+                  {
+                    text: 'Retry',
+                    onPress: () => startCompetitiveTimerRef.current(scope),
+                  },
+                ],
               });
             } else {
               showAlert({
                 title: 'Competitive Timer Finished',
                 message: `${scopeLabel} competitive timer has finished!\n\nScore: ${score}\nBest: ${previousBest ?? 0}`,
                 variant: 'info',
+                buttons: [
+                  { text: 'OK', style: 'cancel' },
+                  {
+                    text: 'Retry',
+                    onPress: () => startCompetitiveTimerRef.current(scope),
+                  },
+                ],
               });
             }
           }, 0);
@@ -472,6 +487,8 @@ export const TimerProvider = ({ children }: { children: ReactNode }) => {
       activeScope: scope,
     }));
   };
+
+  startCompetitiveTimerRef.current = startCompetitiveTimer;
 
   const stopCompetitiveTimer = () => {
     const scope = competitiveTimer.activeScope ?? 'full';

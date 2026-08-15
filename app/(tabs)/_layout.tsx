@@ -1,13 +1,28 @@
-import { Tabs } from 'expo-router';
+import { Redirect, Tabs } from 'expo-router';
 import React from 'react';
 import { Platform } from 'react-native';
 import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { TabBarBackground } from '@/components/ui/TabBarBackground';
+import { AppLoadingScreen } from '@/components/AppLoadingScreen';
+import { useAuth, isPasswordRecoveryPending } from '@/context/AuthContext';
 import { useThemeContext } from '../../context/ThemeContext';
 
 export default function TabLayout() {
+  const { user, isLoading, isPasswordRecovery } = useAuth();
   const { theme } = useThemeContext();
+
+  if (isLoading) {
+    return <AppLoadingScreen message="Signing you in…" />;
+  }
+
+  if (isPasswordRecovery || isPasswordRecoveryPending()) {
+    return <Redirect href="/reset-password" />;
+  }
+
+  if (!user) {
+    return <Redirect href="/signin" />;
+  }
 
   return (
     <Tabs

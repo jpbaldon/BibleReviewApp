@@ -42,6 +42,13 @@ export default {
       'expo-font',
       'expo-web-browser',
       [
+        'expo-speech-recognition',
+        {
+          microphonePermission: 'Allow Bible Review to use the microphone for voice answers.',
+          speechRecognitionPermission: 'Allow Bible Review to use speech recognition for voice answers.',
+        },
+      ],
+      [
         'expo-splash-screen',
         {
           image: './assets/images/splash.png',

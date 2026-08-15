@@ -27,6 +27,8 @@ export default function Settings() {
     setSoundEnabledSetting,
     translation,
     setTranslationSetting,
+    micButtonEnabled,
+    setMicButtonEnabledSetting,
   } = useSettings();
 
   const handleSwitchAccount = async () => {
@@ -98,6 +100,19 @@ export default function Settings() {
             <Switch
               value={soundEnabled}
               onValueChange={setSoundEnabledSetting}
+              thumbColor={colorScheme === 'dark' ? '#FAFAF9' : '#FFFFFF'}
+              trackColor={{ false: theme.textDisabled, true: theme.accent }}
+              ios_backgroundColor={theme.textDisabled}
+            />
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: theme.border }]} />
+
+          <View style={styles.row}>
+            <AppText>Mic Button</AppText>
+            <Switch
+              value={micButtonEnabled}
+              onValueChange={setMicButtonEnabledSetting}
               thumbColor={colorScheme === 'dark' ? '#FAFAF9' : '#FFFFFF'}
               trackColor={{ false: theme.textDisabled, true: theme.accent }}
               ios_backgroundColor={theme.textDisabled}

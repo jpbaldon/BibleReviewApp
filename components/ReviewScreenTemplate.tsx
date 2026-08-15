@@ -1,11 +1,12 @@
 import { useTimer } from '../context/TimerContext';
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Dimensions, Animated } from 'react-native';
 import { useBibleBooks } from '../context/BibleBooksContext';
 import { useScore } from '../context/ScoreContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAudioPlayer } from 'expo-audio';
 import { SimpleBottomSheet } from './SimpleBottomSheet';
+import { VoiceAnswerInput } from './VoiceAnswerInput';
 import { useConfetti } from '../context/ConfettiContext';
 import { Chapter, DuplicateLocation } from '../types';
 import { useThemeContext } from '../context/ThemeContext';
@@ -60,7 +61,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
 }) => {
   const { bibleBooks, scoreEnabledFlag } = useBibleBooks();
   const { activeTimer, timedSessionScore, incrementTimedSessionScore, competitiveTimer, competitiveScore, incrementCompetitiveScore } = useTimer();
-  const { holdToTryAnother, soundEnabled } = useSettings();
+  const { holdToTryAnother, soundEnabled, micButtonEnabled } = useSettings();
   const { theme } = useThemeContext();
 
   const [item, setItem] = useState<ReviewItem | null>(null);
@@ -75,6 +76,8 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   const [feedbackColor, setFeedbackColor] = useState<string>(theme.text);
   const [showFeedback, setShowFeedback] = useState<boolean>(false);
   const [isSheetVisible, setIsSheetVisible] = useState<boolean>(false);
+  const [isVoiceListening, setIsVoiceListening] = useState<boolean>(false);
+  const [voiceInterimTranscript, setVoiceInterimTranscript] = useState<string>('');
   const [enabledBooksCount, setEnabledBooksCount] = useState<number>(bibleBooks.filter(book => book.enabled).length);
 
   const screenHeight = Dimensions.get('window').height;
@@ -117,6 +120,12 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
       loadNewItem();
     }
   }, [bibleBooks, inCompetitiveSession]);
+
+  useEffect(() => {
+    if (inCompetitiveSession && activeCompetitiveScope) {
+      loadNewItem();
+    }
+  }, [inCompetitiveSession, activeCompetitiveScope]);
 
   const playFeedbackSound = (isCorrect: boolean) => {
     if (!soundEnabled) return;
@@ -197,9 +206,9 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
     loadChapter(currentBookName, currentChapter.chapter - 1);
   };
 
-  const checkGuess = async () => {
-    if (!item) return;
-    const isCorrect = checkCorrectness(selectedBook, selectedChapter, item);
+  const submitGuess = async (guessBook: string, guessChapter: string) => {
+    if (!item || !guessChapter) return;
+    const isCorrect = checkCorrectness(guessBook, guessChapter, item);
 
     if (isCorrect) {
       let pointsObtained = 0;
@@ -239,6 +248,10 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
     setTimeout(() => setShowFeedback(false), 1500);
   };
 
+  const checkGuess = () => {
+    void submitGuess(selectedBook, selectedChapter);
+  };
+
   const forfeit = () => {
     if (!item) return;
     setShowAnswer(true);
@@ -269,6 +282,35 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
       rarity: !inCompetitiveSession && chapter.rarity || 'common',
     })),
   }));
+
+  const enabledBookNames = useMemo(
+    () => allowedBooks.map((book) => book.bookName),
+    [allowedBooks],
+  );
+
+  const showTransientFeedback = useCallback((message: string, color: string) => {
+    setFeedbackText(message);
+    setFeedbackColor(color);
+    setShowFeedback(true);
+    setTimeout(() => setShowFeedback(false), 2000);
+  }, []);
+
+  const handleVoiceParsed = useCallback((reference: { book: string; chapter: string }) => {
+    setSelectedBook(reference.book);
+    setSelectedChapter(reference.chapter);
+  }, []);
+
+  const handleVoiceError = useCallback((message: string) => {
+    showTransientFeedback(message, theme.danger);
+  }, [showTransientFeedback, theme.danger]);
+
+  const handleVoiceListeningChange = useCallback((state: {
+    isListening: boolean;
+    interimTranscript: string;
+  }) => {
+    setIsVoiceListening(state.isListening);
+    setVoiceInterimTranscript(state.interimTranscript);
+  }, []);
 
   const scoreValueColor = inCompetitiveSession
     ? theme.competitive
@@ -445,9 +487,13 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
                   ]}
                   numberOfLines={1}
                 >
-                  {selectedBook && selectedChapter
-                    ? `${selectedBook} - Chapter ${selectedChapter}`
-                    : 'Select Book & Chapter'}
+                  {isVoiceListening && voiceInterimTranscript
+                    ? voiceInterimTranscript
+                    : selectedBook && selectedChapter
+                      ? `${selectedBook} - Chapter ${selectedChapter}`
+                      : isVoiceListening
+                        ? 'Listening...'
+                        : 'Select Book & Chapter'}
                 </Text>
               </View>
               <Icon
@@ -456,6 +502,16 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
                 color={!showAnswer ? theme.textMuted : theme.textDisabled}
               />
             </TouchableOpacity>
+
+            {micButtonEnabled ? (
+              <VoiceAnswerInput
+                disabled={showAnswer}
+                enabledBookNames={enabledBookNames}
+                onError={handleVoiceError}
+                onListeningChange={handleVoiceListeningChange}
+                onParsed={handleVoiceParsed}
+              />
+            ) : null}
 
             <SimpleBottomSheet
               visible={isSheetVisible}
@@ -574,12 +630,11 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'stretch',
     marginBottom: 12,
   },
   dropdown: {
     flex: 1,
-    marginHorizontal: 2,
     borderWidth: 1,
     borderRadius: 12,
     justifyContent: 'space-between',

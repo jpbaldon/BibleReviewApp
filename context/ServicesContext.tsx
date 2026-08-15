@@ -2,6 +2,7 @@ import React, { createContext, useContext, useMemo } from 'react';
 import { useAuth } from './AuthContext';
 import { useBackend } from './BackendContext';
 import { createBackendServices } from '../hooks/createBackendServices';
+import { AppLoadingScreen } from '../components/AppLoadingScreen';
 
 const ServicesContext = createContext<ReturnType<typeof createBackendServices> | null>(null);
 
@@ -20,7 +21,9 @@ export const ServicesProvider = ({ children }: { children: React.ReactNode }) =>
     return createBackendServices(backend, user.id);
   }, [user, backend]);
 
-  if (isLoading || (user && !services)) return null;
+  if (isLoading || !user || !services) {
+    return <AppLoadingScreen message="Loading your account…" />;
+  }
 
   return (
     <ServicesContext value={services}>
