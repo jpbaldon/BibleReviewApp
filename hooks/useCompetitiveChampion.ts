@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '@/context/AuthContext';
-import { useServices } from '@/context/ServicesContext';
+import { useOptionalServices } from '@/context/ServicesContext';
 import { COMPETITIVE_SCOPES, COMPETITIVE_SCOPE_LABELS, type CompetitiveScope } from '@/utils/bibleScope';
 import { isUserRankOne } from '@/utils/competitiveLeaderboard';
 
@@ -18,12 +18,12 @@ export function clearCompetitiveChampionCache() {
 
 export function useCompetitiveChampion() {
   const { user } = useAuth();
-  const server = useServices();
+  const server = useOptionalServices();
   const [championScopes, setChampionScopes] = useState<CompetitiveScope[]>([]);
   const [loading, setLoading] = useState(false);
 
   const refresh = useCallback(async () => {
-    if (!user) {
+    if (!user || !server) {
       setChampionScopes([]);
       return;
     }
