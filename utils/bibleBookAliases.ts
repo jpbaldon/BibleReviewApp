@@ -67,7 +67,7 @@ const BOOK_ABBREVIATIONS: Record<string, string[]> = {
   Mark: ['mark'],
   Luke: ['luke'],
   John: ['john'],
-  Acts: ['acts'],
+  Acts: ['acts', 'ask', 'asked', 'act', 'axe', 'ax', 'acts of the apostles'],
   Romans: ['rom'],
   '1 Corinthians': ['1co', '1 cor'],
   '2 Corinthians': ['2co', '2 cor'],
@@ -156,6 +156,9 @@ export function buildSpeechContextStrings(enabledBooks: string[]): string[] {
   }
 
   strings.add('chapter');
+  strings.add('four');
+  strings.add('Acts four');
+  strings.add('Acts 4');
 
   return [...strings];
 }

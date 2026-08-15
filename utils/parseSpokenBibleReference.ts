@@ -48,6 +48,12 @@ const NUMBER_WORDS: Record<string, number> = {
   third: 3,
   fourth: 4,
   fifth: 5,
+  for: 4,
+  fore: 4,
+  to: 2,
+  too: 2,
+  won: 1,
+  ate: 8,
 };
 
 const MAX_CHAPTER_WORDS = 4;

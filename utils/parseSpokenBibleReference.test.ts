@@ -120,4 +120,20 @@ describe('parseSpokenBibleReference', () => {
       reference: { book: 'Psalms', chapter: '119' },
     });
   });
+
+  it('parses "ask for" as Acts 4', () => {
+    const result = parseSpokenBibleReference('ask for', enabledBooks);
+    expect(result).toEqual({
+      success: true,
+      reference: { book: 'Acts', chapter: '4' },
+    });
+  });
+
+  it('parses "acts for" as Acts 4', () => {
+    const result = parseSpokenBibleReference('acts for', enabledBooks);
+    expect(result).toEqual({
+      success: true,
+      reference: { book: 'Acts', chapter: '4' },
+    });
+  });
 });
