@@ -1,10 +1,15 @@
+import { useIsFocused } from '@react-navigation/native';
 import { useEventListener } from 'expo';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 import { VoiceAnswerButton } from './VoiceAnswerButton';
 import type { VoiceAnswerInputProps } from './VoiceAnswerInput.types';
 import { buildSpeechContextStrings } from '../utils/bibleBookAliases';
 import { parseSpokenBibleReference } from '../utils/parseSpokenBibleReference';
+
+const useContinuousRecognition =
+  Platform.OS !== 'android' || Number(Platform.Version) >= 33;
 
 export function VoiceAnswerSpeechImpl({
   disabled = false,
@@ -13,13 +18,22 @@ export function VoiceAnswerSpeechImpl({
   onError,
   onListeningChange,
 }: VoiceAnswerInputProps) {
+  const isFocused = useIsFocused();
   const [isListening, setIsListening] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState('');
   const hasHandledResultRef = useRef(false);
   const latestTranscriptRef = useRef('');
   const enabledBookNamesRef = useRef(enabledBookNames);
+  const isFocusedRef = useRef(isFocused);
+  const disabledRef = useRef(disabled);
+  const wantListeningRef = useRef(false);
+  const ownsSessionRef = useRef(false);
+  const nativeStartedRef = useRef(false);
+  const committedSegmentsRef = useRef('');
 
   enabledBookNamesRef.current = enabledBookNames;
+  isFocusedRef.current = isFocused;
+  disabledRef.current = disabled;
 
   useEffect(() => {
     onListeningChange?.({ isListening, interimTranscript });
@@ -31,6 +45,10 @@ export function VoiceAnswerSpeechImpl({
     }
 
     hasHandledResultRef.current = true;
+    wantListeningRef.current = false;
+    ownsSessionRef.current = false;
+    nativeStartedRef.current = false;
+    committedSegmentsRef.current = '';
     setInterimTranscript('');
     latestTranscriptRef.current = '';
     setIsListening(false);
@@ -62,54 +80,100 @@ export function VoiceAnswerSpeechImpl({
     return true;
   }, [handleFinalTranscript]);
 
+  const discardSession = useCallback(() => {
+    hasHandledResultRef.current = true;
+    wantListeningRef.current = false;
+    ownsSessionRef.current = false;
+    nativeStartedRef.current = false;
+    latestTranscriptRef.current = '';
+    committedSegmentsRef.current = '';
+    setIsListening(false);
+    setInterimTranscript('');
+  }, []);
+
   useEventListener(ExpoSpeechRecognitionModule, 'start', () => {
+    if (!ownsSessionRef.current) {
+      return;
+    }
+
+    if (!wantListeningRef.current) {
+      ExpoSpeechRecognitionModule.abort();
+      discardSession();
+      return;
+    }
+
     hasHandledResultRef.current = false;
+    nativeStartedRef.current = true;
     setIsListening(true);
   });
 
   useEventListener(ExpoSpeechRecognitionModule, 'end', () => {
-    // Android often ends without a final result after showing partials.
+    if (!ownsSessionRef.current) {
+      return;
+    }
+
     commitLatestTranscript();
+    ownsSessionRef.current = false;
+    nativeStartedRef.current = false;
+    wantListeningRef.current = false;
     setIsListening(false);
   });
 
   useEventListener(ExpoSpeechRecognitionModule, 'result', (event) => {
+    if (!ownsSessionRef.current) {
+      return;
+    }
+
     const transcript = event.results[0]?.transcript?.trim() ?? '';
     if (!transcript) {
       return;
     }
 
-    latestTranscriptRef.current = transcript;
-    setInterimTranscript(transcript);
+    // Android continuous mode emits a new segment after each final; keep them joined.
+    if (useContinuousRecognition && Platform.OS === 'android') {
+      if (event.isFinal) {
+        committedSegmentsRef.current =
+          `${committedSegmentsRef.current} ${transcript}`.trim();
+        latestTranscriptRef.current = committedSegmentsRef.current;
+      } else {
+        latestTranscriptRef.current =
+          `${committedSegmentsRef.current} ${transcript}`.trim();
+      }
+    } else {
+      latestTranscriptRef.current = transcript;
+    }
 
-    if (event.isFinal) {
-      handleFinalTranscript(transcript);
+    setInterimTranscript(latestTranscriptRef.current);
+
+    if (event.isFinal && !useContinuousRecognition) {
+      handleFinalTranscript(latestTranscriptRef.current);
     }
   });
 
   useEventListener(ExpoSpeechRecognitionModule, 'error', (event) => {
-    setIsListening(false);
-
-    if (event.error === 'aborted') {
-      if (commitLatestTranscript()) {
-        return;
-      }
-      latestTranscriptRef.current = '';
-      setInterimTranscript('');
-      onError('Voice input cancelled.');
+    if (!ownsSessionRef.current) {
       return;
     }
 
-    // Devices frequently report no-speech / no-match after the user did speak
-    // and partial text was already shown. Keep that transcript if we have one.
-    if (commitLatestTranscript()) {
+    const committed = commitLatestTranscript();
+    ownsSessionRef.current = false;
+    nativeStartedRef.current = false;
+    wantListeningRef.current = false;
+    setIsListening(false);
+
+    if (committed) {
       return;
     }
 
     setInterimTranscript('');
 
+    if (event.error === 'aborted') {
+      latestTranscriptRef.current = '';
+      return;
+    }
+
     if (event.error === 'no-speech') {
-      onError('No speech heard. Tap the mic and try again.');
+      onError('No speech heard. Try again.');
       return;
     }
 
@@ -122,75 +186,129 @@ export function VoiceAnswerSpeechImpl({
   });
 
   const startListening = useCallback(async () => {
-    if (disabled || isListening) {
+    if (disabledRef.current || ownsSessionRef.current || !isFocusedRef.current) {
       return;
     }
 
+    wantListeningRef.current = true;
+
     if (enabledBookNamesRef.current.length === 0) {
+      wantListeningRef.current = false;
       onError('No books are enabled for review.');
       return;
     }
 
     if (!ExpoSpeechRecognitionModule.isRecognitionAvailable()) {
+      wantListeningRef.current = false;
       onError('Speech recognition is not available on this device.');
       return;
     }
 
     const permissions = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!wantListeningRef.current || !isFocusedRef.current || disabledRef.current) {
+      wantListeningRef.current = false;
+      return;
+    }
+
     if (!permissions.granted) {
+      wantListeningRef.current = false;
       onError('Microphone permission is required for voice answers.');
       return;
     }
 
     hasHandledResultRef.current = false;
+    nativeStartedRef.current = false;
+    ownsSessionRef.current = true;
     latestTranscriptRef.current = '';
+    committedSegmentsRef.current = '';
     setInterimTranscript('');
 
     ExpoSpeechRecognitionModule.start({
       lang: 'en-US',
       interimResults: true,
-      continuous: false,
+      continuous: useContinuousRecognition,
       contextualStrings: buildSpeechContextStrings(enabledBookNamesRef.current),
-      androidIntentOptions: {
-        EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS: 1000,
-        EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS: 1000,
-      },
+      androidIntentOptions: useContinuousRecognition
+        ? undefined
+        : {
+            EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS: 1000,
+            EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS: 1000,
+          },
     });
-  }, [disabled, isListening, onError]);
+  }, [onError]);
 
   const stopListening = useCallback(() => {
-    if (!isListening) {
+    wantListeningRef.current = false;
+
+    if (!ownsSessionRef.current) {
       return;
     }
 
-    commitLatestTranscript();
-    ExpoSpeechRecognitionModule.stop();
-  }, [commitLatestTranscript, isListening]);
+    if (nativeStartedRef.current) {
+      commitLatestTranscript();
+      ExpoSpeechRecognitionModule.stop();
+      return;
+    }
+
+    ExpoSpeechRecognitionModule.abort();
+    discardSession();
+  }, [commitLatestTranscript, discardSession]);
 
   const toggleListening = useCallback(() => {
-    if (isListening) {
+    if (ownsSessionRef.current) {
       stopListening();
       return;
     }
 
     void startListening();
-  }, [isListening, startListening, stopListening]);
+  }, [startListening, stopListening]);
 
   useEffect(() => {
-    if (disabled && isListening) {
-      hasHandledResultRef.current = true;
-      latestTranscriptRef.current = '';
-      ExpoSpeechRecognitionModule.abort();
-      setIsListening(false);
-      setInterimTranscript('');
+    if (!disabled || !ownsSessionRef.current) {
+      return;
     }
-  }, [disabled, isListening]);
+
+    ExpoSpeechRecognitionModule.abort();
+    discardSession();
+  }, [disabled, discardSession]);
+
+  useEffect(() => {
+    if (isFocused || !ownsSessionRef.current) {
+      return;
+    }
+
+    if (latestTranscriptRef.current.trim()) {
+      commitLatestTranscript();
+      ExpoSpeechRecognitionModule.stop();
+      return;
+    }
+
+    ExpoSpeechRecognitionModule.abort();
+    discardSession();
+  }, [commitLatestTranscript, discardSession, isFocused]);
+
+  useEffect(() => {
+    return () => {
+      if (!ownsSessionRef.current) {
+        return;
+      }
+
+      ExpoSpeechRecognitionModule.abort();
+      ownsSessionRef.current = false;
+      nativeStartedRef.current = false;
+      wantListeningRef.current = false;
+    };
+  }, []);
 
   return (
     <VoiceAnswerButton
       disabled={disabled}
       isListening={isListening}
       onPress={toggleListening}
+      onPressIn={() => {
+        void startListening();
+      }}
+      onPressOut={stopListening}
     />
   );
 }
