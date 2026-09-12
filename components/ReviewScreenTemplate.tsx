@@ -279,7 +279,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
     chapters: (book.chapters || []).map((chapter) => ({
       label: `Chapter ${chapter.chapter}`,
       value: chapter.chapter.toString(),
-      rarity: !inCompetitiveSession && chapter.rarity || 'common',
+      rarity: inCompetitiveSession ? 'common' : (chapter.rarity ?? 'common'),
     })),
   }));
 
@@ -296,9 +296,20 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
   }, []);
 
   const handleVoiceParsed = useCallback((reference: { book: string; chapter: string }) => {
+    if (!inCompetitiveSession) {
+      const book = allowedBooks.find((item) => item.bookName === reference.book);
+      const chapter = book?.chapters?.find((item) => item.chapter.toString() === reference.chapter);
+      if (!chapter || chapter.rarity === 'disabled') {
+        showTransientFeedback(
+          `${reference.book} ${reference.chapter} is not enabled for review.`,
+          theme.danger,
+        );
+        return;
+      }
+    }
     setSelectedBook(reference.book);
     setSelectedChapter(reference.chapter);
-  }, []);
+  }, [allowedBooks, inCompetitiveSession, showTransientFeedback, theme.danger]);
 
   const handleVoiceError = useCallback((message: string) => {
     showTransientFeedback(message, theme.danger);

@@ -1,5 +1,5 @@
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   Modal,
   View,
@@ -58,7 +58,17 @@ export const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({
   selectedChapter,
 }) => {
   const translateY = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
-  const [currentBook, setCurrentBook] = useState<BookItemData | null>(null);
+  const [currentBookValue, setCurrentBookValue] = useState<string | null>(null);
+  const selectedBookRef = useRef(selectedBook);
+  selectedBookRef.current = selectedBook;
+
+  // Always resolve from `data` so chapter rarities stay current after Enable Books changes.
+  // Storing the whole book object here used to freeze an old snapshot, which left disabled
+  // chapters still tappable until the user happened to re-pick the book from the grid.
+  const currentBook = useMemo(
+    () => (currentBookValue ? data.find((book) => book.value === currentBookValue) ?? null : null),
+    [currentBookValue, data],
+  );
 
   // Helper to abbreviate book names (first 3-4 letters, or custom map)
   const abbreviate = useCallback((label: string) => {
@@ -86,9 +96,7 @@ export const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({
 
   useEffect(() => {
     if (visible) {
-      if (!selectedBook) {
-        setCurrentBook(null);
-      }
+      setCurrentBookValue(selectedBookRef.current || null);
       Animated.timing(translateY, {
         toValue: 0,
         duration: 250,
@@ -100,22 +108,26 @@ export const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({
         duration: 250,
         useNativeDriver: true,
       }).start();
-      //setCurrentBook(null);
     }
-  }, [visible, translateY, selectedBook]);
-
-  const handleBookSelect = useCallback((book: BookItemData) => {
-    setCurrentBook(book);
-    if (book.chapters.length === 1) {
-      handleSelectChapter(book.value, book.chapters[0].value);
-      onClose();
-    }
-  }, []);
+  }, [visible, translateY]);
 
   const handleSelectChapter = useCallback((bookValue: string, chapterValue: string) => {
+    const book = data.find((item) => item.value === bookValue);
+    const chapter = book?.chapters.find((item) => item.value === chapterValue);
+    if (!chapter || chapter.rarity === 'disabled') {
+      return;
+    }
     onSelect(bookValue, chapterValue);
     onClose();
-  }, [onSelect, onClose]);
+  }, [data, onSelect, onClose]);
+
+  const handleBookSelect = useCallback((book: BookItemData) => {
+    setCurrentBookValue(book.value);
+    const onlyChapter = book.chapters.length === 1 ? book.chapters[0] : null;
+    if (onlyChapter && onlyChapter.rarity !== 'disabled') {
+      handleSelectChapter(book.value, onlyChapter.value);
+    }
+  }, [handleSelectChapter]);
 
   return (
     <Modal
@@ -158,7 +170,7 @@ export const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({
         ) : (
           <>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-              <TouchableOpacity style={styles.backButton} onPress={() => setCurrentBook(null)}>
+              <TouchableOpacity style={styles.backButton} onPress={() => setCurrentBookValue(null)}>
                 <Icon name="arrow-back" size={30} color={theme.text} />
               </TouchableOpacity>
               <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }}>
@@ -168,6 +180,7 @@ export const SimpleBottomSheet: React.FC<SimpleBottomSheetProps> = ({
             </View>
             <FlatList
               data={currentBook.chapters}
+              extraData={currentBook.chapters}
               keyExtractor={item => item.value}
               numColumns={GRID_COLUMNS}
               contentContainerStyle={styles.gridContainer}
