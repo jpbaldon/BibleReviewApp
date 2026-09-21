@@ -219,7 +219,7 @@ export const ReviewScreenTemplate: React.FC<ReviewScreenTemplateProps> = ({
         }
       }
       incrementSessionScore(pointsObtained);
-      incrementOverallScore(pointsObtained);
+      void incrementOverallScore(pointsObtained);
       if (activeTimer && activeTimer.isActive)
         incrementTimedSessionScore(pointsObtained);
       if (inCompetitiveSession)
