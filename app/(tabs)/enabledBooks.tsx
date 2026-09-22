@@ -9,6 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { BibleBook, Chapter, Rarity } from '../../types';
 import { RARITY_COLORS, RARITY_ON_COLOR, rarityAccessibilityName } from '@/constants/rarityColors';
 import BulkRarityEditor from '../../components/ui/BulkRarityEditor';
+import { EnabledBooksBulkSheet } from '@/components/ui/EnabledBooksBulkSheet';
 import { Screen } from '@/components/ui/Screen';
 import { useThemeContext } from '../../context/ThemeContext';
 import { getSavedEnabledBooks, setSavedEnabledBooks } from '@/utils/UserSettings';
@@ -28,6 +29,7 @@ export default function EnabledBooksScreen() {
   const [longPressActive, setLongPressActive] = useState<boolean>(false);
   const [bulkActionInFlight, setBulkActionInFlight] = useState(false);
   const [savedEnabledBooks, setSavedEnabledBooksState] = useState<string[] | null>(null);
+  const [bulkSheetVisible, setBulkSheetVisible] = useState(false);
   const [bookGrammar, setBookGrammar] = useState<string>('book');
   const [chapterGrammar, setChapterGrammar] = useState<string>('chapter');
 
@@ -320,85 +322,60 @@ export default function EnabledBooksScreen() {
         <Text style={[styles.subHeaderText, { color: theme.text }]}>
           {totalEnabledBooks} {bookGrammar} enabled — {enabledChapterCount} {chapterGrammar} enabled
         </Text>
-        <View style={styles.bulkBookActions}>
+        <View style={styles.headerActionsRow}>
+          <Text style={[styles.savedSetStatusText, { color: theme.textMuted }]}>
+            {savedEnabledBooks === null
+              ? 'No set saved'
+              : `Saved: ${savedEnabledBooks.length} ${savedEnabledBooks.length === 1 ? 'book' : 'books'}`}
+          </Text>
           <Pressable
-            onPress={() => runBulkBookAction(
-              () => setAllBooksEnabled(true),
-              'Failed to enable all books.',
-            )}
+            onPress={() => setBulkSheetVisible(true)}
             disabled={bulkActionInFlight}
             style={({ pressed }) => [
-              styles.bulkBookButton,
-              { backgroundColor: theme.accent, opacity: bulkActionInFlight ? 0.6 : pressed ? 0.85 : 1 },
-            ]}
-          >
-            <Text style={[styles.bulkBookButtonText, { color: theme.onAccent }]}>Enable all</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => runBulkBookAction(
-              () => setAllBooksEnabled(false),
-              'Failed to disable all books.',
-            )}
-            disabled={bulkActionInFlight}
-            style={({ pressed }) => [
-              styles.bulkBookButton,
-              { backgroundColor: theme.accent, opacity: bulkActionInFlight ? 0.6 : pressed ? 0.85 : 1 },
-            ]}
-          >
-            <Text style={[styles.bulkBookButtonText, { color: theme.onAccent }]}>Disable all</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => runBulkBookAction(
-              () => invertAllBooksEnabled(),
-              'Failed to invert book selection.',
-            )}
-            disabled={bulkActionInFlight}
-            style={({ pressed }) => [
-              styles.bulkBookButton,
-              { backgroundColor: theme.accent, opacity: bulkActionInFlight ? 0.6 : pressed ? 0.85 : 1 },
-            ]}
-          >
-            <Text style={[styles.bulkBookButtonText, { color: theme.onAccent }]}>Invert all</Text>
-          </Pressable>
-        </View>
-        <View style={styles.bulkBookActions}>
-          <Pressable
-            onPress={handleSaveEnabledBooks}
-            disabled={bulkActionInFlight}
-            style={({ pressed }) => [
-              styles.bulkBookButton,
-              { backgroundColor: theme.accent, opacity: bulkActionInFlight ? 0.6 : pressed ? 0.85 : 1 },
-            ]}
-          >
-            <Text style={[styles.bulkBookButtonText, { color: theme.onAccent }]}>Save enabled books</Text>
-          </Pressable>
-          <Pressable
-            onPress={handleEnableSavedBooks}
-            disabled={bulkActionInFlight || savedEnabledBooks === null}
-            style={({ pressed }) => [
-              styles.bulkBookButton,
+              styles.bulkActionsTrigger,
               {
                 backgroundColor: theme.accent,
-                opacity: bulkActionInFlight || savedEnabledBooks === null
-                  ? 0.45
-                  : pressed
-                    ? 0.85
-                    : 1,
+                opacity: bulkActionInFlight ? 0.6 : pressed ? 0.85 : 1,
               },
             ]}
+            accessibilityRole="button"
+            accessibilityLabel="Open bulk actions"
           >
-            <Text style={[styles.bulkBookButtonText, { color: theme.onAccent }]}>Enable saved books</Text>
+            <Text style={[styles.bulkActionsTriggerText, { color: theme.onAccent }]}>Bulk actions</Text>
+            <Ionicons name="chevron-up" size={16} color={theme.onAccent} />
           </Pressable>
         </View>
-        <Text style={[styles.savedSetStatusText, { color: theme.textMuted }]}>
-          {savedEnabledBooks === null
-            ? 'No set saved'
-            : `Saved: ${savedEnabledBooks.length} ${savedEnabledBooks.length === 1 ? 'book' : 'books'}`}
-        </Text>
         <Text style={[styles.headerHintText, { color: theme.textMuted }]}>
           Tap a book to enable · Tap › to set chapter rarities
         </Text>
       </View>
+
+      <EnabledBooksBulkSheet
+        visible={bulkSheetVisible}
+        onClose={() => setBulkSheetVisible(false)}
+        bulkActionInFlight={bulkActionInFlight}
+        savedEnabledBooks={savedEnabledBooks}
+        onEnableAll={() => {
+          void runBulkBookAction(
+            () => setAllBooksEnabled(true),
+            'Failed to enable all books.',
+          );
+        }}
+        onDisableAll={() => {
+          void runBulkBookAction(
+            () => setAllBooksEnabled(false),
+            'Failed to disable all books.',
+          );
+        }}
+        onInvertAll={() => {
+          void runBulkBookAction(
+            () => invertAllBooksEnabled(),
+            'Failed to invert book selection.',
+          );
+        }}
+        onSaveEnabledBooks={handleSaveEnabledBooks}
+        onEnableSavedBooks={handleEnableSavedBooks}
+      />
 
       <FlatList
         data={bibleBooks}
@@ -452,27 +429,28 @@ const styles = StyleSheet.create({
     marginTop: 10,
     lineHeight: 18,
   },
-  bulkBookActions: {
+  headerActionsRow: {
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
     marginTop: 10,
   },
-  bulkBookButton: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-    borderRadius: 8,
+  bulkActionsTrigger: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
   },
-  bulkBookButtonText: {
+  bulkActionsTriggerText: {
     fontSize: 13,
     fontWeight: '700',
-    textAlign: 'center',
   },
   savedSetStatusText: {
+    flex: 1,
     fontSize: 13,
-    marginTop: 8,
   },
   listContent: {
     padding: 16,
