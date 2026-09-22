@@ -8,6 +8,8 @@ import {
   setTranslation,
   getMicButtonEnabled,
   setMicButtonEnabled,
+  getSavedEnabledBooks,
+  setSavedEnabledBooks,
 } from './UserSettings';
 
 describe('UserSettings', () => {
@@ -69,6 +71,25 @@ describe('UserSettings', () => {
     it('keeps settings isolated by user', async () => {
       await setMicButtonEnabled('user-a', false);
       expect(await getMicButtonEnabled('user-b')).toBe(true);
+    });
+  });
+
+  describe('savedEnabledBooks', () => {
+    it('defaults to null when never saved', async () => {
+      expect(await getSavedEnabledBooks('user-a')).toBeNull();
+    });
+
+    it('persists enabled book names per user', async () => {
+      await setSavedEnabledBooks('user-a', ['Genesis', 'Exodus']);
+      await setSavedEnabledBooks('user-b', ['John']);
+
+      expect(await getSavedEnabledBooks('user-a')).toEqual(['Genesis', 'Exodus']);
+      expect(await getSavedEnabledBooks('user-b')).toEqual(['John']);
+    });
+
+    it('allows saving an empty set', async () => {
+      await setSavedEnabledBooks('user-a', []);
+      expect(await getSavedEnabledBooks('user-a')).toEqual([]);
     });
   });
 });

@@ -1,15 +1,17 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { FlatList, Text, View, StyleSheet, ActivityIndicator, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useNavigation } from 'expo-router/react-navigation';
+import { useFocusEffect, useNavigation } from 'expo-router/react-navigation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MIN_CHAPTERS_ENABLED_FOR_SCORE, useBibleBooks } from '@/context/BibleBooksContext';
 import { useAlert } from '@/context/AlertContext';
+import { useAuth } from '@/context/AuthContext';
 import { BibleBook, Chapter, Rarity } from '../../types';
 import { RARITY_COLORS, RARITY_ON_COLOR, rarityAccessibilityName } from '@/constants/rarityColors';
 import BulkRarityEditor from '../../components/ui/BulkRarityEditor';
 import { Screen } from '@/components/ui/Screen';
 import { useThemeContext } from '../../context/ThemeContext';
+import { getSavedEnabledBooks, setSavedEnabledBooks } from '@/utils/UserSettings';
 
 
 const rarities: ('common' | 'uncommon' | 'rare' | 'ultraRare' | 'disabled')[] = [
@@ -25,6 +27,7 @@ export default function EnabledBooksScreen() {
   const [expandedBook, setExpandedBook] = useState<string | null>(null);
   const [longPressActive, setLongPressActive] = useState<boolean>(false);
   const [bulkActionInFlight, setBulkActionInFlight] = useState(false);
+  const [savedEnabledBooks, setSavedEnabledBooksState] = useState<string[] | null>(null);
   const [bookGrammar, setBookGrammar] = useState<string>('book');
   const [chapterGrammar, setChapterGrammar] = useState<string>('chapter');
 
@@ -33,6 +36,7 @@ export default function EnabledBooksScreen() {
     toggleBookEnabled,
     setAllBooksEnabled,
     invertAllBooksEnabled,
+    enableBooks,
     updateChapterRarity,
     isLoading,
     error,
@@ -42,6 +46,7 @@ export default function EnabledBooksScreen() {
   } = useBibleBooks();
   const { theme } = useThemeContext();
   const { alert } = useAlert();
+  const { user } = useAuth();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const totalEnabledBooks = bibleBooks.filter(b => b.enabled).length;
@@ -72,6 +77,21 @@ export default function EnabledBooksScreen() {
     else
       setChapterGrammar('chapters')
   }, [enabledChapterCount, totalEnabledBooks]);
+
+  const loadSavedEnabledBooks = useCallback(async () => {
+    if (!user?.id) {
+      setSavedEnabledBooksState(null);
+      return;
+    }
+    const saved = await getSavedEnabledBooks(user.id);
+    setSavedEnabledBooksState(saved);
+  }, [user?.id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadSavedEnabledBooks();
+    }, [loadSavedEnabledBooks]),
+  );
 
   const handlePress = useCallback(async (bookName: string) => {
     // Skip if this was a long press
@@ -119,6 +139,44 @@ export default function EnabledBooksScreen() {
       setBulkActionInFlight(false);
     }
   }, [bulkActionInFlight, alert]);
+
+  const handleSaveEnabledBooks = useCallback(() => {
+    if (!user?.id) return;
+
+    const enabledNames = bibleBooks.filter(book => book.enabled).map(book => book.bookName);
+    const persistSavedSet = async () => {
+      await setSavedEnabledBooks(user.id, enabledNames);
+      setSavedEnabledBooksState(enabledNames);
+    };
+
+    const saveNow = () => {
+      void runBulkBookAction(persistSavedSet, 'Failed to save enabled books.');
+    };
+
+    if (savedEnabledBooks !== null) {
+      const savedLabel = savedEnabledBooks.length === 1 ? 'book' : 'books';
+      const currentLabel = enabledNames.length === 1 ? 'book' : 'books';
+      alert(
+        'Replace saved set?',
+        `You already have ${savedEnabledBooks.length} ${savedLabel} saved. Replace with the ${enabledNames.length} currently enabled ${currentLabel}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Replace', style: 'destructive', onPress: saveNow },
+        ],
+      );
+      return;
+    }
+
+    saveNow();
+  }, [user?.id, bibleBooks, savedEnabledBooks, alert, runBulkBookAction]);
+
+  const handleEnableSavedBooks = useCallback(() => {
+    if (!user?.id || savedEnabledBooks === null) return;
+    void runBulkBookAction(
+      () => enableBooks(savedEnabledBooks),
+      'Failed to enable saved books.',
+    );
+  }, [user?.id, savedEnabledBooks, enableBooks, runBulkBookAction]);
 
   const handleRarityChange = async (
     bookName: string,
@@ -303,6 +361,40 @@ export default function EnabledBooksScreen() {
             <Text style={[styles.bulkBookButtonText, { color: theme.onAccent }]}>Invert all</Text>
           </Pressable>
         </View>
+        <View style={styles.bulkBookActions}>
+          <Pressable
+            onPress={handleSaveEnabledBooks}
+            disabled={bulkActionInFlight}
+            style={({ pressed }) => [
+              styles.bulkBookButton,
+              { backgroundColor: theme.accent, opacity: bulkActionInFlight ? 0.6 : pressed ? 0.85 : 1 },
+            ]}
+          >
+            <Text style={[styles.bulkBookButtonText, { color: theme.onAccent }]}>Save enabled books</Text>
+          </Pressable>
+          <Pressable
+            onPress={handleEnableSavedBooks}
+            disabled={bulkActionInFlight || savedEnabledBooks === null}
+            style={({ pressed }) => [
+              styles.bulkBookButton,
+              {
+                backgroundColor: theme.accent,
+                opacity: bulkActionInFlight || savedEnabledBooks === null
+                  ? 0.45
+                  : pressed
+                    ? 0.85
+                    : 1,
+              },
+            ]}
+          >
+            <Text style={[styles.bulkBookButtonText, { color: theme.onAccent }]}>Enable saved books</Text>
+          </Pressable>
+        </View>
+        <Text style={[styles.savedSetStatusText, { color: theme.textMuted }]}>
+          {savedEnabledBooks === null
+            ? 'No set saved'
+            : `Saved: ${savedEnabledBooks.length} ${savedEnabledBooks.length === 1 ? 'book' : 'books'}`}
+        </Text>
         <Text style={[styles.headerHintText, { color: theme.textMuted }]}>
           Tap a book to enable · Tap › to set chapter rarities
         </Text>
@@ -377,6 +469,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'center',
+  },
+  savedSetStatusText: {
+    fontSize: 13,
+    marginTop: 8,
   },
   listContent: {
     padding: 16,

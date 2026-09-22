@@ -36,3 +36,13 @@ export const getMicButtonEnabled = async (userId: string): Promise<boolean> => {
   const value = await AsyncStorage.getItem(`micButtonEnabled-${userId}`);
   return value ? JSON.parse(value) : true;
 };
+
+export const setSavedEnabledBooks = async (userId: string, bookNames: string[]) => {
+  await AsyncStorage.setItem(`savedEnabledBooks-${userId}`, JSON.stringify(bookNames));
+};
+
+export const getSavedEnabledBooks = async (userId: string): Promise<string[] | null> => {
+  const value = await AsyncStorage.getItem(`savedEnabledBooks-${userId}`);
+  if (value === null) return null;
+  return JSON.parse(value) as string[];
+};
