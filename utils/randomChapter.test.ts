@@ -1,9 +1,10 @@
 import type { BibleBook, Chapter } from '../types';
 import {
   buildWeightedChapters,
+  createChapterDeck,
+  createVerseDeck,
+  expandWeightedDeck,
   rarityWeightMap,
-  selectWeightedChapter,
-  type WeightedChapter,
 } from './randomChapter';
 
 function chapter(
@@ -83,43 +84,157 @@ describe('buildWeightedChapters', () => {
   });
 });
 
-describe('selectWeightedChapter', () => {
-  const pool: WeightedChapter[] = [
-    {
-      book: 'A',
-      chapterIndex: 1,
-      chapter: chapter(1, 'common'),
-      weight: 1,
-    },
-    {
-      book: 'B',
-      chapterIndex: 2,
-      chapter: chapter(2, 'common'),
-      weight: 1,
-    },
-  ];
+describe('expandWeightedDeck', () => {
+  it('uses one copy of each chapter when every weight is equal', () => {
+    const pool = buildWeightedChapters([
+      book('Genesis', Array.from({ length: 20 }, (_, index) => chapter(index + 1, 'common'))),
+    ]);
 
-  afterEach(() => {
-    jest.spyOn(Math, 'random').mockRestore();
+    expect(expandWeightedDeck(pool)).toHaveLength(20);
   });
+
+  it('keeps rarity ratios after dividing out the greatest common divisor', () => {
+    const pool = buildWeightedChapters([
+      book('Genesis', [
+        chapter(1, 'common'),
+        chapter(2, 'uncommon'),
+        chapter(3, 'rare'),
+        chapter(4, 'ultraRare'),
+        chapter(5, 'disabled'),
+      ]),
+    ]);
+
+    const counts = new Map<number, number>();
+    for (const entry of expandWeightedDeck(pool)) {
+      counts.set(entry.chapterIndex, (counts.get(entry.chapterIndex) ?? 0) + 1);
+    }
+
+    expect(counts.get(1)).toBe(10);
+    expect(counts.get(2)).toBe(5);
+    expect(counts.get(3)).toBe(2);
+    expect(counts.get(4)).toBe(1);
+    expect(counts.has(5)).toBe(false);
+  });
+});
+
+describe('createChapterDeck', () => {
+  function sequenceRandom(values: number[]) {
+    let index = 0;
+    return () => {
+      const value = values[index];
+      index += 1;
+      return value;
+    };
+  }
 
   it('throws when the pool is empty', () => {
-    expect(() => selectWeightedChapter([])).toThrow('No eligible chapters.');
+    expect(() => createChapterDeck().draw([])).toThrow('No eligible chapters.');
   });
 
-  it('selects the first chapter when rand is in its weight range', () => {
-    jest.spyOn(Math, 'random').mockReturnValue(0.1);
-    expect(selectWeightedChapter(pool).book).toBe('A');
+  it('shows every equally weighted chapter once before repeating', () => {
+    const pool = buildWeightedChapters([
+      book('Genesis', Array.from({ length: 20 }, (_, index) => chapter(index + 1, 'common'))),
+    ]);
+    const deck = createChapterDeck();
+    const seen = new Set<number>();
+
+    for (let i = 0; i < pool.length; i++) {
+      seen.add(deck.draw(pool).chapterIndex);
+    }
+
+    expect(seen.size).toBe(20);
   });
 
-  it('selects the second chapter when rand falls in its range', () => {
-    jest.spyOn(Math, 'random').mockReturnValue(0.75);
-    expect(selectWeightedChapter(pool).book).toBe('B');
+  it('deals each rarity its normalized number of times per cycle', () => {
+    const pool = buildWeightedChapters([
+      book('Genesis', [
+        chapter(1, 'common'),
+        chapter(2, 'uncommon'),
+        chapter(3, 'rare'),
+        chapter(4, 'ultraRare'),
+      ]),
+    ]);
+    const deck = createChapterDeck();
+    const counts = new Map<number, number>();
+    const cycleLength = expandWeightedDeck(pool).length;
+
+    for (let i = 0; i < cycleLength; i++) {
+      const drawn = deck.draw(pool);
+      counts.set(drawn.chapterIndex, (counts.get(drawn.chapterIndex) ?? 0) + 1);
+    }
+
+    expect(counts.get(1)).toBe(10);
+    expect(counts.get(2)).toBe(5);
+    expect(counts.get(3)).toBe(2);
+    expect(counts.get(4)).toBe(1);
   });
 
-  it('falls back to the first chapter if nothing matches', () => {
-    const single = [pool[0]];
-    jest.spyOn(Math, 'random').mockReturnValue(0.999);
-    expect(selectWeightedChapter(single)).toBe(single[0]);
+  it('does not open a refill with the chapter just drawn', () => {
+    const pool = buildWeightedChapters([
+      book('Genesis', [chapter(1, 'common'), chapter(2, 'common')]),
+    ]);
+    // Identity shuffle deals chapter 2 then 1. The refill shuffle would put
+    // chapter 1 next, and the deck swaps that away.
+    const deck = createChapterDeck(sequenceRandom([0.99, 0]));
+    const firstCycle = [deck.draw(pool).chapterIndex, deck.draw(pool).chapterIndex];
+
+    expect(firstCycle).toEqual([2, 1]);
+    expect(deck.draw(pool).chapterIndex).toBe(2);
+  });
+
+  it('starts a fresh deck when the pool changes', () => {
+    const firstPool = buildWeightedChapters([
+      book('Genesis', [chapter(1, 'common'), chapter(2, 'common')]),
+    ]);
+    const secondPool = buildWeightedChapters([
+      book('Exodus', [chapter(3, 'common')]),
+    ]);
+    const deck = createChapterDeck(() => 0.99);
+
+    deck.draw(firstPool);
+
+    expect(deck.draw(secondPool).book).toBe('Exodus');
+  });
+});
+
+describe('createVerseDeck', () => {
+  function sequenceRandom(values: number[]) {
+    let index = 0;
+    return () => {
+      const value = values[index];
+      index += 1;
+      return value;
+    };
+  }
+
+  it('throws when a chapter has no verses', () => {
+    expect(() => createVerseDeck().draw('John', 1, 0)).toThrow('No eligible verses.');
+  });
+
+  it('shows every verse once before repeating', () => {
+    const deck = createVerseDeck();
+    const seen = new Set<number>();
+
+    for (let i = 0; i < 5; i++) {
+      seen.add(deck.draw('John', 3, 5));
+    }
+
+    expect(seen).toEqual(new Set([0, 1, 2, 3, 4]));
+  });
+
+  it('does not open a refill with the verse just drawn', () => {
+    const deck = createVerseDeck(sequenceRandom([0.99, 0]));
+    const firstCycle = [deck.draw('John', 1, 2), deck.draw('John', 1, 2)];
+
+    expect(firstCycle).toEqual([1, 0]);
+    expect(deck.draw('John', 1, 2)).toBe(1);
+  });
+
+  it('keeps a separate bag for each chapter', () => {
+    const deck = createVerseDeck(() => 0);
+    deck.draw('John', 1, 2);
+
+    expect(deck.draw('John', 2, 2)).toBe(0);
+    expect(deck.draw('John', 1, 2)).toBe(1);
   });
 });
