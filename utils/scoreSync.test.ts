@@ -243,7 +243,7 @@ describe('createOverallScoreSync', () => {
   });
 
   it('skips zero-point increments', async () => {
-    const incrementUserScoreRpc = jest.fn();
+    const incrementUserScoreRpc = jest.fn<(points: number) => Promise<void>>();
     const storage = memoryStorage({ user1_overallScore: '10' });
     const sync = createOverallScoreSync({
       getUserId: () => 'user1',

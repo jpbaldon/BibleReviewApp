@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router/react-navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useOptionalServices } from '@/context/ServicesContext';
 import { COMPETITIVE_SCOPES, COMPETITIVE_SCOPE_LABELS, type CompetitiveScope } from '@/utils/bibleScope';

@@ -1,5 +1,5 @@
 import { Image, StyleSheet, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation } from 'expo-router/react-navigation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
 import { useThemeContext } from '../../context/ThemeContext';

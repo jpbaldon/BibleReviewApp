@@ -70,7 +70,7 @@ function getCanonicalBookOrder(): string[] {
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { BSB } = require('../data/bsb') as {
-      Bible: { Book: string }[];
+      BSB: { Bible: { Book: string }[] };
     };
     cachedBookOrder = BSB.Bible.map((entry) => entry.Book);
   } catch {

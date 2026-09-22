@@ -47,7 +47,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color }: { color: string }) => (
+          tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="house.fill" color={color} />
           ),
         }}
@@ -56,7 +56,7 @@ export default function TabLayout() {
         name="summaries"
         options={{
           title: 'Summaries',
-          tabBarIcon: ({ color }: { color: string }) => (
+          tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="explore.fill" color={color} />
           ),
         }}
@@ -65,7 +65,7 @@ export default function TabLayout() {
         name="verses"
         options={{
           title: 'Verses',
-          tabBarIcon: ({ color }: { color: string }) => (
+          tabBarIcon: ({ color }) => (
             <IconSymbol size={28} name="bookmark.fill" color={color} />
           ),
         }}

@@ -40,6 +40,11 @@ export default {
     plugins: [
       'expo-router',
       'expo-font',
+      'expo-asset',
+      'expo-audio',
+      'expo-image',
+      'expo-sqlite',
+      'expo-status-bar',
       'expo-web-browser',
       [
         'expo-speech-recognition',
