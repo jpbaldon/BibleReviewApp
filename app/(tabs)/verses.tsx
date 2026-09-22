@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useRef } from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { ReviewScreenTemplate } from '../../components/ReviewScreenTemplate';
 import { useBibleBooks } from '../../context/BibleBooksContext';
-import { useWeightedChapters, selectWeightedChapter } from '@/utils/randomChapter';
+import { createChapterDeck, createVerseDeck, useWeightedChapters } from '@/utils/randomChapter';
 import { isVerseGuessCorrect } from '@/utils/reviewCorrectness';
 import { useThemeContext } from '../../context/ThemeContext';
 
@@ -12,6 +12,8 @@ export default function Verses() {
     const enabledBooks = bibleBooks.filter(b => b.enabled && b.chapters && b.chapters.length > 0);
     const weightedChapters = useWeightedChapters(enabledBooks);
     const { theme } = useThemeContext();
+    const chapterDeckRef = useRef(createChapterDeck());
+    const verseDeckRef = useRef(createVerseDeck());
 
   
     // If no enabled books with chapters, show loading or info
@@ -27,8 +29,9 @@ export default function Verses() {
 
     if(weightedChapters.length === 0) throw new Error('No eligible chapters.');
 
-    const { book, chapter, chapterIndex } = selectWeightedChapter(weightedChapters);
-    const verse = chapter.verses[Math.floor(Math.random() * chapter.verses.length)];
+    const { book, chapter, chapterIndex } = chapterDeckRef.current.draw(weightedChapters);
+    const verseIndex = verseDeckRef.current.draw(book, chapterIndex, chapter.verses.length);
+    const verse = chapter.verses[verseIndex];
 
     return {
       book,

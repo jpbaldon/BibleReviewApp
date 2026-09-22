@@ -1,8 +1,17 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import React, {
+    createContext,
+    useContext,
+    useState,
+    ReactNode,
+    useEffect,
+    useRef,
+    useCallback,
+} from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useAuth } from './AuthContext'
+import { useAuth } from './AuthContext';
 import { useServices } from '../context/ServicesContext';
 import { LeaderboardEntry } from '../types/index';
+import { createOverallScoreSync } from '../utils/scoreSync';
 
 interface ScoreContextType {
     overallScore: number;
@@ -14,15 +23,15 @@ interface ScoreContextType {
     fetchLeaderboardFromServer: (limit?: number) => Promise<LeaderboardEntry[]>;
 }
 
-const ScoreContext = createContext<ScoreContextType | undefined>(undefined)
+const ScoreContext = createContext<ScoreContextType | undefined>(undefined);
 
 export const useScore = () => {
     const context = useContext(ScoreContext);
-    if(!context) {
+    if (!context) {
         throw new Error('useScore must be used within a ScoreProvider');
     }
     return context;
-}
+};
 
 interface ScoreProviderProps {
     children: ReactNode;
@@ -34,102 +43,123 @@ export const ScoreProvider: React.FC<ScoreProviderProps> = ({ children }) => {
     const { user } = useAuth();
     const onlinedb = useServices();
 
-    const getKey = React.useCallback((baseKey: string) => `${user?.id}_${baseKey}`, [user]);
+    const userId = user?.id;
+    const userIdRef = useRef(userId);
+    userIdRef.current = userId;
+    const onlinedbRef = useRef(onlinedb);
+    onlinedbRef.current = onlinedb;
+    const sessionScoreRef = useRef(0);
+
+    const overallScoreSyncRef = useRef<ReturnType<typeof createOverallScoreSync> | null>(null);
+    if (overallScoreSyncRef.current === null) {
+        overallScoreSyncRef.current = createOverallScoreSync({
+            getUserId: () => userIdRef.current,
+            storage: AsyncStorage,
+            getServer: () => onlinedbRef.current?.score ?? null,
+            onChange: (score) => {
+                setOverallScore(score);
+            },
+        });
+    }
+
+    const getSessionKey = useCallback(
+        () => (userIdRef.current ? `${userIdRef.current}_sessionScore` : null),
+        [],
+    );
 
     useEffect(() => {
+        let cancelled = false;
+        const scoreSync = overallScoreSyncRef.current;
+        if (!scoreSync) {
+            return;
+        }
+
         const loadScores = async () => {
-            
             try {
-                if(!user) {
-                    setOverallScore(0);
+                if (!userId) {
+                    scoreSync.reset();
+                    sessionScoreRef.current = 0;
                     setSessionScore(0);
                     return;
                 }
-                const [storedOverall, storedSession] = await Promise.all([
-                    AsyncStorage.getItem(getKey('overallScore')),
-                    AsyncStorage.getItem(getKey('sessionScore'))
-                ]);
 
-                setOverallScore(storedOverall ? parseInt(storedOverall, 10) : 0);
-                setSessionScore(storedSession ? parseInt(storedSession, 10) : 0);
+                const storedSession = await AsyncStorage.getItem(`${userId}_sessionScore`);
+                if (cancelled) {
+                    return;
+                }
 
-                await syncWithServer();
-                
+                const parsedSession = storedSession ? parseInt(storedSession, 10) : 0;
+                const sessionValue = Number.isFinite(parsedSession) ? parsedSession : 0;
+                sessionScoreRef.current = sessionValue;
+                setSessionScore(sessionValue);
+
+                await scoreSync.loadFromStorage();
+                if (cancelled) {
+                    return;
+                }
+                await scoreSync.sync();
             } catch (error) {
                 console.error('Error loading scores:', error);
             }
         };
-        loadScores();
-    }, [user, getKey]);
 
-    useEffect(() => {
-        if(!user) {
-            setOverallScore(0);
-            setSessionScore(0);
+        void loadScores();
+        return () => {
+            cancelled = true;
+        };
+    }, [userId]);
+
+    const incrementOverallScore = useCallback(async (points: number) => {
+        await overallScoreSyncRef.current?.increment(points);
+    }, []);
+
+    const incrementSessionScore = useCallback(async (points: number) => {
+        if (!Number.isFinite(points) || points === 0) {
+            return;
         }
-    }, [user]);
 
-    const syncWithServer = async () => {
+        const next = sessionScoreRef.current + points;
+        sessionScoreRef.current = next;
+        setSessionScore(next);
 
-        if (!user) return;
+        const key = getSessionKey();
+        if (!key) {
+            return;
+        }
 
         try {
-            const { overallScore: serverScore } = await onlinedb.score.getOverallScoreFromServer();
-            const newScore = Math.max(overallScore, serverScore);
-
-            if(newScore !== overallScore) {
-                setOverallScore(newScore)
-                await AsyncStorage.setItem(getKey('overallScore'), newScore.toString());
-            }
-
-            if(overallScore > serverScore) {
-                await onlinedb.score.updateOverallScoreOnServer(overallScore);
-            }
+            await AsyncStorage.setItem(key, String(sessionScoreRef.current));
         } catch (error) {
-            console.error('Error syncing scores:', error);
+            console.error('Error saving session score:', error);
         }
-    };
+    }, [getSessionKey]);
 
-    const incrementOverallScore = async (points: number) => {
-        const newOverallScore = overallScore + points;
-        setOverallScore(newOverallScore);
-        try {
-            await AsyncStorage.setItem(getKey('overallScore'), newOverallScore.toString());
-
-            if (user) {
-                onlinedb.score.incrementUserScoreRpc(points);
-            }
-
-        } catch(error) {
-            console.error('Error saving overall score:', error)
-        }
-    };
-
-    const incrementSessionScore = async (points: number) => {
-        const newSessionScore = sessionScore + points;
-        setSessionScore(newSessionScore);
-        if(user) {
-            await AsyncStorage.setItem(getKey('sessionScore'), newSessionScore.toString());
-        }
-    };
-
-    const resetSessionScore = async () => {
+    const resetSessionScore = useCallback(async () => {
+        sessionScoreRef.current = 0;
         setSessionScore(0);
-        if(user) {
-            await AsyncStorage.setItem(getKey('sessionScore'), '0');
+
+        const key = getSessionKey();
+        if (!key) {
+            return;
         }
-    };
 
-    const syncScores = async () => {
-        await syncWithServer();
-    };
+        try {
+            await AsyncStorage.setItem(key, '0');
+        } catch (error) {
+            console.error('Error resetting session score:', error);
+        }
+    }, [getSessionKey]);
 
-    const fetchLeaderboardFromServer = async (limit?: number) => {
+    const syncScores = useCallback(async () => {
+        await overallScoreSyncRef.current?.sync();
+    }, []);
+
+    const fetchLeaderboardFromServer = useCallback(async (limit?: number) => {
         return await onlinedb.score.fetchTopScores(limit);
-    }
+    }, [onlinedb]);
 
     return (
-        <ScoreContext 
+        <ScoreContext
             value={{
                 overallScore,
                 sessionScore,
@@ -137,10 +167,10 @@ export const ScoreProvider: React.FC<ScoreProviderProps> = ({ children }) => {
                 incrementSessionScore,
                 resetSessionScore,
                 syncScores,
-                fetchLeaderboardFromServer
+                fetchLeaderboardFromServer,
             }}
         >
             {children}
         </ScoreContext>
-    )
-}
+    );
+};

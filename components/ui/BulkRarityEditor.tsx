@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { Rarity, Chapter } from '../../types';
+import { RARITY_COLORS, RARITY_ON_COLOR, rarityLabel } from '../../constants/rarityColors';
 import { useBibleBooks } from '../../context/BibleBooksContext';
 import { useThemeContext } from '../../context/ThemeContext';
 import { useAlert } from '../../context/AlertContext';
@@ -225,25 +226,20 @@ export default function BulkRarityEditor({
                 )
               }
               disabled={applyAllFrom}
-              style={{
-                paddingHorizontal: 6,
-                paddingVertical: 6,
-                backgroundColor: chipBg(isSelected),
-                margin: 4,
-                borderRadius: 6,
-                opacity: applyAllFrom ? 0.5 : 1,
-                borderWidth: StyleSheet.hairlineWidth,
-                borderColor: theme.border,
-              }}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isSelected, disabled: applyAllFrom }}
+              accessibilityLabel={isSelected ? `${rarityLabel(r)}, selected` : rarityLabel(r)}
+              style={[
+                styles.rarityChip,
+                {
+                  backgroundColor: RARITY_COLORS[r],
+                  opacity: applyAllFrom ? 0.5 : 1,
+                  borderColor: isSelected ? RARITY_ON_COLOR : 'transparent',
+                },
+              ]}
             >
-              <Text
-                style={{
-                  color: chipFg(isSelected),
-                  fontSize: 12,
-                  textTransform: 'capitalize',
-                }}
-              >
-                {r.toLowerCase() === 'ultrarare' ? 'Ultra-Rare' : r}
+              <Text style={styles.rarityChipText} numberOfLines={1}>
+                {rarityLabel(r)}
               </Text>
             </Pressable>
           );
@@ -256,25 +252,19 @@ export default function BulkRarityEditor({
           <Pressable
             key={r}
             onPress={() => setToRarity(r)}
-            style={{
-              paddingHorizontal: 6,
-              paddingVertical: 6,
-              backgroundColor: chipBg(toRarity === r),
-              margin: 4,
-              borderRadius: 6,
-              borderWidth: StyleSheet.hairlineWidth,
-              borderColor: theme.border,
-            }}
+            accessibilityRole="button"
+            accessibilityState={{ selected: toRarity === r }}
+            accessibilityLabel={toRarity === r ? `${rarityLabel(r)}, selected` : rarityLabel(r)}
+            style={[
+              styles.rarityChip,
+              {
+                backgroundColor: RARITY_COLORS[r],
+                borderColor: toRarity === r ? RARITY_ON_COLOR : 'transparent',
+              },
+            ]}
           >
-            <Text
-              style={{
-                color: chipFg(toRarity === r),
-                fontSize: 12,
-                textTransform: 'capitalize',
-              }}
-              numberOfLines={1}
-            >
-              {r.toLowerCase() === 'ultrarare' ? 'Ultra-Rare' : r}
+            <Text style={styles.rarityChipText} numberOfLines={1}>
+              {rarityLabel(r)}
             </Text>
           </Pressable>
         ))}
@@ -294,6 +284,21 @@ export default function BulkRarityEditor({
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  rarityChip: {
+    paddingHorizontal: 5,
+    paddingVertical: 3,
+    marginHorizontal: 2,
+    marginVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  rarityChipText: {
+    color: RARITY_ON_COLOR,
+    fontSize: 11,
+  },
+});
 
 const inputStyle = {
   flex: 1,

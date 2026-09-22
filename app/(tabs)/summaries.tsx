@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { View, Text, ActivityIndicator } from 'react-native';
 import { ReviewScreenTemplate, ReviewItem } from '@/components/ReviewScreenTemplate';
 import { useBibleBooks } from '../../context/BibleBooksContext';
-import { useWeightedChapters, selectWeightedChapter } from '@/utils/randomChapter';
+import { createChapterDeck, useWeightedChapters } from '@/utils/randomChapter';
 import { isChapterGuessCorrect } from '@/utils/reviewCorrectness';
 import { useThemeContext } from '../../context/ThemeContext';
 
@@ -12,6 +12,7 @@ export default function Summaries() {
 
   const enabledBooks = bibleBooks.filter(b => b.enabled && b.chapters && b.chapters.length > 0);
   const weightedChapters = useWeightedChapters(enabledBooks);
+  const chapterDeckRef = useRef(createChapterDeck());
 
   // If no enabled books with chapters, show loading or info
   if (weightedChapters.length === 0) {
@@ -31,7 +32,7 @@ export default function Summaries() {
         throw new Error('No eligible chapters.');
       }
 
-      const { book, chapter, chapterIndex } = selectWeightedChapter(weightedChapters);
+      const { book, chapter, chapterIndex } = chapterDeckRef.current.draw(weightedChapters);
 
       console.log('Selected chapter:', book, chapterIndex);
 

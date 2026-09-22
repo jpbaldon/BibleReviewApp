@@ -280,8 +280,8 @@ export const SupabaseService = {
       if (error) throw new Error(error.message);
 
       return {
-        competitiveScore: (data as Record<string, number | null>)?.[columns.score] ?? 0,
-        compScoreUpdate: (data as Record<string, string | null>)?.[columns.updated] ?? null,
+        competitiveScore: (data as unknown as Record<string, number | null>)?.[columns.score] ?? 0,
+        compScoreUpdate: (data as unknown as Record<string, string | null>)?.[columns.updated] ?? null,
       };
     },
 
@@ -312,10 +312,10 @@ export const SupabaseService = {
         .limit(limit);
 
       if (error) throw error;
-      return (data ?? []).map((row) => ({
+      return ((data ?? []) as unknown as { id: string; username: string }[]).map((row) => ({
         id: row.id,
         username: row.username,
-        competitive_score: (row as Record<string, number>)[columns.score] ?? 0,
+        competitive_score: (row as unknown as Record<string, number>)[columns.score] ?? 0,
       }));
     },
 

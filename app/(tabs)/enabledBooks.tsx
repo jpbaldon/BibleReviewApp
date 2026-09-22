@@ -1,14 +1,18 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { FlatList, Text, View, StyleSheet, ActivityIndicator, Pressable } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from 'expo-router/react-navigation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MIN_CHAPTERS_ENABLED_FOR_SCORE, useBibleBooks } from '@/context/BibleBooksContext';
 import { useAlert } from '@/context/AlertContext';
-import { BibleBook, Chapter } from '../../types';
+import { useAuth } from '@/context/AuthContext';
+import { BibleBook, Chapter, Rarity } from '../../types';
+import { RARITY_COLORS, RARITY_ON_COLOR, rarityAccessibilityName } from '@/constants/rarityColors';
 import BulkRarityEditor from '../../components/ui/BulkRarityEditor';
+import { EnabledBooksBulkSheet } from '@/components/ui/EnabledBooksBulkSheet';
 import { Screen } from '@/components/ui/Screen';
 import { useThemeContext } from '../../context/ThemeContext';
+import { getSavedEnabledBooks, setSavedEnabledBooks } from '@/utils/UserSettings';
 
 
 const rarities: ('common' | 'uncommon' | 'rare' | 'ultraRare' | 'disabled')[] = [
@@ -24,6 +28,8 @@ export default function EnabledBooksScreen() {
   const [expandedBook, setExpandedBook] = useState<string | null>(null);
   const [longPressActive, setLongPressActive] = useState<boolean>(false);
   const [bulkActionInFlight, setBulkActionInFlight] = useState(false);
+  const [savedEnabledBooks, setSavedEnabledBooksState] = useState<string[] | null>(null);
+  const [bulkSheetVisible, setBulkSheetVisible] = useState(false);
   const [bookGrammar, setBookGrammar] = useState<string>('book');
   const [chapterGrammar, setChapterGrammar] = useState<string>('chapter');
 
@@ -32,6 +38,7 @@ export default function EnabledBooksScreen() {
     toggleBookEnabled,
     setAllBooksEnabled,
     invertAllBooksEnabled,
+    enableBooks,
     updateChapterRarity,
     isLoading,
     error,
@@ -41,6 +48,7 @@ export default function EnabledBooksScreen() {
   } = useBibleBooks();
   const { theme } = useThemeContext();
   const { alert } = useAlert();
+  const { user } = useAuth();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const totalEnabledBooks = bibleBooks.filter(b => b.enabled).length;
@@ -71,6 +79,21 @@ export default function EnabledBooksScreen() {
     else
       setChapterGrammar('chapters')
   }, [enabledChapterCount, totalEnabledBooks]);
+
+  const loadSavedEnabledBooks = useCallback(async () => {
+    if (!user?.id) {
+      setSavedEnabledBooksState(null);
+      return;
+    }
+    const saved = await getSavedEnabledBooks(user.id);
+    setSavedEnabledBooksState(saved);
+  }, [user?.id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadSavedEnabledBooks();
+    }, [loadSavedEnabledBooks]),
+  );
 
   const handlePress = useCallback(async (bookName: string) => {
     // Skip if this was a long press
@@ -119,6 +142,44 @@ export default function EnabledBooksScreen() {
     }
   }, [bulkActionInFlight, alert]);
 
+  const handleSaveEnabledBooks = useCallback(() => {
+    if (!user?.id) return;
+
+    const enabledNames = bibleBooks.filter(book => book.enabled).map(book => book.bookName);
+    const persistSavedSet = async () => {
+      await setSavedEnabledBooks(user.id, enabledNames);
+      setSavedEnabledBooksState(enabledNames);
+    };
+
+    const saveNow = () => {
+      void runBulkBookAction(persistSavedSet, 'Failed to save enabled books.');
+    };
+
+    if (savedEnabledBooks !== null) {
+      const savedLabel = savedEnabledBooks.length === 1 ? 'book' : 'books';
+      const currentLabel = enabledNames.length === 1 ? 'book' : 'books';
+      alert(
+        'Replace saved set?',
+        `You already have ${savedEnabledBooks.length} ${savedLabel} saved. Replace with the ${enabledNames.length} currently enabled ${currentLabel}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Replace', style: 'destructive', onPress: saveNow },
+        ],
+      );
+      return;
+    }
+
+    saveNow();
+  }, [user?.id, bibleBooks, savedEnabledBooks, alert, runBulkBookAction]);
+
+  const handleEnableSavedBooks = useCallback(() => {
+    if (!user?.id || savedEnabledBooks === null) return;
+    void runBulkBookAction(
+      () => enableBooks(savedEnabledBooks),
+      'Failed to enable saved books.',
+    );
+  }, [user?.id, savedEnabledBooks, enableBooks, runBulkBookAction]);
+
   const handleRarityChange = async (
     bookName: string,
     chapterNum: number,
@@ -136,18 +197,22 @@ export default function EnabledBooksScreen() {
     }
   };
 
-  const renderChapter = (bookName: string, chapter: Chapter) => (
-    <Pressable
-      key={chapter.chapter}
-      style={styles.chapterItem}
-      onPress={() => handleRarityChange(bookName, chapter.chapter, chapter.rarity || 'common')}
-    >
-      <Text style={[styles.chapterText, {color: theme.text}]}>Chapter {chapter.chapter}</Text>
-      <View style={[styles.rarityBadge, styles[`rarity_${chapter.rarity || 'common'}`]]}>
-        <Text style={styles.rarityText}>{chapter.rarity === 'ultraRare' ? 'ultra-rare' : (chapter.rarity || 'common')}</Text>
-      </View>
-    </Pressable>
-  );
+  const renderChapter = (bookName: string, chapter: Chapter) => {
+    const rarity: Rarity = chapter.rarity || 'common';
+    return (
+      <Pressable
+        key={chapter.chapter}
+        style={styles.chapterTile}
+        onPress={() => handleRarityChange(bookName, chapter.chapter, rarity)}
+        accessibilityRole="button"
+        accessibilityLabel={`Chapter ${chapter.chapter}, ${rarityAccessibilityName(rarity)}`}
+      >
+        <View style={[styles.chapterTileFace, { backgroundColor: RARITY_COLORS[rarity] }]}>
+          <Text style={styles.chapterTileText}>{chapter.chapter}</Text>
+        </View>
+      </Pressable>
+    );
+  };
 
   const BookItem = React.memo(({ item, isExpanded, onPress, onLongPress, onExpandToggle, renderChapter }: {
     item: BibleBook;
@@ -204,7 +269,7 @@ export default function EnabledBooksScreen() {
             <BulkRarityEditor
               book={{ bookName: item.bookName, chapters: item.chapters }}
             />
-            <View style={styles.chapterList}>
+            <View style={styles.chapterGrid}>
               {item.chapters.map(ch => renderChapter(item.bookName, ch))}
             </View>
           </>
@@ -257,51 +322,60 @@ export default function EnabledBooksScreen() {
         <Text style={[styles.subHeaderText, { color: theme.text }]}>
           {totalEnabledBooks} {bookGrammar} enabled — {enabledChapterCount} {chapterGrammar} enabled
         </Text>
-        <View style={styles.bulkBookActions}>
+        <View style={styles.headerActionsRow}>
+          <Text style={[styles.savedSetStatusText, { color: theme.textMuted }]}>
+            {savedEnabledBooks === null
+              ? 'No set saved'
+              : `Saved: ${savedEnabledBooks.length} ${savedEnabledBooks.length === 1 ? 'book' : 'books'}`}
+          </Text>
           <Pressable
-            onPress={() => runBulkBookAction(
-              () => setAllBooksEnabled(true),
-              'Failed to enable all books.',
-            )}
+            onPress={() => setBulkSheetVisible(true)}
             disabled={bulkActionInFlight}
             style={({ pressed }) => [
-              styles.bulkBookButton,
-              { backgroundColor: theme.accent, opacity: bulkActionInFlight ? 0.6 : pressed ? 0.85 : 1 },
+              styles.bulkActionsTrigger,
+              {
+                backgroundColor: theme.accent,
+                opacity: bulkActionInFlight ? 0.6 : pressed ? 0.85 : 1,
+              },
             ]}
+            accessibilityRole="button"
+            accessibilityLabel="Open bulk actions"
           >
-            <Text style={[styles.bulkBookButtonText, { color: theme.onAccent }]}>Enable all</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => runBulkBookAction(
-              () => setAllBooksEnabled(false),
-              'Failed to disable all books.',
-            )}
-            disabled={bulkActionInFlight}
-            style={({ pressed }) => [
-              styles.bulkBookButton,
-              { backgroundColor: theme.accent, opacity: bulkActionInFlight ? 0.6 : pressed ? 0.85 : 1 },
-            ]}
-          >
-            <Text style={[styles.bulkBookButtonText, { color: theme.onAccent }]}>Disable all</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => runBulkBookAction(
-              () => invertAllBooksEnabled(),
-              'Failed to invert book selection.',
-            )}
-            disabled={bulkActionInFlight}
-            style={({ pressed }) => [
-              styles.bulkBookButton,
-              { backgroundColor: theme.accent, opacity: bulkActionInFlight ? 0.6 : pressed ? 0.85 : 1 },
-            ]}
-          >
-            <Text style={[styles.bulkBookButtonText, { color: theme.onAccent }]}>Invert all</Text>
+            <Text style={[styles.bulkActionsTriggerText, { color: theme.onAccent }]}>Bulk actions</Text>
+            <Ionicons name="chevron-up" size={16} color={theme.onAccent} />
           </Pressable>
         </View>
         <Text style={[styles.headerHintText, { color: theme.textMuted }]}>
           Tap a book to enable · Tap › to set chapter rarities
         </Text>
       </View>
+
+      <EnabledBooksBulkSheet
+        visible={bulkSheetVisible}
+        onClose={() => setBulkSheetVisible(false)}
+        bulkActionInFlight={bulkActionInFlight}
+        savedEnabledBooks={savedEnabledBooks}
+        onEnableAll={() => {
+          void runBulkBookAction(
+            () => setAllBooksEnabled(true),
+            'Failed to enable all books.',
+          );
+        }}
+        onDisableAll={() => {
+          void runBulkBookAction(
+            () => setAllBooksEnabled(false),
+            'Failed to disable all books.',
+          );
+        }}
+        onInvertAll={() => {
+          void runBulkBookAction(
+            () => invertAllBooksEnabled(),
+            'Failed to invert book selection.',
+          );
+        }}
+        onSaveEnabledBooks={handleSaveEnabledBooks}
+        onEnableSavedBooks={handleEnableSavedBooks}
+      />
 
       <FlatList
         data={bibleBooks}
@@ -355,23 +429,28 @@ const styles = StyleSheet.create({
     marginTop: 10,
     lineHeight: 18,
   },
-  bulkBookActions: {
+  headerActionsRow: {
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
     marginTop: 10,
   },
-  bulkBookButton: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-    borderRadius: 8,
+  bulkActionsTrigger: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
   },
-  bulkBookButtonText: {
+  bulkActionsTriggerText: {
     fontSize: 13,
     fontWeight: '700',
-    textAlign: 'center',
+  },
+  savedSetStatusText: {
+    flex: 1,
+    fontSize: 13,
   },
   listContent: {
     padding: 16,
@@ -436,50 +515,26 @@ const styles = StyleSheet.create({
     marginTop: 16,
     textAlign: 'center',
   },
-  chapterList: {
-    marginTop: 6,
-    marginLeft: 12,
-    borderLeftWidth: 2,
-    borderLeftColor: '#E7E5E4',
-    paddingLeft: 10,
-  },
-  chapterItem: {
+  chapterGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 6,
-    flexWrap: 'nowrap',
-    overflow: 'visible',
+    flexWrap: 'wrap',
+    marginTop: 8,
   },
-  chapterText: {
-    fontSize: 14,
+  chapterTile: {
+    width: '20%',
+    padding: 4,
   },
-  rarityBadge: {
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 2,
-    flexShrink: 1,
-    alignSelf: 'flex-start',
+  chapterTileFace: {
+    minHeight: 44,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
   },
-  rarityText: {
-    color: '#FAFAF9',
-    fontSize: 12,
-    textTransform: 'capitalize',
-    paddingBottom: 1,
-  },
-  rarity_common: {
-    backgroundColor: '#4CAF50',
-  },
-  rarity_uncommon: {
-    backgroundColor: '#2196F3',
-  },
-  rarity_rare: {
-    backgroundColor: '#9C27B0',
-  },
-  rarity_disabled: {
-    backgroundColor: '#9E9E9E',
-  },
-  rarity_ultraRare: {
-    backgroundColor: '#FF9800',
+  chapterTileText: {
+    color: RARITY_ON_COLOR,
+    fontSize: 15,
+    fontWeight: '700',
   },
   bookContainer: {
     marginBottom: 10,

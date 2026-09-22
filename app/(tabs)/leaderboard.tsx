@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router/react-navigation';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
 import { useScore } from '../../context/ScoreContext';
@@ -33,21 +33,25 @@ export default function LeaderboardScreen() {
 
   const { user } = useAuth();
   const { theme } = useThemeContext();
-  const server = useScore();
+  const { fetchLeaderboardFromServer, syncScores } = useScore();
 
   const fetchLeaderboard = async () => {
     try {
       setRefreshing(true);
       setError(null);
 
-      const data = USE_DEMO_LEADERBOARD
-        ? DEMO_LEADERBOARD.map((entry, index) =>
-            // Highlight the signed-in user as rank 4 for the demo shot
-            index === 3 && user?.id
-              ? { ...entry, id: user.id, username: entry.username }
-              : entry,
-          )
-        : await server.fetchLeaderboardFromServer();
+      let data;
+      if (USE_DEMO_LEADERBOARD) {
+        data = DEMO_LEADERBOARD.map((entry, index) =>
+          // Highlight the signed-in user as rank 4 for the demo shot
+          index === 3 && user?.id
+            ? { ...entry, id: user.id, username: entry.username }
+            : entry,
+        );
+      } else {
+        await syncScores();
+        data = await fetchLeaderboardFromServer();
+      }
 
       const rankedData = data.map((item, index) => ({
         ...item,

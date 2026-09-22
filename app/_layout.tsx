@@ -5,7 +5,7 @@ import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { StatusBar } from 'react-native';
-import { DarkTheme, DefaultTheme, ThemeProvider as NavThemeProvider } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, ThemeProvider as NavThemeProvider } from 'expo-router/react-navigation';
 import { AuthProvider, useAuth, isPasswordRecoveryPending } from '../context/AuthContext';
 import { ScoreProvider } from '../context/ScoreContext';
 import { BibleBooksProvider } from '../context/BibleBooksContext';
