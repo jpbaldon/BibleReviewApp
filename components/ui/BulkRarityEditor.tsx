@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { Rarity, Chapter } from '../../types';
+import { RARITY_COLORS, RARITY_ON_COLOR, rarityLabel } from '../../constants/rarityColors';
 import { useBibleBooks } from '../../context/BibleBooksContext';
 import { useThemeContext } from '../../context/ThemeContext';
 import { useAlert } from '../../context/AlertContext';
@@ -225,25 +226,22 @@ export default function BulkRarityEditor({
                 )
               }
               disabled={applyAllFrom}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isSelected, disabled: applyAllFrom }}
+              accessibilityLabel={isSelected ? `${rarityLabel(r)}, selected` : rarityLabel(r)}
               style={{
                 paddingHorizontal: 6,
                 paddingVertical: 6,
-                backgroundColor: chipBg(isSelected),
+                backgroundColor: RARITY_COLORS[r],
                 margin: 4,
                 borderRadius: 6,
                 opacity: applyAllFrom ? 0.5 : 1,
-                borderWidth: StyleSheet.hairlineWidth,
-                borderColor: theme.border,
+                borderWidth: 2,
+                borderColor: 'transparent',
               }}
             >
-              <Text
-                style={{
-                  color: chipFg(isSelected),
-                  fontSize: 12,
-                  textTransform: 'capitalize',
-                }}
-              >
-                {r.toLowerCase() === 'ultrarare' ? 'Ultra-Rare' : r}
+              <Text style={{ color: RARITY_ON_COLOR, fontSize: 12 }}>
+                {isSelected ? `✔ ${rarityLabel(r)}` : rarityLabel(r)}
               </Text>
             </Pressable>
           );
@@ -256,25 +254,24 @@ export default function BulkRarityEditor({
           <Pressable
             key={r}
             onPress={() => setToRarity(r)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: toRarity === r }}
+            accessibilityLabel={toRarity === r ? `${rarityLabel(r)}, selected` : rarityLabel(r)}
             style={{
               paddingHorizontal: 6,
               paddingVertical: 6,
-              backgroundColor: chipBg(toRarity === r),
+              backgroundColor: RARITY_COLORS[r],
               margin: 4,
               borderRadius: 6,
-              borderWidth: StyleSheet.hairlineWidth,
-              borderColor: theme.border,
+              borderWidth: 2,
+              borderColor: toRarity === r ? RARITY_ON_COLOR : 'transparent',
             }}
           >
             <Text
-              style={{
-                color: chipFg(toRarity === r),
-                fontSize: 12,
-                textTransform: 'capitalize',
-              }}
+              style={{ color: RARITY_ON_COLOR, fontSize: 12 }}
               numberOfLines={1}
             >
-              {r.toLowerCase() === 'ultrarare' ? 'Ultra-Rare' : r}
+              {rarityLabel(r)}
             </Text>
           </Pressable>
         ))}
